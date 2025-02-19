@@ -1,5 +1,7 @@
 import Sidebar from "./Sidebar";
 import { useState, useEffect, useRef } from "react";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 
 function Dashboard() {
   const [rows, setRows] = useState([
@@ -19,10 +21,12 @@ function Dashboard() {
       dateOfCompletion: "Feb 1, 2024",
       remarks: "No Remarks",
     },
+
   ]);
   const [selectedType, setSelectedType] = useState("Ordinance");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
+  const [zoomLevel, setZoomLevel] = useState(1); // Zoom level state
 
   // Filter states
   const [yearRange, setYearRange] = useState("");
@@ -69,6 +73,16 @@ function Dashboard() {
     );
   });
 
+  // Function to handle zoom in
+  const handleZoomIn = () => {
+    setZoomLevel((prevZoom) => Math.min(prevZoom + 0.1, 1.5)); // Limit zoom to 150%
+  };
+
+  // Function to handle zoom out
+  const handleZoomOut = () => {
+    setZoomLevel((prevZoom) => Math.max(prevZoom - 0.1, 0.5)); // Limit zoom to 50%
+  };
+
   return (
     <div className="flex">
       {/* Sidebar */}
@@ -81,7 +95,6 @@ function Dashboard() {
         
         <div className="px-4 flex justify-between items-center">
           {/* Ordinance and Resolution Dropdown */}
-
           <div className="flex gap-2">
             <div className="relative inline-block text-left">
               <button
@@ -109,7 +122,7 @@ function Dashboard() {
               {isDropdownOpen && (
                 <div
                   ref={dropdownRef}
-                  className="origin-top-right absolute mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none p-2"
+                  className="z-10 origin-top-right absolute mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none p-2"
                 >
                   <div className="py-1">
                     <a
@@ -137,69 +150,67 @@ function Dashboard() {
               )}
             </div>
 
-              {/* Filters Section */}
-              <div className="">
-                <div className="flex gap-2">
-                  {/* Committee Type Filter */}
-                  <div>
-                    <select
-                      value={committeeType}
-                      onChange={(e) => setCommitteeType(e.target.value)}
-                      className="inline-flex justify-center w-full rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-[#5FA8AD]"
-                    >
-                      <option value="">All Committees</option>
-                      <option value="Committee A">Committee A</option>
-                      <option value="Committee B">Committee B</option>
-                      <option value="Committee C">Committee C</option>
-                    </select>
-                  </div>
+            {/* Filters Section */}
+            <div className="">
+              <div className="flex gap-2">
+                {/* Committee Type Filter */}
+                <div>
+                  <select
+                    value={committeeType}
+                    onChange={(e) => setCommitteeType(e.target.value)}
+                    className="inline-flex justify-center w-full rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-[#5FA8AD]"
+                  >
+                    <option value="">All Committees</option>
+                    <option value="Committee A">Committee A</option>
+                    <option value="Committee B">Committee B</option>
+                    <option value="Committee C">Committee C</option>
+                  </select>
+                </div>
 
-                  {/* Status Filter */}
-                  <div>
-                    <select
-                      value={statusFilter}
-                      onChange={(e) => setStatusFilter(e.target.value)}
-                      className="inline-flex justify-center w-full rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-[#5FA8AD]"
-                    >
-                      <option value="">All Statuses</option>
-                      <option value="Pending">Pending</option>
-                      <option value="For Vice Mayor's Signature">
-                        For Vice Mayor's Signature
-                      </option>
-                      <option value="For Mailings">For Mailings</option>
-                      <option value="Delivered">Delivered</option>
-                      <option value="Returned">Returned</option>
-                      <option value="Completed">Completed</option>
-                    </select>
-                  </div>
+                {/* Status Filter */}
+                <div>
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                    className="inline-flex justify-center w-full rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-[#5FA8AD]"
+                  >
+                    <option value="">All Statuses</option>
+                    <option value="Pending">Pending</option>
+                    <option value="For Vice Mayor's Signature">
+                      For Vice Mayor's Signature
+                    </option>
+                    <option value="For Mailings">For Mailings</option>
+                    <option value="Delivered">Delivered</option>
+                    <option value="Returned">Returned</option>
+                    <option value="Completed">Completed</option>
+                  </select>
+                </div>
 
-                  {/* Completed Status Filter */}
-                  <div>
-                    <select
-                      value={completedStatus}
-                      onChange={(e) => setCompletedStatus(e.target.value)}
-                      className="inline-flex justify-center w-full rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-[#5FA8AD]"
-                    >
-                      <option value="">All</option>
-                      <option value="True">True</option>
-                      <option value="False">False</option>
-                    </select>
-                  </div>
+                {/* Completed Status Filter */}
+                <div>
+                  <select
+                    value={completedStatus}
+                    onChange={(e) => setCompletedStatus(e.target.value)}
+                    className="inline-flex justify-center w-full rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-[#5FA8AD]"
+                  >
+                    <option value="">All</option>
+                    <option value="True">True</option>
+                    <option value="False">False</option>
+                  </select>
+                </div>
 
-                  {/* Year Range Filter */}
-                  <div>
+                {/* Year Range Filter */}
+                <div>
                     <input
-                      type="text"
-                      placeholder="Enter year (e.g., 2024)"
+                      type="date"
                       value={yearRange}
                       onChange={(e) => setYearRange(e.target.value)}
-                      className="inline-flex justify-center w-full rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-[#5FA8AD]"
+                      className="border border-gray-300 shadow-sm px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-[#5FA8AD] rounded-md"
                     />
-                  </div>
                 </div>
+              </div>
             </div>
           </div>
-        
 
           {/* Search Bar */}
           <div className="relative">
@@ -227,126 +238,143 @@ function Dashboard() {
 
         {/* Table Section */}
         <div className="flex-grow px-4 py-2">
-          <div className="bg-white w-full h-full border rounded-md shadow-lg p-8 overflow-auto max-h-[800px]">
-            <div className="h-full overflow-auto">
-              <table className="w-full border-collapse rounded-lg overflow-hidden">
-                {/* Table Header */}
-                <thead>
-                  <tr className="bg-[#408286] text-white text-left text-[14px]">
-                    {/* Conditionally change the column name based on selectedType */}
-                    <th rowSpan="2" className="border border-gray-300 px-4 py-2">
-                      {selectedType === "Ordinance" ? "Ordinance No." : "Resolution No."}
-                    </th>
-                    <th rowSpan="2" className="border border-gray-300 px-4 py-2">
-                      Date Approved
-                    </th>
-                    <th rowSpan="2" className="border border-gray-300 px-4 py-2">
-                      Title
-                    </th>
-                    <th rowSpan="2" className="border border-gray-300 px-4 py-2">
-                      Committee Sponsor
-                    </th>
-                    <th rowSpan="2" className="border border-gray-300 px-4 py-2">
-                      Status
-                    </th>
-                    <th colSpan="2" className="border border-gray-300 px-4 py-2 text-center">
-                      Vice Mayor's Office
-                    </th>
-                    {selectedType === "Ordinance" && (
-                      <th colSpan="2" className="border border-gray-300 px-4 py-2 text-center">
-                        City Mayor
+          <div className="bg-white w-full border rounded-md shadow-lg p-8 max-h-[800px] h-full">
+                 {/* Zoom Controls */}
+                 <div className=" flex justify-end mb-2">
+                <button
+                  onClick={handleZoomIn}
+                  className="bg-[#408286] hover:bg-[#5FA8AD] text-white font-bold py-2 px-4 rounded-l-md"
+                >
+                  +
+                </button>
+                <button
+                  onClick={handleZoomOut}
+                  className="bg-[#408286] hover:bg-[#5FA8AD] text-white font-bold py-2 px-4 rounded-r-md"
+                >
+                  -
+                </button>
+              </div>
+            <div className="h-[700px] overflow-auto">
+              {/* Table with Zoom Applied */}
+              <div style={{ transform: `scale(${zoomLevel})`, transformOrigin: 'top left' }}>
+                <table className="w-full border-collapse rounded-lg overflow-hidden">
+                  {/* Table Header */}
+                  <thead>
+                    <tr className="bg-[#408286] text-white text-left text-[14px]">
+                      {/* Conditionally change the column name based on selectedType */}
+                      <th rowSpan="2" className="border border-gray-300 px-4 py-2">
+                        {selectedType === "Ordinance" ? "Ordinance No." : "Resolution No."}
                       </th>
-                    )}
-                    <th rowSpan="2" className="border border-gray-300 px-4 py-2">
-                      Transmitted To
-                    </th>
-                    <th rowSpan="2" className="border border-gray-300 px-4 py-2">
-                      Date Transmitted
-                    </th>
-                    <th rowSpan="2" className="border border-gray-300 px-4 py-2">
-                      Completed
-                    </th>
-                    <th rowSpan="2" className="border border-gray-300 px-4 py-2">
-                      Date of Completion
-                    </th>
-                    <th rowSpan="2" className="border border-gray-300 px-4 py-2">
-                      Remarks
-                    </th>
-                    <th rowSpan="2" className="border border-gray-300 px-4 py-2">
-                      Actions
-                    </th>
-                  </tr>
-                  <tr className="bg-[#408286] text-white text-left text-[14px]">
-                    {/* These columns are conditional for Ordinance and should not show for Resolution */}
-                    <th className="border border-gray-300 px-4 py-2">
-                      {selectedType === "Ordinance" ? "Forwarded (For Signature)" : "Forwarded"}
-                    </th>
-                    <th className="border border-gray-300 px-4 py-2">
-                      {selectedType === "Ordinance" ? "Received (Signed)" : "Received"}
-                    </th>
-                    {selectedType === "Ordinance" && (
-                      <>
-                        <th className="border border-gray-300 px-4 py-2">Forwarded</th>
-                        <th className="border border-gray-300 px-4 py-2">Received</th>
-                      </>
-                    )}
-                  </tr>
-                </thead>
-
-                {/* Table Body */}
-                <tbody>
-                  {filteredRows.map((row, index) => (
-                    <tr key={index} className="border border-gray-300 hover:bg-gray-100 text-[14px]">
-                      <td className="border border-gray-300 px-4 py-2">{row.ordinanceNo}</td>
-                      <td className="border border-gray-300 px-4 py-2">{row.dateApproved}</td>
-                      <td className="border border-gray-300 px-4 py-2">{row.title}</td>
-                      <td className="border border-gray-300 px-4 py-2">{row.sponsor}</td>
-                      <td className="border border-gray-300 px-4 py-2">{row.status}</td>
-                      <td className="border border-gray-300 px-4 py-2">{row.vmForwarded}</td>
-                      <td className="border border-gray-300 px-4 py-2">{row.vmReceived}</td>
+                      <th rowSpan="2" className="border border-gray-300 px-4 py-2">
+                        Date Approved
+                      </th>
+                      <th rowSpan="2" className="border border-gray-300 px-4 py-2">
+                        Title
+                      </th>
+                      <th rowSpan="2" className="border border-gray-300 px-4 py-2">
+                        Committee Sponsor
+                      </th>
+                      <th rowSpan="2" className="border border-gray-300 px-4 py-2">
+                        Status
+                      </th>
+                      <th colSpan="2" className="border border-gray-300 px-4 py-2 text-center">
+                        Vice Mayor's Office
+                      </th>
+                      {selectedType === "Ordinance" && (
+                        <th colSpan="2" className="border border-gray-300 px-4 py-2 text-center">
+                          City Mayor
+                        </th>
+                      )}
+                      <th rowSpan="2" className="border border-gray-300 px-4 py-2">
+                        Transmitted To
+                      </th>
+                      <th rowSpan="2" className="border border-gray-300 px-4 py-2">
+                        Date Transmitted
+                      </th>
+                      <th rowSpan="2" className="border border-gray-300 px-4 py-2">
+                        Completed
+                      </th>
+                      <th rowSpan="2" className="border border-gray-300 px-4 py-2">
+                        Date of Completion
+                      </th>
+                      <th rowSpan="2" className="border border-gray-300 px-4 py-2">
+                        Remarks
+                      </th>
+                      <th rowSpan="2" className="border border-gray-300 px-4 py-2">
+                        Actions
+                      </th>
+                    </tr>
+                    <tr className="bg-[#408286] text-white text-left text-[14px]">
+                      {/* These columns are conditional for Ordinance and should not show for Resolution */}
+                      <th className="border border-gray-300 px-4 py-2">
+                        {selectedType === "Ordinance" ? "Forwarded (For Signature)" : "Forwarded"}
+                      </th>
+                      <th className="border border-gray-300 px-4 py-2">
+                        {selectedType === "Ordinance" ? "Received (Signed)" : "Received"}
+                      </th>
                       {selectedType === "Ordinance" && (
                         <>
-                          <td className="border border-gray-300 px-4 py-2">{row.cmForwarded}</td>
-                          <td className="border border-gray-300 px-4 py-2">{row.cmReceived}</td>
+                          <th className="border border-gray-300 px-4 py-2">Forwarded</th>
+                          <th className="border border-gray-300 px-4 py-2">Received</th>
                         </>
                       )}
-                      <td className="border border-gray-300 px-4 py-2">{row.transmittedTo}</td>
-                      <td className="border border-gray-300 px-4 py-2">{row.dateTransmitted}</td>
-                      <td className="border border-gray-300 px-4 py-2">
-                        <select
-                          value={row.completed}
-                          onChange={(e) => {
-                            const updatedRows = [...rows];
-                            updatedRows[index].completed = e.target.value;
-                            setRows(updatedRows);
-                          }}
-                          className="w-full border border-gray-300 px-2 py-1 rounded-md focus:outline-none focus:ring-1 focus:ring-[#5FA8AD]"
-                        >
-                          <option value="True">True</option>
-                          <option value="False">False</option>
-                        </select>
-                      </td>
-                      <td className="border border-gray-300 px-4 py-2">{row.dateOfCompletion}</td>
-                      <td className="border border-gray-300 px-4 py-2">{row.remarks}</td>
-                      <td className="px-4 py-2 flex space-x-1">
-                        <button className="bg-[#70b8d3] hover:bg-[#3d9fdb] px-4 py-2 rounded-md text-white font-medium">
-                          View
-                        </button>
-                        <button className="bg-[#FFCC79] hover:bg-[#ecba69] px-4 py-2 rounded-md text-white font-medium">
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => deleteRow(index)}
-                          className="bg-[#FF6767] hover:bg-[#f35656] px-4 py-2 rounded-md text-white font-medium"
-                        >
-                          Delete
-                        </button>
-                      </td>
                     </tr>
-                  ))}
-                </tbody>
+                  </thead>
 
-              </table>
+                  {/* Table Body */}
+                  <tbody>
+                    {filteredRows.map((row, index) => (
+                      <tr key={index} className="border border-gray-300 hover:bg-gray-100 text-[14px]">
+                        <td className="border border-gray-300 px-4 py-2">{row.ordinanceNo}</td>
+                        <td className="border border-gray-300 px-4 py-2">{row.dateApproved}</td>
+                        <td className="border border-gray-300 px-4 py-2">{row.title}</td>
+                        <td className="border border-gray-300 px-4 py-2">{row.sponsor}</td>
+                        <td className="border border-gray-300 px-4 py-2">{row.status}</td>
+                        <td className="border border-gray-300 px-4 py-2">{row.vmForwarded}</td>
+                        <td className="border border-gray-300 px-4 py-2">{row.vmReceived}</td>
+                        {selectedType === "Ordinance" && (
+                          <>
+                            <td className="border border-gray-300 px-4 py-2">{row.cmForwarded}</td>
+                            <td className="border border-gray-300 px-4 py-2">{row.cmReceived}</td>
+                          </>
+                        )}
+                        <td className="border border-gray-300 px-4 py-2">{row.transmittedTo}</td>
+                        <td className="border border-gray-300 px-4 py-2">{row.dateTransmitted}</td>
+                        <td className="border border-gray-300 px-4 py-2">
+                          <select
+                            value={row.completed}
+                            onChange={(e) => {
+                              const updatedRows = [...rows];
+                              updatedRows[index].completed = e.target.value;
+                              setRows(updatedRows);
+                            }}
+                            className="w-full border border-gray-300 px-2 py-1 rounded-md focus:outline-none focus:ring-1 focus:ring-[#5FA8AD]"
+                          >
+                            <option value="True">True</option>
+                            <option value="False">False</option>
+                          </select>
+                        </td>
+                        <td className="border border-gray-300 px-4 py-2">{row.dateOfCompletion}</td>
+                        <td className="border border-gray-300 px-4 py-2">{row.remarks}</td>
+                        <td className="px-4 py-2 flex space-x-1">
+                          <button className="bg-[#70b8d3] hover:bg-[#3d9fdb] px-4 py-2 rounded-md text-white font-medium">
+                            View
+                          </button>
+                          <button className="bg-[#FFCC79] hover:bg-[#ecba69] px-4 py-2 rounded-md text-white font-medium">
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => deleteRow(index)}
+                            className="bg-[#FF6767] hover:bg-[#f35656] px-4 py-2 rounded-md text-white font-medium"
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>
