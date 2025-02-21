@@ -1,7 +1,12 @@
 import Sidebar from "./Sidebar";
 import { useState } from "react";
+import { History } from "lucide-react";
+import Swal from "sweetalert2";
+import RecordModal from "./../Modal/RecordModal";
 
 function AddRecords() {
+    const [showModal, setShowModal] = useState(false);
+    const [history, setHistory] = useState([]);
     const [formData, setFormData] = useState({
         No: "",
         documentType: "Select type", // Added documentType field
@@ -32,16 +37,58 @@ function AddRecords() {
 
     const handleSubmit = (e) => {
         e.preventDefault();
+        
+        // Prevent empty submission
+        if (formData.documentType === "Select type" || !formData.dateApproved || !formData.title) {
+            alert("Please fill in all required fields.");
+            return;
+        }
+
+        // Add entry to history
+        setHistory([...history, { 
+            documentType: formData.documentType, 
+            dateApproved: formData.dateApproved, 
+            title: formData.title 
+        }]);
+
         console.log("Form Submitted:", formData);
+    };
+
+    const handleConfirm = () => {
+        setShowModal(false);
+
+        // Show success message
+        Swal.fire({
+            title: "Success!",
+            text: "New record added successfully",
+            icon: "success",
+            confirmButtonText: "OK",
+        });
+
+        // Clear form after submission
+        setFormData({
+            No: "",
+            documentType: "Select type",
+            dateApproved: "",
+            title: "",
+            sponsor: "",
+            status: "",
+        });
     };
 
     return (
         <div className="flex">
             <Sidebar />
             <div className="flex flex-col w-full h-screen overflow-y-auto p-6">
-                <h1 className="font-poppins font-bold uppercase text-[#494444] text-[35px] mb-8">
-                    Add Record
-                </h1>
+                <div className="flex justify-between items-center mb-8">
+                    <h1 className="font-poppins font-bold uppercase text-[#494444] text-[35px]">
+                        Add Record
+                    </h1>
+                    <div className="flex items-center space-x-2 text-gray-600 cursor-pointer">
+                        <History className="w-6 h-6" />
+                        <span className="font-semibold text-lg">History</span>
+                    </div>
+                </div>
 
                 {/* Main content container */}
                 <div className="w-full border rounded-lg shadow-lg p-8">
@@ -57,7 +104,7 @@ function AddRecords() {
                                     value={formData.No}
                                     onChange={handleChange}
                                     className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#408286] focus:border-transparent"
-                                    required
+                                    
                                 />
                             </div>
                             <div>
@@ -66,8 +113,8 @@ function AddRecords() {
                                     name="documentType"
                                     value={formData.documentType}
                                     onChange={handleChange}
-                                    className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#408286] focus:border-transparent"
-                                    required
+                                    className="cursor-pointer w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#408286] focus:border-transparent"
+                                    
                                 >
                                     {documentTypes.map((type, index) => (
                                         <option key={index} value={type}>{type}</option>
@@ -80,6 +127,7 @@ function AddRecords() {
                                     type="date"
                                     name="dateApproved"
                                     value={formData.dateApproved}
+                                    onFocus={(e) => e.target.showPicker()}
                                     onChange={handleChange}
                                     className="cursor-pointer w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#408286] focus:border-transparent"
                                     
@@ -97,7 +145,7 @@ function AddRecords() {
                                 onChange={handleChange}
                                 className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#408286] focus:border-transparent"
                                 rows="3"
-                                required
+                                
                             ></textarea>
                         </div>
 
@@ -109,7 +157,7 @@ function AddRecords() {
                                     name="sponsor"
                                     value={formData.sponsor}
                                     onChange={handleChange}
-                                    className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#408286] focus:border-transparent"
+                                    className="cursor-pointer w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#408286] focus:border-transparent"
                                     
                                 >
                                     <option value="">Select Committee</option>
@@ -124,8 +172,8 @@ function AddRecords() {
                                     name="status"
                                     value={formData.status}
                                     onChange={handleChange}
-                                    className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#408286] focus:border-transparent"
-                                    required
+                                    className="cursor-pointer w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#408286] focus:border-transparent"
+                                    
                                 >
                                     <option value="">Select Status</option>
                                     {statuses.map((status, index) => (
@@ -146,6 +194,7 @@ function AddRecords() {
                                             type="date"
                                             name="vmForwarded"
                                             value={formData.vmForwarded}
+                                            onFocus={(e) => e.target.showPicker()}
                                             onChange={handleChange}
                                             className="cursor-pointer w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#408286] focus:border-transparent"
                                         />
@@ -156,6 +205,7 @@ function AddRecords() {
                                             type="date"
                                             name="vmReceived"
                                             value={formData.vmReceived}
+                                            onFocus={(e) => e.target.showPicker()}
                                             onChange={handleChange}
                                             className="cursor-pointer w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#408286] focus:border-transparent"
                                         />
@@ -165,13 +215,15 @@ function AddRecords() {
                             <div className="border p-4 rounded-lg">
                                 <label className="block text-gray-700 font-medium mb-2">City Mayor's Office</label>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
+                                    <div>.
+                                        
                                         <label className="block text-gray-700 text-sm">Forwarded</label>
                                         <input
                                             type="date"
                                             name="cmForwarded"
                                             value={formData.cmForwarded}
                                             onChange={handleChange}
+                                            onFocus={(e) => e.target.showPicker()}
                                             className="cursor-pointer w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#408286] focus:border-transparent"
                                         />
                                     </div>
@@ -181,6 +233,7 @@ function AddRecords() {
                                             type="date"
                                             name="cmReceived"
                                             value={formData.cmReceived}
+                                            onFocus={(e) => e.target.showPicker()}
                                             onChange={handleChange}
                                             className="cursor-pointer w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#408286] focus:border-transparent"
                                         />
@@ -198,7 +251,7 @@ function AddRecords() {
                                         name="transmittedTo"
                                         value={formData.transmittedTo}
                                         onChange={handleChange}
-                                        className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#408286] focus:border-transparent"
+                                        className="cursor-pointer w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#408286] focus:border-transparent"
                                     >
                                         <option value="">Select Office</option>
                                         {transmittedOptions.map((option, index) => (
@@ -212,6 +265,7 @@ function AddRecords() {
                                         type="date"
                                         name="dateTransmitted"
                                         value={formData.dateTransmitted}
+                                        onFocus={(e) => e.target.showPicker()}
                                         onChange={handleChange}
                                         className="cursor-pointer w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#408286] focus:border-transparent"
                                     />
@@ -226,6 +280,7 @@ function AddRecords() {
                                 type="date"
                                 name="dateOfCompletion"
                                 value={formData.dateOfCompletion}
+                                onFocus={(e) => e.target.showPicker()}
                                 onChange={handleChange}
                                 className="cursor-pointer w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#408286] focus:border-transparent"
                             />
@@ -246,16 +301,17 @@ function AddRecords() {
 
                         {/* Submit Button */}
                         <div className="text-left flex gap-2">
-                            <button type="submit" className="bg-[#408286] hover:bg-[#357a74] text-sm text-white font-semibold py-2 px-4 rounded-md transition duration-300">
+                            <button type="submit" onClick={() => setFormData({})} className="bg-[#408286] hover:bg-[#357a74] text-sm font-poppins text-white font-semibold py-2 px-4 rounded-md transition duration-300">
                                 Add Record
                             </button>
 
-                            <button type="submit" className="bg-gray-600 hover:bg-gray-700 text-sm text-white font-semibold py-2 px-4 rounded-md transition duration-300">
+                            <button type="submit" className="bg-gray-600 hover:bg-gray-700 text-sm text-white font-poppins font-semibold py-2 px-4 rounded-md transition duration-300">
                                 Clear
                             </button>
                         </div>
                     </form>
                 </div>
+                {showModal && <RecordModal formData={formData} onClose={() => setShowModal(false)} onConfirm={handleConfirm} />}
             </div>
         </div>
     );

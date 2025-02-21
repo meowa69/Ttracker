@@ -63,7 +63,7 @@ function CreateAccount() {
                         <div>
                             <button
                                 type="submit"
-                                className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-[#408286] hover:bg-[#357a74] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                                className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-poppins font-semibold rounded-md text-white bg-[#408286] hover:bg-[#357a74] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
                             >
                                 Create Account
                             </button>
@@ -71,13 +71,13 @@ function CreateAccount() {
                         <div>
                             <button
                                 type="button"
-                                className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-[#408286] hover:bg-[#357a74] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                                className="inline-flex justify-center py-2 px-4 border border-transparent font-poppins shadow-sm text-sm font-semibold rounded-md text-white bg-[#408286] hover:bg-[#357a74] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                             >
                                 Generate password
                             </button>
                             <button
                                 type="button"
-                                className="ml-2 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-gray-600 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+                                className="ml-2 inline-flex justify-center py-2 px-4 border border-transparent font-poppins shadow-sm text-sm font-semibold rounded-md text-white bg-gray-600 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
                             >
                                 Clear
                             </button>

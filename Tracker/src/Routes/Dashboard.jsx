@@ -1,7 +1,7 @@
 import Sidebar from "./Sidebar";
 import { useState, useEffect, useRef } from "react";
-import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
+import EditModal from "../Modal/EditModal";
 
 function Dashboard() {
   const [rows, setRows] = useState([
@@ -27,12 +27,27 @@ function Dashboard() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
   const [zoomLevel, setZoomLevel] = useState(1); // Zoom level state
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedRow, setSelectedRow] = useState(null);
 
   // Filter states
   const [yearRange, setYearRange] = useState("");
   const [committeeType, setCommitteeType] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [completedStatus, setCompletedStatus] = useState("");
+
+  // Modal
+  const handleEditClick = (index) => {
+    setSelectedRow({ ...rows[index], index });  // Save the row data with its index
+    setIsModalOpen(true);
+  };
+  
+  const handleSave = (updatedRow) => {
+    const updatedRows = [...rows];
+    updatedRows[updatedRow.index] = updatedRow;  // Update the row in the list
+    setRows(updatedRows);
+    setIsModalOpen(false);
+  };
 
   // Close dropdown when clicked outside
   useEffect(() => {
@@ -158,7 +173,7 @@ function Dashboard() {
                   <select
                     value={committeeType}
                     onChange={(e) => setCommitteeType(e.target.value)}
-                    className="inline-flex justify-center w-full rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-[#5FA8AD]"
+                    className="cursor-pointer inline-flex justify-center w-full rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-[#5FA8AD]"
                   >
                     <option value="">All Committees</option>
                     <option value="Committee A">Committee A</option>
@@ -172,7 +187,7 @@ function Dashboard() {
                   <select
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value)}
-                    className="inline-flex justify-center w-full rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-[#5FA8AD]"
+                    className=" cursor-pointer inline-flex justify-center w-full rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-[#5FA8AD]"
                   >
                     <option value="">All Statuses</option>
                     <option value="Pending">Pending</option>
@@ -191,7 +206,7 @@ function Dashboard() {
                   <select
                     value={completedStatus}
                     onChange={(e) => setCompletedStatus(e.target.value)}
-                    className="inline-flex justify-center w-full rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-[#5FA8AD]"
+                    className=" cursor-pointer inline-flex justify-center w-full rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-[#5FA8AD]"
                   >
                     <option value="">All</option>
                     <option value="True">True</option>
@@ -205,7 +220,8 @@ function Dashboard() {
                       type="date"
                       value={yearRange}
                       onChange={(e) => setYearRange(e.target.value)}
-                      className="border border-gray-300 shadow-sm px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-[#5FA8AD] rounded-md"
+                      onFocus={(e) => e.target.showPicker()}
+                      className="border cursor-pointer border-gray-300 shadow-sm px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-[#5FA8AD] rounded-md"
                     />
                 </div>
               </div>
@@ -340,27 +356,16 @@ function Dashboard() {
                         )}
                         <td className="border border-gray-300 px-4 py-2">{row.transmittedTo}</td>
                         <td className="border border-gray-300 px-4 py-2">{row.dateTransmitted}</td>
-                        <td className="border border-gray-300 px-4 py-2">
-                          <select
-                            value={row.completed}
-                            onChange={(e) => {
-                              const updatedRows = [...rows];
-                              updatedRows[index].completed = e.target.value;
-                              setRows(updatedRows);
-                            }}
-                            className="w-full border border-gray-300 px-2 py-1 rounded-md focus:outline-none focus:ring-1 focus:ring-[#5FA8AD]"
-                          >
-                            <option value="True">True</option>
-                            <option value="False">False</option>
-                          </select>
-                        </td>
+                        <td className="border border-gray-300 px-4 py-2">{row.completed}</td>
                         <td className="border border-gray-300 px-4 py-2">{row.dateOfCompletion}</td>
                         <td className="border border-gray-300 px-4 py-2">{row.remarks}</td>
                         <td className="px-4 py-2 flex space-x-1">
                           <button className="bg-[#70b8d3] hover:bg-[#3d9fdb] px-4 py-2 rounded-md text-white font-medium">
                             View
                           </button>
-                          <button className="bg-[#FFCC79] hover:bg-[#ecba69] px-4 py-2 rounded-md text-white font-medium">
+                          <button 
+                          onClick={() => handleEditClick(index)}
+                          className="bg-[#FFCC79] hover:bg-[#ecba69] px-4 py-2 rounded-md text-white font-medium">
                             Edit
                           </button>
                           <button
@@ -379,6 +384,13 @@ function Dashboard() {
           </div>
         </div>
       </div>
+      <EditModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        rowData={selectedRow}
+        setRowData={setSelectedRow}
+        onSave={handleSave}
+      />;
     </div>
   );
 }

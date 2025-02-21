@@ -1,6 +1,8 @@
 import Sidebar from "./Sidebar";
 import { useState } from "react";
 import Swal from "sweetalert2"; // Import SweetAlert2
+import EditProfileModal from "./../Modal/EditProfileModal";
+import PasswordResetModal from "./../Modal/PasswordResetModal";
 
 function Settings() {
   // State for managing user info, edit mode, modal visibility
@@ -75,7 +77,7 @@ function Settings() {
                     {/* Profile Picture or Initials */}
                     <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-[#408286] flex items-center justify-center bg-[#408286]">
                         {profilePic === "https://via.placeholder.com/150" ? (
-                        <span className="text-white text-2xl font-semibold">
+                        <span className="text-white text-2xl font-semibold font-poppins">
                             {getInitials(name)}
                         </span>
                         ) : (
@@ -98,7 +100,7 @@ function Settings() {
                 {/* Edit Button */}
                 <button
                     onClick={() => setIsModalOpen(true)}
-                    className="text-white bg-[#408286] hover:bg-[#356f6f] rounded-md px-4 py-2"
+                    className="text-white text-sm font-poppins font-semibold bg-[#408286] hover:bg-[#356f6f] rounded-md px-4 py-2"
                 >
                     Edit
                 </button>
@@ -164,129 +166,16 @@ function Settings() {
                     <h1 className="font-poppins font-medium">Change password</h1>
                     <button
                         onClick={() => setIsPasswordModalOpen(true)}
-                        className="text-white bg-[#408286] hover:bg-[#356f6f] rounded-md px-4 py-2"
+                        className="text-white text-sm font-poppins font-semibold bg-[#408286] hover:bg-[#356f6f] rounded-md px-4 py-2"
                     >
                         Reset
                     </button>
                 </div>  
             </div>
+
+            <EditProfileModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} name={name} setName={setName} profilePic={profilePic} handleImageUpload={handleImageUpload} getInitials={getInitials} />
+            <PasswordResetModal isOpen={isPasswordModalOpen} onClose={() => setIsPasswordModalOpen(false)} newPassword={newPassword} setNewPassword={setNewPassword} confirmPassword={confirmPassword} setConfirmPassword={setConfirmPassword} handlePasswordReset={handlePasswordReset} />
         </div>
-
-        {/* Edit Profile Modal */}
-        {isModalOpen && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-            <div className="bg-white rounded-lg shadow-lg w-96 p-6">
-              <h2 className="text-2xl font-semibold text-[#408286] mb-4">Edit Profile</h2>
-
-              {/* Profile Picture */}
-              <div className="flex justify-center mb-4">
-                <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-[#408286]">
-                  {profilePic === "https://via.placeholder.com/150" ? (
-                    <span className="text-white text-2xl font-semibold">
-                      {getInitials(name)}
-                    </span>
-                  ) : (
-                    <img
-                      src={profilePic}
-                      alt="Profile"
-                      className="w-full h-full object-cover"
-                    />
-                  )}
-                </div>
-              </div>
-
-              {/* Input Fields */}
-              <div className="mb-4">
-                <label htmlFor="name" className="text-sm font-semibold text-gray-600">Full Name</label>
-                <input
-                  type="text"
-                  id="name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-[#408286]"
-                />
-              </div>
-
-              <div className="mb-4">
-                <label htmlFor="profilePic" className="text-sm font-semibold text-gray-600">Profile Picture</label>
-                <input
-                  type="file"
-                  id="profilePic"
-                  accept="image/*"
-                  onChange={handleImageUpload}
-                  className="w-full p-2 border border-gray-300 rounded-md"
-                />
-              </div>
-
-              {/* Modal Buttons */}
-              <div className="flex justify-end space-x-4">
-                <button
-                  onClick={() => setIsModalOpen(false)}
-                  className="text-sm text-gray-600 hover:text-gray-800"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => {
-                    setIsModalOpen(false);
-                    setIsEditing(false); // After saving, close edit mode
-                  }}
-                  className="text-white bg-[#408286] hover:bg-[#356f6f] rounded-md px-4 py-2"
-                >
-                  Save
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Password Reset Modal */}
-        {isPasswordModalOpen && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-            <div className="bg-white rounded-lg shadow-lg w-96 p-6">
-              <h2 className="text-2xl font-semibold text-[#408286] mb-4">Reset Password</h2>
-
-              {/* New Password Inputs */}
-              <div className="mb-4">
-                <label htmlFor="newPassword" className="text-sm font-semibold text-gray-600">New Password</label>
-                <input
-                  type="password"
-                  id="newPassword"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-[#408286]"
-                />
-              </div>
-
-              <div className="mb-4">
-                <label htmlFor="confirmPassword" className="text-sm font-semibold text-gray-600">Confirm Password</label>
-                <input
-                  type="password"
-                  id="confirmPassword"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-[#408286]"
-                />
-              </div>
-
-              {/* Modal Buttons */}
-              <div className="flex justify-end space-x-4">
-                <button
-                  onClick={() => setIsPasswordModalOpen(false)}
-                  className="text-sm text-gray-600 hover:text-gray-800"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handlePasswordReset}
-                  className="text-white bg-[#408286] hover:bg-[#356f6f] rounded-md px-4 py-2"
-                >
-                  Reset
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
