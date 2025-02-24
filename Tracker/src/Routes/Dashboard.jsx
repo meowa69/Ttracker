@@ -390,7 +390,7 @@ function Dashboard() {
         rowData={selectedRow}
         setRowData={setSelectedRow}
         onSave={handleSave}
-      />;
+      />
     </div>
   );
 }

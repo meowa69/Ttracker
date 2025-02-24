@@ -215,8 +215,8 @@ function AddRecords() {
                             <div className="border p-4 rounded-lg">
                                 <label className="block text-gray-700 font-medium mb-2">City Mayor's Office</label>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>.
-                                        
+                                    <div>
+                                    
                                         <label className="block text-gray-700 text-sm">Forwarded</label>
                                         <input
                                             type="date"
