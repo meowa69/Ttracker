@@ -35,7 +35,7 @@ const Sidebar = () => {
         <section className="min-h-screen flex flex-row bg-white">
             {/* Sidebar */}
             <div
-                className={`bg-gradient-to-t from-[#135155] to-[#5FA8AD] shadow-lg min-h-screen fixed top-0 left-0 z-50 ${
+                className={`bg-gradient-to-t from-[#135155] to-[#5FA8AD] shadow-lg min-h-screen fixed top-0 left-0 ${
                     open ? "w-[300px]" : "w-[85px]"
                 } transition-all duration-300 ease-in-out`}
             >

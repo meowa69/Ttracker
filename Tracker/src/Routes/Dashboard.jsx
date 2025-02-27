@@ -2,6 +2,7 @@ import Sidebar from "./Sidebar";
 import { useState, useEffect, useRef } from "react";
 import "react-datepicker/dist/react-datepicker.css";
 import EditModal from "../Modal/EditModal";
+import ViewModal from "../Modal/ViewModal"; // Import the new ViewModal
 
 function Dashboard() {
   const [rows, setRows] = useState([
@@ -21,13 +22,14 @@ function Dashboard() {
       dateOfCompletion: "Feb 1, 2024",
       remarks: "No Remarks",
     },
-
   ]);
+
   const [selectedType, setSelectedType] = useState("Ordinance");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
-  const [zoomLevel, setZoomLevel] = useState(1); // Zoom level state
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [zoomLevel, setZoomLevel] = useState(1);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false); // State for ViewModal
   const [selectedRow, setSelectedRow] = useState(null);
 
   // Filter states
@@ -36,17 +38,22 @@ function Dashboard() {
   const [statusFilter, setStatusFilter] = useState("");
   const [completedStatus, setCompletedStatus] = useState("");
 
-  // Modal
+  // Modal handlers
   const handleEditClick = (index) => {
-    setSelectedRow({ ...rows[index], index });  // Save the row data with its index
-    setIsModalOpen(true);
+    setSelectedRow({ ...rows[index], index });
+    setIsEditModalOpen(true);
   };
-  
+
+  const handleViewClick = (index) => {
+    setSelectedRow({ ...rows[index], index });
+    setIsViewModalOpen(true);
+  };
+
   const handleSave = (updatedRow) => {
     const updatedRows = [...rows];
-    updatedRows[updatedRow.index] = updatedRow;  // Update the row in the list
+    updatedRows[updatedRow.index] = updatedRow;
     setRows(updatedRows);
-    setIsModalOpen(false);
+    setIsEditModalOpen(false);
   };
 
   // Close dropdown when clicked outside
@@ -72,10 +79,8 @@ function Dashboard() {
 
   // Function to filter rows based on selected filters
   const filteredRows = rows.filter((row) => {
-    const matchesYearRange =
-      !yearRange || row.dateApproved.includes(yearRange);
-    const matchesCommitteeType =
-      !committeeType || row.sponsor === committeeType;
+    const matchesYearRange = !yearRange || row.dateApproved.includes(yearRange);
+    const matchesCommitteeType = !committeeType || row.sponsor === committeeType;
     const matchesStatus = !statusFilter || row.status === statusFilter;
     const matchesCompletedStatus =
       completedStatus === "" || row.completed === completedStatus;
@@ -90,12 +95,12 @@ function Dashboard() {
 
   // Function to handle zoom in
   const handleZoomIn = () => {
-    setZoomLevel((prevZoom) => Math.min(prevZoom + 0.1, 1.5)); // Limit zoom to 150%
+    setZoomLevel((prevZoom) => Math.min(prevZoom + 0.1, 1.5));
   };
 
   // Function to handle zoom out
   const handleZoomOut = () => {
-    setZoomLevel((prevZoom) => Math.max(prevZoom - 0.1, 0.5)); // Limit zoom to 50%
+    setZoomLevel((prevZoom) => Math.max(prevZoom - 0.1, 0.5));
   };
 
   return (
@@ -107,10 +112,12 @@ function Dashboard() {
         <div className="font-poppins font-bold uppercase px-4 mb-8 text-[#494444] text-[35px]">
           <h1>Dashboard</h1>
         </div>
-        
+
+        {/* Filters and Search Bar */}
         <div className="px-4 flex justify-between items-center">
-          {/* Ordinance and Resolution Dropdown */}
+          {/* Filters Section */}
           <div className="flex gap-2">
+            {/* Ordinance and Resolution Dropdown */}
             <div className="relative inline-block text-left">
               <button
                 type="button"
@@ -165,66 +172,61 @@ function Dashboard() {
               )}
             </div>
 
-            {/* Filters Section */}
-            <div className="">
-              <div className="flex gap-2">
-                {/* Committee Type Filter */}
-                <div>
-                  <select
-                    value={committeeType}
-                    onChange={(e) => setCommitteeType(e.target.value)}
-                    className="cursor-pointer inline-flex justify-center w-full rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-[#5FA8AD]"
-                  >
-                    <option value="">All Committees</option>
-                    <option value="Committee A">Committee A</option>
-                    <option value="Committee B">Committee B</option>
-                    <option value="Committee C">Committee C</option>
-                  </select>
-                </div>
+            {/* Committee Type Filter */}
+            <div>
+              <select
+                value={committeeType}
+                onChange={(e) => setCommitteeType(e.target.value)}
+                className="cursor-pointer inline-flex justify-center w-full rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-[#5FA8AD]"
+              >
+                <option value="">All Committees</option>
+                <option value="Committee A">Committee A</option>
+                <option value="Committee B">Committee B</option>
+                <option value="Committee C">Committee C</option>
+              </select>
+            </div>
 
-                {/* Status Filter */}
-                <div>
-                  <select
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                    className=" cursor-pointer inline-flex justify-center w-full rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-[#5FA8AD]"
-                  >
-                    <option value="">All Statuses</option>
-                    <option value="Pending">Pending</option>
-                    <option value="For Vice Mayor's Signature">
-                      For Vice Mayor's Signature
-                    </option>
-                    <option value="For Mailings">For Mailings</option>
-                    <option value="Delivered">Delivered</option>
-                    <option value="Returned">Returned</option>
-                    <option value="Completed">Completed</option>
-                  </select>
-                </div>
+            {/* Status Filter */}
+            <div>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="cursor-pointer inline-flex justify-center w-full rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-[#5FA8AD]"
+              >
+                <option value="">All Statuses</option>
+                <option value="Pending">Pending</option>
+                <option value="For Vice Mayor's Signature">
+                  For Vice Mayor's Signature
+                </option>
+                <option value="For Mailings">For Mailings</option>
+                <option value="Delivered">Delivered</option>
+                <option value="Returned">Returned</option>
+                <option value="Completed">Completed</option>
+              </select>
+            </div>
 
-                {/* Completed Status Filter */}
-                <div>
-                  <select
-                    value={completedStatus}
-                    onChange={(e) => setCompletedStatus(e.target.value)}
-                    className=" cursor-pointer inline-flex justify-center w-full rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-[#5FA8AD]"
-                  >
-                    <option value="">All</option>
-                    <option value="True">True</option>
-                    <option value="False">False</option>
-                  </select>
-                </div>
+            {/* Completed Status Filter */}
+            <div>
+              <select
+                value={completedStatus}
+                onChange={(e) => setCompletedStatus(e.target.value)}
+                className="cursor-pointer inline-flex justify-center w-full rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-[#5FA8AD]"
+              >
+                <option value="">All</option>
+                <option value="True">True</option>
+                <option value="False">False</option>
+              </select>
+            </div>
 
-                {/* Year Range Filter */}
-                <div>
-                    <input
-                      type="date"
-                      value={yearRange}
-                      onChange={(e) => setYearRange(e.target.value)}
-                      onFocus={(e) => e.target.showPicker()}
-                      className="border cursor-pointer border-gray-300 shadow-sm px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-[#5FA8AD] rounded-md"
-                    />
-                </div>
-              </div>
+            {/* Year Range Filter */}
+            <div>
+              <input
+                type="date"
+                value={yearRange}
+                onChange={(e) => setYearRange(e.target.value)}
+                onFocus={(e) => e.target.showPicker()}
+                className="border cursor-pointer border-gray-300 shadow-sm px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-[#5FA8AD] rounded-md"
+              />
             </div>
           </div>
 
@@ -255,125 +257,73 @@ function Dashboard() {
         {/* Table Section */}
         <div className="flex-grow px-4 py-2">
           <div className="bg-white w-full border rounded-md shadow-lg p-8 max-h-[800px] h-full">
-                 {/* Zoom Controls */}
-                 <div className=" flex justify-end mb-2">
-                <button
-                  onClick={handleZoomIn}
-                  className="bg-[#408286] hover:bg-[#5FA8AD] text-white font-bold py-2 px-4 rounded-l-md"
-                >
-                  +
-                </button>
-                <button
-                  onClick={handleZoomOut}
-                  className="bg-[#408286] hover:bg-[#5FA8AD] text-white font-bold py-2 px-4 rounded-r-md"
-                >
-                  -
-                </button>
-              </div>
+            {/* Zoom Controls */}
+            <div className="flex justify-end mb-2">
+              <button
+                onClick={handleZoomIn}
+                className="bg-[#408286] hover:bg-[#5FA8AD] text-white font-bold py-2 px-4 rounded-l-md"
+              >
+                +
+              </button>
+              <button
+                onClick={handleZoomOut}
+                className="bg-[#408286] hover:bg-[#5FA8AD] text-white font-bold py-2 px-4 rounded-r-md"
+              >
+                -
+              </button>
+            </div>
             <div className="h-[700px] overflow-auto">
               {/* Table with Zoom Applied */}
               <div style={{ transform: `scale(${zoomLevel})`, transformOrigin: 'top left' }}>
                 <table className="w-full border-collapse rounded-lg overflow-hidden">
-                  {/* Table Header */}
                   <thead>
                     <tr className="bg-[#408286] text-white text-left text-[14px]">
-                      {/* Conditionally change the column name based on selectedType */}
-                      <th rowSpan="2" className="border border-gray-300 px-4 py-2">
+                      <th className="border border-gray-300 px-4 py-4">
                         {selectedType === "Ordinance" ? "Ordinance No." : "Resolution No."}
                       </th>
-                      <th rowSpan="2" className="border border-gray-300 px-4 py-2">
-                        Date Approved
-                      </th>
-                      <th rowSpan="2" className="border border-gray-300 px-4 py-2">
-                        Title
-                      </th>
-                      <th rowSpan="2" className="border border-gray-300 px-4 py-2">
-                        Committee Sponsor
-                      </th>
-                      <th rowSpan="2" className="border border-gray-300 px-4 py-2">
-                        Status
-                      </th>
-                      <th colSpan="2" className="border border-gray-300 px-4 py-2 text-center">
-                        Vice Mayor's Office
-                      </th>
-                      {selectedType === "Ordinance" && (
-                        <th colSpan="2" className="border border-gray-300 px-4 py-2 text-center">
-                          City Mayor
-                        </th>
-                      )}
-                      <th rowSpan="2" className="border border-gray-300 px-4 py-2">
-                        Transmitted To
-                      </th>
-                      <th rowSpan="2" className="border border-gray-300 px-4 py-2">
-                        Date Transmitted
-                      </th>
-                      <th rowSpan="2" className="border border-gray-300 px-4 py-2">
-                        Completed
-                      </th>
-                      <th rowSpan="2" className="border border-gray-300 px-4 py-2">
-                        Date of Completion
-                      </th>
-                      <th rowSpan="2" className="border border-gray-300 px-4 py-2">
-                        Remarks
-                      </th>
-                      <th rowSpan="2" className="border border-gray-300 px-4 py-2">
-                        Actions
-                      </th>
-                    </tr>
-                    <tr className="bg-[#408286] text-white text-left text-[14px]">
-                      {/* These columns are conditional for Ordinance and should not show for Resolution */}
-                      <th className="border border-gray-300 px-4 py-2">
-                        {selectedType === "Ordinance" ? "Forwarded (For Signature)" : "Forwarded"}
-                      </th>
-                      <th className="border border-gray-300 px-4 py-2">
-                        {selectedType === "Ordinance" ? "Received (Signed)" : "Received"}
-                      </th>
-                      {selectedType === "Ordinance" && (
-                        <>
-                          <th className="border border-gray-300 px-4 py-2">Forwarded</th>
-                          <th className="border border-gray-300 px-4 py-2">Received</th>
-                        </>
-                      )}
+                      <th className="border border-gray-300 px-4 py-4">Title</th>
+                      <th className="border border-gray-300 px-4 py-4">Status</th>
+                      <th className="border border-gray-300 px-4 py-4">Remarks</th>
+                      <th className="border border-gray-300 px-4 py-4">Actions</th>
                     </tr>
                   </thead>
-
-                  {/* Table Body */}
                   <tbody>
                     {filteredRows.map((row, index) => (
                       <tr key={index} className="border border-gray-300 hover:bg-gray-100 text-[14px]">
                         <td className="border border-gray-300 px-4 py-2">{row.ordinanceNo}</td>
-                        <td className="border border-gray-300 px-4 py-2">{row.dateApproved}</td>
-                        <td className="border border-gray-300 px-4 py-2">{row.title}</td>
-                        <td className="border border-gray-300 px-4 py-2">{row.sponsor}</td>
+                        <td className="border border-gray-300 px-4 py-2 w-[40%]">{row.title}</td>
                         <td className="border border-gray-300 px-4 py-2">{row.status}</td>
-                        <td className="border border-gray-300 px-4 py-2">{row.vmForwarded}</td>
-                        <td className="border border-gray-300 px-4 py-2">{row.vmReceived}</td>
-                        {selectedType === "Ordinance" && (
-                          <>
-                            <td className="border border-gray-300 px-4 py-2">{row.cmForwarded}</td>
-                            <td className="border border-gray-300 px-4 py-2">{row.cmReceived}</td>
-                          </>
-                        )}
-                        <td className="border border-gray-300 px-4 py-2">{row.transmittedTo}</td>
-                        <td className="border border-gray-300 px-4 py-2">{row.dateTransmitted}</td>
-                        <td className="border border-gray-300 px-4 py-2">{row.completed}</td>
-                        <td className="border border-gray-300 px-4 py-2">{row.dateOfCompletion}</td>
                         <td className="border border-gray-300 px-4 py-2">{row.remarks}</td>
-                        <td className="px-4 py-2 flex space-x-1">
-                          <button className="bg-[#70b8d3] hover:bg-[#3d9fdb] px-4 py-2 rounded-md text-white font-medium">
-                            View
-                          </button>
-                          <button 
-                          onClick={() => handleEditClick(index)}
-                          className="bg-[#FFCC79] hover:bg-[#ecba69] px-4 py-2 rounded-md text-white font-medium">
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => deleteRow(index)}
-                            className="bg-[#FF6767] hover:bg-[#f35656] px-4 py-2 rounded-md text-white font-medium"
-                          >
-                            Delete
-                          </button>
+                        <td className="px-2 py-2">
+                          <div className="grid grid-cols-2 gap-1 md:flex md:flex-wrap md:justify-start">
+                            <button
+                              onClick={() => handleViewClick(index)}
+                              className="bg-[#37ad6c] hover:bg-[#2d8f59] px-4 py-2 rounded-md text-white font-medium flex items-center gap-2"
+                            >
+                              <img src="src/assets/Images/view.png" alt="View" className="w-5 h-5 invert self-center" />
+                              View
+                            </button>
+                            <button
+                              onClick={() => handleEditClick(index)}
+                              className="bg-[#f5bd64] hover:bg-[#e9b158] px-4 py-2 rounded-md text-white font-medium flex items-center gap-2"
+                            >
+                              <img src="src/assets/Images/edit.png" alt="Edit" className="w-5 h-5 invert self-center" />
+                              Edit
+                            </button>
+                            <button
+                              className="bg-[#3b7bcf] hover:bg-[#3166ac] px-4 py-2 rounded-md text-white font-medium flex items-center gap-2"
+                            >
+                              <img src="src/assets/Images/print.png" alt="Print" className="w-5 h-5 invert self-center" />
+                              Print
+                            </button>
+                            <button
+                              onClick={() => deleteRow(index)}
+                              className="bg-[#FF6767] hover:bg-[#f35656] px-4 py-2 rounded-md text-white font-medium flex items-center gap-2"
+                            >
+                              <img src="src/assets/Images/delete.png" alt="Delete" className="w-5 h-5 invert self-center" />
+                              Delete
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -384,12 +334,21 @@ function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* Edit Modal */}
       <EditModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
         rowData={selectedRow}
         setRowData={setSelectedRow}
         onSave={handleSave}
+      />
+
+      {/* View Modal */}
+      <ViewModal
+        isOpen={isViewModalOpen}
+        onClose={() => setIsViewModalOpen(false)}
+        rowData={selectedRow}
       />
     </div>
   );

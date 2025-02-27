@@ -2,8 +2,5 @@
 @tailwind components;
 @tailwind utilities;
 
-th, td {
-    min-width: 150px; /* Adjust as needed */
 
-  }
   

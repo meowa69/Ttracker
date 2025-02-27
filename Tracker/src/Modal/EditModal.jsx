@@ -26,8 +26,8 @@ const EditModal = ({ isOpen, onClose, rowData, onSave, setRowData }) => {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
-      <div className="bg-white p-6 rounded-lg w-[900px] max-h-[80vh] overflow-y-auto">
-        <h2 className="text-lg font-semibold mb-4">Edit Record</h2>
+      <div className="bg-white p-6 rounded-lg w-[1200px] max-h-[80vh] overflow-y-auto">
+        <h2 className="text-lg font-semibold mb-4 font-poppins">Edit Record</h2>
 
         {/* Form Fields */}
         <div className="space-y-3">
