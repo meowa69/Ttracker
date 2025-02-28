@@ -94,7 +94,7 @@ const ViewModal = ({ isOpen, onClose, rowData }) => {
                     </svg>
                     Title
                     </span>
-                    <span className="w-2/3 text-gray-600">{rowData.title}</span>
+                    <span className="w-2/3 text-gray-600 text-justify">{rowData.title}</span>
                 </div>
 
                 {/* Divider */}
