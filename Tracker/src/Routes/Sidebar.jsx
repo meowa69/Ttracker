@@ -1,13 +1,23 @@
-import { useState, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import { HiMenuAlt3 } from "react-icons/hi";
 import { Link, useNavigate } from "react-router-dom";
 
 const Sidebar = () => {
     const navigate = useNavigate();
+    const sidebarRef = useRef(null);
 
     const menus = [
         { title: "Dashboard", src: "src/assets/Images/dashboard.png", path: "/dashboard" },
         { title: "Add Record", src: "src/assets/Images/add.png", path: "/add-records" },
+        { 
+            title: "Manage Record", 
+            src: "src/assets/Images/manage.png", 
+            path: "/manage-records",
+            submenus: [
+                { title: "Request", path: "/manage-records/request" },
+                { title: "History", path: "/manage-records/history" }
+            ]
+        },
         { title: "Create Account", src: "src/assets/Images/create.png", path: "/create-account", isSeparated: true },
         { title: "Settings", src: "src/assets/Images/setting.png", path: "/settings" },
         { title: "Logout", src: "src/assets/Images/logout.png", path: "/" },
@@ -15,29 +25,51 @@ const Sidebar = () => {
 
     const [open, setOpen] = useState(true);
     const [displayName, setDisplayName] = useState("Admin User");
+    const [activeMenu, setActiveMenu] = useState(null);
 
     const toggleSidebar = () => {
         setOpen((prev) => !prev);
+        setActiveMenu(null); // Close any open submenu when toggling sidebar
     };
 
     const handleNavigation = (path) => {
         navigate(path);
+        setActiveMenu(null); // Close submenu after navigating
     };
+
+    const handleMenuClick = (menuTitle) => {
+        setActiveMenu(activeMenu === menuTitle ? null : menuTitle);
+    };
+
+    // Detect clicks outside of the sidebar
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (sidebarRef.current && !sidebarRef.current.contains(event.target)) {
+                setActiveMenu(null); // Close submenu when clicking outside
+            }
+        };
+
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, []);
 
     const getInitials = (name) => {
         return name
             .split(" ")
             .map((word) => word.charAt(0).toUpperCase())
             .join("");
-    };  
+    };
 
     return (
         <section className="min-h-screen flex flex-row bg-white">
             {/* Sidebar */}
             <div
+                ref={sidebarRef}
                 className={`bg-gradient-to-t from-[#135155] to-[#5FA8AD] shadow-lg min-h-screen fixed top-0 left-0 ${
                     open ? "w-[300px]" : "w-[85px]"
-                } transition-all duration-300 ease-in-out`}
+                } transition-all duration-300 ease-in-out z-50`}
             >
                 <div className="w-full">
                     {/* Menu Toggle and Profile */}
@@ -72,16 +104,13 @@ const Sidebar = () => {
                     {/* Menu Items */}
                     <div className="mt-4 flex flex-col gap-4 relative p-6 justify-center">
                         {menus.map((menu, i) => (
-                            <div key={i}>
+                            <div key={i} className="relative">
                                 {menu.isSeparated && <div className="border-t border-white my-4"></div>}
 
-                                <Link
-                                    to={menu.path}
-                                    className="group flex items-center text-white text-md gap-3.5 font-poppins font-sm p-2 hover:bg-[#387174] hover:text-white rounded-md relative"
-                                    onClick={(e) => {
-                                        e.preventDefault();
-                                        handleNavigation(menu.path);
-                                    }}
+                                {/* Main Menu Items */}
+                                <button
+                                    className="group flex items-center text-white text-md gap-3.5 font-poppins font-sm p-2 hover:bg-[#387174] hover:text-white rounded-md relative w-full"
+                                    onClick={() => menu.submenus ? handleMenuClick(menu.title) : handleNavigation(menu.path)}
                                 >
                                     <img
                                         src={menu.src}
@@ -89,23 +118,42 @@ const Sidebar = () => {
                                         className="w-5 h-5 transition-colors duration-300 invert"
                                     />
                                     <h2
-                                        className={`whitespace-pre ${
-                                            open ? "transition-all duration-500 ease-in-out" : ""
-                                        } ${
+                                        className={`whitespace-pre transition-all duration-500 ease-in-out ${
                                             !open ? "opacity-0 translate-x-28 overflow-hidden" : ""
                                         }`}
                                     >
                                         {menu.title}
                                     </h2>
+
+                                    {/* Tooltip for minimized mode */}
                                     <h2
                                         className={`${
                                             open && "hidden"
                                         } z-50 absolute left-48 bg-white font-semibold whitespace-pre text-gray-900 rounded-md drop-shadow-lg px-0 py-0 w-0 overflow-hidden group-hover:px-2 group-hover:py-1 group-hover:left-[55px] group-hover:duration-300 group-hover:w-fit`}
-                                        style={!open ? { pointerEvents: "none" } : {}}
                                     >
                                         {menu.title}
                                     </h2>
-                                </Link>
+                                </button>
+
+                                {/* Submenus */}
+                                {menu.submenus && (
+                                    <div
+                                        className={`transition-all duration-300 ease-in-out overflow-hidden ${
+                                            activeMenu === menu.title ? "max-h-40 opacity-100" : "max-h-0 opacity-0"
+                                        } ${open ? "ml-6 mt-2 space-y-2" : "absolute left-[85px] top-0 bg-[#135155] rounded-md p-2 shadow-lg z-50"}`}
+                                    >
+                                        {menu.submenus.map((submenu, subIndex) => (
+                                            <Link
+                                                key={subIndex}
+                                                to={submenu.path}
+                                                className="group flex items-center text-white text-md gap-3.5 font-poppins font-sm p-2 hover:bg-[#387174] hover:text-white rounded-md relative w-full"
+                                                onClick={() => handleNavigation(submenu.path)}
+                                            >
+                                                {submenu.title}
+                                            </Link>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                         ))}
                     </div>
@@ -118,7 +166,6 @@ const Sidebar = () => {
                     open ? "ml-[300px]" : "ml-[85px]"
                 }`}
             >
-                {/* Main content goes here */}
             </div>
         </section>
     );

@@ -7,6 +7,7 @@ import ForgotPassword from "./Routes/ForgotPassword";
 import ChangePassword from "./Routes/ChangePassword";
 import Dashboard from "./Routes/Dashboard";
 import AddRecords from "./Routes/AddRecords";
+import ManageRecord from "./Routes/ManageRecord";
 import CreateAccount from "./Routes/CreateAccount";
 import Settings from "./Routes/Settings";
 
@@ -19,6 +20,7 @@ createRoot(document.getElementById("root")).render(
         <Route path="/change-password" element={<ChangePassword />} />
         <Route path="/dashboard" element={<Dashboard/>} />
         <Route path="/add-records" element={<AddRecords/>} />
+        <Route path="/manage-records" element={<ManageRecord/>} />
         <Route path="/create-account" element={<CreateAccount/>} />
         <Route path="/settings" element={<Settings/>} />
       </Routes>
