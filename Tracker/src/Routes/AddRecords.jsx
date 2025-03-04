@@ -12,22 +12,9 @@ function AddRecords() {
         documentType: "Select type", // Added documentType field
         dateApproved: "",
         title: "",
-        sponsor: "",
-        status: "",
-        vmForwarded: "",
-        vmReceived: "",
-        cmForwarded: "",
-        cmReceived: "",
-        transmittedTo: "",
-        dateTransmitted: "",
-        completed: "False",
-        dateOfCompletion: "",
-        remarks: ""
+        
     });
 
-    const committees = ["Committee A", "Committee B", "Committee C"];
-    const statuses = ["For Vice Mayor's Signature", "For Mailings", "For Mayor's & Admin Signature", "Delivered", "Returned", "Completed"];
-    const transmittedOptions = ["Vice Mayor's Office", "City Mayor's Office", "Other"];
     const documentTypes = ["Select type", "Ordinance", "Resolution"]; // Document type options
 
     const handleChange = (e) => {
@@ -45,7 +32,8 @@ function AddRecords() {
         }
 
         // Add entry to history
-        setHistory([...history, { 
+        setHistory([...history, {
+            No: formData.No, 
             documentType: formData.documentType, 
             dateApproved: formData.dateApproved, 
             title: formData.title 
@@ -71,8 +59,7 @@ function AddRecords() {
             documentType: "Select type",
             dateApproved: "",
             title: "",
-            sponsor: "",
-            status: "",
+
         });
     };
 

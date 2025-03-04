@@ -5,7 +5,7 @@ const ViewModal = ({ isOpen, onClose, rowData }) => {
   if (!isOpen || !rowData) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
       <div className="bg-white rounded-lg p-8 w-[80%] h-[90%] shadow-2xl overflow-hidden">
         {/* Modal Header */}
         <div className="flex justify-between items-center mb-6">

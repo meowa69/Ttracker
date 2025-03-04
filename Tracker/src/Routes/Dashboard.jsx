@@ -179,7 +179,7 @@ function Dashboard() {
   ];
 
   
-  const [selectedType, setSelectedType] = useState("");
+  const [selectedType, setSelectedType] = useState("Document");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
   const notificationRef = useRef(null);
@@ -191,9 +191,9 @@ function Dashboard() {
   const [searchTerm, setSearchTerm] = useState('');
 
   const filteredCommittees = committees.filter(committee =>
-    committee.toLowerCase().includes(searchTerm.toLowerCase())
+    committee.toLowerCase().startsWith(searchTerm.toLowerCase())
   );
-
+  
   // Filter states
   const [yearRange, setYearRange] = useState("");
   const [committeeType, setCommitteeType] = useState("");
@@ -321,17 +321,17 @@ function Dashboard() {
                 value={selectedType}
                 onChange={(e) => setSelectedType(e.target.value)}
               >
-                <option value="" disabled>Document</option>
+                <option value="Document">Document</option>
                 <option value="Ordinance">Ordinance</option>
                 <option value="Resolution">Resolution</option>
               </select>
-
               <img 
                 src="src/assets/Images/down2.png" 
                 alt="Dropdown Icon" 
-                className={`absolute top-1/2 right-3 transform -translate-y-1/2 w-4 h-4 pointer-events-none transition-transform duration-200`}
+                className="absolute top-1/2 right-3 transform -translate-y-1/2 w-4 h-4 pointer-events-none transition-transform duration-200"
               />
             </div>
+
 
             {/* Committee Type Filter */}
             <div className="relative w-40" ref={dropdownRef}>
@@ -417,13 +417,18 @@ function Dashboard() {
               />
             </div>
 
-
             {/* Year Range Filter */}
-            <div>
+            <div className="flex space-x-2 items-center">
               <input
                 type="date"
-                value={yearRange}
-                onChange={(e) => setYearRange(e.target.value)}
+                onChange={(e) => setStartDate(e.target.value)}
+                onFocus={(e) => e.target.showPicker()}
+                className="border cursor-pointer border-gray-300 shadow-sm px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-[#5FA8AD] rounded-md"
+              />
+              <span className="text-gray-500">to</span>
+              <input
+                type="date"
+                onChange={(e) => setEndDate(e.target.value)}
                 onFocus={(e) => e.target.showPicker()}
                 className="border cursor-pointer border-gray-300 shadow-sm px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-[#5FA8AD] rounded-md"
               />
@@ -475,12 +480,16 @@ function Dashboard() {
             <div className="h-[690px] overflow-auto relative rounded-lg shadow-lg">
               {/* Zoom Applied */}
               <div style={{ transform: `scale(${zoomLevel})`, transformOrigin: "top left" }}>
-                <table className="w-full ">
-                  {/* Fixed Thead with Rounded Top */}
+                <table className="w-full">
+                  {/* Table Header */}
                   <thead className="sticky top-[-1px] bg-[#408286] text-white z-10">
                     <tr className="text-left text-[14px]">
-                      <th className="border border-gray-300 px-4 py-4 first:rounded-tl-lg last:rounded-tr-lg">
-                        {selectedType === "Ordinance" ? "Ordinance No." : "Resolution No."}
+                      {/* Show Document column only when "Document" is selected */}
+                      {selectedType === "Document" && (
+                        <th className="border border-gray-300 px-4 py-4">Document</th>
+                      )}
+                      <th className="border border-gray-300 px-4 py-4">
+                        {selectedType === "Document" ? "No." : selectedType === "Ordinance" ? "Ordinance No." : "Resolution No."}
                       </th>
                       <th className="border border-gray-300 px-4 py-4 text-center">Title</th>
                       <th className="border border-gray-300 px-4 py-4">Status</th>
@@ -488,17 +497,23 @@ function Dashboard() {
                       <th className="border border-gray-300 px-4 py-4 text-center">Actions</th>
                     </tr>
                   </thead>
-                  {/* Scrollable Tbody */}
+
+                  {/* Table Body */}
                   <tbody>
                     {filteredRows.map((row, index) => (
-                      <tr
-                        key={index}
-                        className={`border border-gray-300 hover:bg-gray-100 text-[14px] ${
-                          index === filteredRows.length - 1 ? "last:rounded-b-lg" : ""
-                        }`}
-                      >
-                        <td className="border border-gray-300 px-4 py-2 font-poppins text-sm text-gray-700">{row.ordinanceNo}</td>
-                        <td className="border border-gray-300 px-4 py-2 w-[41%] text-justify font-poppins text-sm text-gray-700">{row.title}</td>
+                      <tr key={index} className="border border-gray-300 hover:bg-gray-100 text-[14px]">
+                        {/* Show "Document" column only if "Document" is selected */}
+                        {selectedType === "Document" && (
+                          <td className="border border-gray-300 px-4 py-2 font-poppins text-sm text-gray-700">
+                            {row.documentType || "Resolution"}
+                          </td>
+                        )}
+                        <td className="border border-gray-300 px-4 py-2 font-poppins text-sm text-gray-700">
+                          {row.ordinanceNo}
+                        </td>
+                        <td className="border border-gray-300 px-4 py-2 w-[41%] text-justify font-poppins text-sm text-gray-700">
+                          {row.title}
+                        </td>
                         <td className="border border-gray-300 px-4 py-2 font-poppins text-sm text-gray-700">{row.status}</td>
                         <td className="border border-gray-300 px-4 py-2 font-poppins text-sm text-gray-700">{row.remarks}</td>
                         <td className="px-2 py-2 w-[28%] border font-poppins text-sm text-gray-700">
@@ -537,6 +552,7 @@ function Dashboard() {
                   </tbody>
                 </table>
               </div>
+
             </div>
           </div>
         </div>

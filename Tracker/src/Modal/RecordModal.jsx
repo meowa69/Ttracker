@@ -24,11 +24,10 @@ function RecordModal({ formData, onClose, onConfirm }) {
                 <h2 className="text-lg font-semibold mb-4">New Record Summary</h2>
 
                 <div className="text-sm">
+                    <p><strong>No.:</strong> {formData.No}</p>
                     <p><strong>Document Type:</strong> {formData.documentType}</p>
                     <p><strong>Date Approved:</strong> {formData.dateApproved}</p>
                     <p><strong>Title:</strong> {formData.title}</p>
-                    <p><strong>Sponsor:</strong> {formData.sponsor}</p>
-                    <p><strong>Status:</strong> {formData.status}</p>
                 </div>
 
                 <div className="mt-4 flex items-center">

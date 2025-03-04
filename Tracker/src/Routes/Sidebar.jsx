@@ -12,10 +12,9 @@ const Sidebar = () => {
         { 
             title: "Manage Record", 
             src: "src/assets/Images/manage.png", 
-            path: "/manage-records",
             submenus: [
-                { title: "Request", path: "/manage-records/request" },
-                { title: "History", path: "/manage-records/history" }
+                { title: "Request", src: "src/assets/Images/request.png", path: "/request" },
+                { title: "History", src: "src/assets/Images/history.png", path: "/history" },
             ]
         },
         { title: "Create Account", src: "src/assets/Images/create.png", path: "/create-account", isSeparated: true },
@@ -23,14 +22,22 @@ const Sidebar = () => {
         { title: "Logout", src: "src/assets/Images/logout.png", path: "/" },
     ];
 
-    const [open, setOpen] = useState(true);
+    
     const [displayName, setDisplayName] = useState("Admin User");
     const [activeMenu, setActiveMenu] = useState(null);
 
+    const [open, setOpen] = useState(() => {
+        return localStorage.getItem("sidebarOpen") === "false" ? false : true;
+    });
+    
     const toggleSidebar = () => {
-        setOpen((prev) => !prev);
-        setActiveMenu(null); // Close any open submenu when toggling sidebar
+        setOpen((prev) => {
+            const newState = !prev;
+            localStorage.setItem("sidebarOpen", newState);
+            return newState;
+        });
     };
+    
 
     const handleNavigation = (path) => {
         navigate(path);
@@ -69,7 +76,7 @@ const Sidebar = () => {
                 ref={sidebarRef}
                 className={`bg-gradient-to-t from-[#135155] to-[#5FA8AD] shadow-lg min-h-screen fixed top-0 left-0 ${
                     open ? "w-[300px]" : "w-[85px]"
-                } transition-all duration-300 ease-in-out z-50`}
+                } transition-all duration-300 ease-in-out z-30`}
             >
                 <div className="w-full">
                     {/* Menu Toggle and Profile */}
@@ -140,15 +147,20 @@ const Sidebar = () => {
                                     <div
                                         className={`transition-all duration-300 ease-in-out overflow-hidden ${
                                             activeMenu === menu.title ? "max-h-40 opacity-100" : "max-h-0 opacity-0"
-                                        } ${open ? "ml-6 mt-2 space-y-2" : "absolute left-[85px] top-0 bg-[#135155] rounded-md p-2 shadow-lg z-50"}`}
+                                        } ${open ? "ml-6 mt-2 space-y-2" : "absolute left-[70px] top-0 bg-[#135155] rounded-md p-2 shadow-lg z-50"}`}
                                     >
                                         {menu.submenus.map((submenu, subIndex) => (
                                             <Link
                                                 key={subIndex}
                                                 to={submenu.path}
-                                                className="group flex items-center text-white text-md gap-3.5 font-poppins font-sm p-2 hover:bg-[#387174] hover:text-white rounded-md relative w-full"
+                                                className="group flex items-center text-white text-md gap-3.5 font-poppins font-sm p-2 hover:bg-[#387174] hover:text-white rounded-md relative w-full px-2 pr-8"
                                                 onClick={() => handleNavigation(submenu.path)}
                                             >
+                                                <img
+                                                    src={submenu.src}
+                                                    alt={submenu.title}
+                                                    className="w-5 h-5 transition-colors duration-300 invert"
+                                                />
                                                 {submenu.title}
                                             </Link>
                                         ))}
