@@ -1,12 +1,10 @@
 import Sidebar from "./Sidebar";
 import { useState } from "react";
-import { History } from "lucide-react";
 import Swal from "sweetalert2";
 import RecordModal from "./../Modal/RecordModal";
 
 function AddRecords() {
     const [showModal, setShowModal] = useState(false);
-    const [history, setHistory] = useState([]);
     const [formData, setFormData] = useState({
         No: "",
         documentType: "Select type", // Added documentType field
@@ -26,21 +24,15 @@ function AddRecords() {
         e.preventDefault();
         
         // Prevent empty submission
-        if (formData.documentType === "Select type" || !formData.dateApproved || !formData.title) {
+        if (!formData.No || formData.documentType === "Select type" || !formData.dateApproved || !formData.title) {
             alert("Please fill in all required fields.");
             return;
         }
-
-        // Add entry to history
-        setHistory([...history, {
-            No: formData.No, 
-            documentType: formData.documentType, 
-            dateApproved: formData.dateApproved, 
-            title: formData.title 
-        }]);
-
+    
         console.log("Form Submitted:", formData);
+        setShowModal(true); // Open the confirmation modal
     };
+    
 
     const handleConfirm = () => {
         setShowModal(false);
@@ -71,10 +63,6 @@ function AddRecords() {
                     <h1 className="font-poppins font-bold uppercase text-[#494444] text-[35px]">
                         Add Record
                     </h1>
-                    <div className="flex items-center space-x-2 text-gray-600 cursor-pointer">
-                        <History className="w-6 h-6" />
-                        <span className="font-semibold text-lg">History</span>
-                    </div>
                 </div>
 
                 {/* Main content container */}
@@ -138,11 +126,11 @@ function AddRecords() {
 
                         {/* Submit Button */}
                         <div className="text-left flex gap-2">
-                            <button type="submit" onClick={() => setFormData({})} className="bg-[#408286] hover:bg-[#357a74] text-sm font-poppins text-white font-semibold py-2 px-4 rounded-md transition duration-300">
+                            <button type="submit" className="bg-[#408286] hover:bg-[#357a74] text-sm font-poppins text-white font-semibold py-2 px-4 rounded-md transition duration-300">
                                 Add Record
                             </button>
 
-                            <button type="submit" className="bg-gray-600 hover:bg-gray-700 text-sm text-white font-poppins font-semibold py-2 px-4 rounded-md transition duration-300">
+                            <button type="clear" className="bg-gray-600 hover:bg-gray-700 text-sm text-white font-poppins font-semibold py-2 px-4 rounded-md transition duration-300">
                                 Clear
                             </button>
                         </div>

@@ -3,11 +3,13 @@ import { useState } from "react";
 import Sidebar from "./Sidebar";
 
 const initialData = [
-  { id: 1, name: "John Doe", date: "March 3, 2025", documentType: "Ordinance", number: "104-2024", title: "Ordinance Title" },
-  { id: 2, name: "John Doe", date: "March 3, 2025", documentType: "Resolution", number: "104-2024", title: "Resolution Title" },
-  { id: 3, name: "John Doe", date: "March 3, 2025", documentType: "Ordinance", number: "104-2024", title: "Ordinance Title" },
-  { id: 4, name: "John Doe", date: "March 3, 2025", documentType: "Resolution", number: "104-2024", title: "Resolution Title" },
-  { id: 5, name: "John Doe", date: "March 3, 2025", documentType: "Ordinance", number: "104-2024", title: "Ordinance Title" },
+  { id: 1, name: "John Doe", date: "March 3, 2025", documentType: "Ordinance", number: "104-2024", title: "Ordinance Title", reason: "Duplicate entry" },
+  { id: 2, name: "Jane Smith", date: "March 4, 2025", documentType: "Resolution", number: "205-2024", title: "Resolution Title", reason: "Incorrect information" },
+  { id: 3, name: "Alice Brown", date: "March 5, 2025", documentType: "Ordinance", number: "306-2024", title: "Ordinance Title", reason: "Not needed anymore" },
+  { id: 3, name: "Alice Brown", date: "March 5, 2025", documentType: "Ordinance", number: "306-2024", title: "Ordinance Title", reason: "Not needed anymore" },
+  { id: 3, name: "Alice Brown", date: "March 5, 2025", documentType: "Ordinance", number: "306-2024", title: "Ordinance Title", reason: "Not needed anymore" },
+  { id: 3, name: "Alice Brown", date: "March 5, 2025", documentType: "Ordinance", number: "306-2024", title: "Ordinance Title", reason: "Not needed anymore" },
+
 ];
 
 function Request() {
@@ -24,7 +26,7 @@ function Request() {
       confirmButtonText: "Yes, delete it!",
     }).then((result) => {
       if (result.isConfirmed) {
-        setRequestData(requestData.filter((item) => item.id !== id)); // Remove the item
+        setRequestData(requestData.filter((item) => item.id !== id));
         Swal.fire("Deleted!", "The document has been deleted.", "success");
       }
     });
@@ -42,7 +44,7 @@ function Request() {
 
         {/* Table Container */}
         <div className="w-full border rounded-lg shadow-lg p-8 bg-white border-gray-300">
-          <div className={`overflow-auto relative rounded-lg shadow-lg ${requestData.length > 0 ? "h-[700px]" : "h-auto"}`}>
+          <div className={`overflow-auto relative rounded-lg shadow-lg ${requestData.length > 0 ? "h-[800px]" : "h-auto"}`}>
             <table className="w-full border-collapse">
               {/* Table Header */}
               <thead className="sticky top-[-1px] bg-[#408286] text-white z-10">
@@ -70,20 +72,34 @@ function Request() {
                       {/* Details Section */}
                       <td className="border border-gray-300 px-4 py-4 align-top">
                         <div className="space-y-3">
-                          <p className="font-semibold font-poppins text-gray-700">
-                            Name: <span className="font-normal">{request.name}</span>
-                          </p>
-                          <p className="font-semibold font-poppins text-gray-700">
-                            Date of Request: <span className="font-normal">{request.date}</span>
-                          </p>
-                          <p className="font-semibold font-poppins text-gray-700">
-                            Document Type: <span className="font-normal">{request.documentType}</span>
-                          </p>
-                          <p className="font-semibold font-poppins text-gray-700">
-                            No: <span className="font-normal">{request.number}</span>
-                          </p>
+                          {/* Name & Date of Request in One Row */}
+                          <div className="flex justify-between">
+                            <p className="font-semibold font-poppins text-gray-700">
+                              Name: <span className="font-normal">{request.name}</span>
+                            </p>
+                            <p className="font-semibold font-poppins text-gray-700">
+                              Date of Request: <span className="font-normal">{request.date}</span>
+                            </p>
+                          </div>
+
+                          {/* Document Type & No. in One Row */}
+                          <div className="flex justify-between">
+                            <p className="font-semibold font-poppins text-gray-700">
+                              Document Type: <span className="font-normal">{request.documentType}</span>
+                            </p>
+                            <p className="font-semibold font-poppins text-gray-700">
+                              No: <span className="font-normal">{request.number}</span>
+                            </p>
+                          </div>
+
+                          {/* Title */}
                           <p className="font-semibold font-poppins text-gray-700">
                             Title: <span className="font-normal">{request.title}</span>
+                          </p>
+
+                          {/* Reason for Deletion */}
+                          <p className="font-semibold font-poppins text-red-600">
+                            Reason for Deletion: <span className="font-normal">{request.reason}</span>
                           </p>
                         </div>
                       </td>
@@ -105,7 +121,7 @@ function Request() {
                 )}
               </tbody>
             </table>
-          </div> {/* End of Scrollable Table */}
+          </div>
         </div>
       </div>
     </div>

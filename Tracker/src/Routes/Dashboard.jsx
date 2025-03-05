@@ -4,6 +4,7 @@ import "react-datepicker/dist/react-datepicker.css";
 import EditModal from "../Modal/EditModal";
 import ViewModal from "../Modal/ViewModal"; 
 import { motion, AnimatePresence } from "framer-motion";
+import Swal from "sweetalert2";
 
 function Dashboard() {
   const [rows, setRows] = useState([
@@ -58,6 +59,7 @@ function Dashboard() {
       remarks: "No Remarks",
     },
 
+
     {
       ordinanceNo: "001-2024",
       dateApproved: "Jan 15, 2024",
@@ -74,6 +76,7 @@ function Dashboard() {
       dateOfCompletion: "Feb 1, 2024",
       remarks: "No Remarks",
     },
+
 
     {
       ordinanceNo: "001-2024",
@@ -126,22 +129,6 @@ function Dashboard() {
       remarks: "No Remarks",
     },
 
-    {
-      ordinanceNo: "001-2024",
-      dateApproved: "Jan 15, 2024",
-      title: "RESOLUTION RETURNING TO THE BARANGAY COUNCIL OF BARANGAY AGUSAN, THIS CITY, ITS ORDINANCE NO. 02, S. 2024, COVERING ITS SUPPLEMENTAL BUDGET NO. 1 FOR CY 2024 WITH AN ESTIMATED INCOME OF ₱220,000.00, WITH THE INFORMATION THAT SAID ORDINANCE IS OPERATIVE IN ITS ENTIRETY",
-      sponsor: "John Doe",
-      status: "Pending",
-      vmForwarded: "Jan 16, 2024",
-      vmReceived: "Jan 18, 2024",
-      cmForwarded: "Jan 20, 2024",
-      cmReceived: "Jan 22, 2024",
-      transmittedTo: "Department A",
-      dateTransmitted: "Jan 25, 2024",
-      completed: "False",
-      dateOfCompletion: "Feb 1, 2024",
-      remarks: "No Remarks",
-    },
 
   ]);
 
@@ -168,7 +155,7 @@ function Dashboard() {
     "Public Utilities (Roads & Traffic Management)",
     "Public Works",
     "Senior Citizens",
-    "Sister City Relation",
+    "Sister City Relatio0n",
     "Social Services",
     "Sports & Youth Development",
     "Subdivision & Landed Estate",
@@ -241,8 +228,22 @@ function Dashboard() {
 
   // Function to delete a row
   const deleteRow = (index) => {
-    const updatedRows = rows.filter((_, i) => i !== index);
-    setRows(updatedRows);
+    Swal.fire({
+      title: "Are you sure?",
+      text: "Do you really want to delete this document?",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#3085d6",
+      confirmButtonText: "Yes, delete it!",
+    }).then((result) => {
+      if (result.isConfirmed) {
+        const updatedRows = rows.filter((_, i) => i !== index);
+        setRows(updatedRows);
+  
+        Swal.fire("Deleted!", "The document has been deleted.", "success");
+      }
+    });
   };
 
   // Function to filter rows based on selected filters
@@ -461,7 +462,8 @@ function Dashboard() {
 
         {/* Table Section */}
         <div className="flex-grow px-4 py-2">
-          <div className="bg-white w-full border rounded-md shadow-lg p-8 max-h-[800px] h-full">
+          <div className="bg-white w-full border rounded-md shadow-lg p-8 min-h-[200px]">
+            
             {/* Zoom Controls */}
             <div className="flex justify-end mb-2">
               <button
@@ -477,82 +479,132 @@ function Dashboard() {
                 -
               </button>
             </div>
-            <div className="h-[690px] overflow-auto relative rounded-lg shadow-lg">
-              {/* Zoom Applied */}
-              <div style={{ transform: `scale(${zoomLevel})`, transformOrigin: "top left" }}>
-                <table className="w-full">
-                  {/* Table Header */}
-                  <thead className="sticky top-[-1px] bg-[#408286] text-white z-10">
+
+            {/* Table Container (Adjustable Size) */}
+            <div className="relative w-full border rounded-lg shadow-lg overflow-hidden">
+              {/* Zoomable Scrollable Table Wrapper */}
+              <div
+                className="overflow-auto"
+                style={{
+                  transform: `scale(${zoomLevel})`,
+                  transformOrigin: "top left",
+                  minHeight: filteredRows.length > 0 ? "300px" : "auto",
+                  maxHeight: "690px",
+                  position: "relative",
+                }}
+              >
+                <table className="w-full border-collapse">
+                  {/* Sticky Header */}
+                  <thead className="bg-[#408286] text-white sticky top-0 z-10">
                     <tr className="text-left text-[14px]">
-                      {/* Show Document column only when "Document" is selected */}
                       {selectedType === "Document" && (
                         <th className="border border-gray-300 px-4 py-4">Document</th>
                       )}
                       <th className="border border-gray-300 px-4 py-4">
-                        {selectedType === "Document" ? "No." : selectedType === "Ordinance" ? "Ordinance No." : "Resolution No."}
+                        {selectedType === "Document"
+                          ? "No."
+                          : selectedType === "Ordinance"
+                          ? "Ordinance No."
+                          : "Resolution No."}
                       </th>
-                      <th className="border border-gray-300 px-4 py-4 text-center">Title</th>
+                      <th className="border border-gray-300 px-4 py-4 text-center">
+                        Title
+                      </th>
                       <th className="border border-gray-300 px-4 py-4">Status</th>
                       <th className="border border-gray-300 px-4 py-4">Remarks</th>
-                      <th className="border border-gray-300 px-4 py-4 text-center">Actions</th>
+                      <th className="border border-gray-300 px-4 py-4 text-center">
+                        Actions
+                      </th>
                     </tr>
                   </thead>
 
                   {/* Table Body */}
                   <tbody>
-                    {filteredRows.map((row, index) => (
-                      <tr key={index} className="border border-gray-300 hover:bg-gray-100 text-[14px]">
-                        {/* Show "Document" column only if "Document" is selected */}
-                        {selectedType === "Document" && (
+                    {filteredRows.length > 0 ? (
+                      filteredRows.map((row, index) => (
+                        <tr
+                          key={index}
+                          className="border border-gray-300 hover:bg-gray-100 text-[14px]"
+                        >
+                          {selectedType === "Document" && (
+                            <td className="border border-gray-300 px-4 py-2 font-poppins text-sm text-gray-700">
+                              {row.documentType || "Resolution"}
+                            </td>
+                          )}
                           <td className="border border-gray-300 px-4 py-2 font-poppins text-sm text-gray-700">
-                            {row.documentType || "Resolution"}
+                            {row.ordinanceNo}
                           </td>
-                        )}
-                        <td className="border border-gray-300 px-4 py-2 font-poppins text-sm text-gray-700">
-                          {row.ordinanceNo}
-                        </td>
-                        <td className="border border-gray-300 px-4 py-2 w-[41%] text-justify font-poppins text-sm text-gray-700">
-                          {row.title}
-                        </td>
-                        <td className="border border-gray-300 px-4 py-2 font-poppins text-sm text-gray-700">{row.status}</td>
-                        <td className="border border-gray-300 px-4 py-2 font-poppins text-sm text-gray-700">{row.remarks}</td>
-                        <td className="px-2 py-2 w-[28%] border font-poppins text-sm text-gray-700">
-                          <div className="grid grid-cols-2 gap-1 md:flex md:flex-wrap md:justify-start">
-                            <button
-                              onClick={() => handleViewClick(index)}
-                              className="bg-[#37ad6c] hover:bg-[#2d8f59] px-4 py-2 rounded-md text-white font-medium flex items-center gap-2 font-poppins text-sm"
-                            >
-                              <img src="src/assets/Images/view.png" alt="View" className="w-5 h-5 invert self-center" />
-                              View
-                            </button>
-                            <button
-                              onClick={() => handleEditClick(index)}
-                              className="bg-[#f5bd64] hover:bg-[#e9b158] px-4 py-2 rounded-md text-white font-medium flex items-center gap-2 font-poppins text-sm"
-                            >
-                              <img src="src/assets/Images/edit.png" alt="Edit" className="w-5 h-5 invert self-center" />
-                              Edit
-                            </button>
-                            <button
-                              className="bg-[#3b7bcf] hover:bg-[#3166ac] px-4 py-2 rounded-md text-white font-medium flex items-center gap-2 font-poppins text-sm"
-                            >
-                              <img src="src/assets/Images/print.png" alt="Print" className="w-5 h-5 invert self-center" />
-                              Print
-                            </button>
-                            <button
-                              onClick={() => deleteRow(index)}
-                              className="bg-[#FF6767] hover:bg-[#f35656] px-4 py-2 rounded-md text-white font-medium flex items-center gap-2 font-poppins text-sm"
-                            >
-                              <img src="src/assets/Images/delete.png" alt="Delete" className="w-5 h-5 invert self-center" />
-                              Delete
-                            </button>
-                          </div>
+                          <td className="border border-gray-300 px-4 py-2 w-[41%] text-justify font-poppins text-sm text-gray-700">
+                            {row.title}
+                          </td>
+                          <td className="border border-gray-300 px-4 py-2 font-poppins text-sm text-gray-700">
+                            {row.status}
+                          </td>
+                          <td className="border border-gray-300 px-4 py-2 font-poppins text-sm text-gray-700">
+                            {row.remarks}
+                          </td>
+                          <td className="px-2 py-2 w-[27%] border font-poppins text-sm text-gray-700">
+                            <div className="grid grid-cols-2 gap-1 md:flex md:flex-wrap md:justify-start">
+                              <button
+                                onClick={() => handleViewClick(index)}
+                                className="bg-[#37ad6c] hover:bg-[#2d8f59] px-4 py-2 rounded-md text-white font-medium flex items-center gap-1 font-poppins text-sm"
+                              >
+                                <img
+                                  src="src/assets/Images/view.png"
+                                  alt="View"
+                                  className="w-5 h-5 invert self-center"
+                                />
+                                View
+                              </button>
+                              <button
+                                onClick={() => handleEditClick(index)}
+                                className="bg-[#f5bd64] hover:bg-[#e9b158] px-4 py-2 rounded-md text-white font-medium flex items-center gap-1 font-poppins text-sm"
+                              >
+                                <img
+                                  src="src/assets/Images/edit.png"
+                                  alt="Edit"
+                                  className="w-5 h-5 invert self-center"
+                                />
+                                Edit
+                              </button>
+                              <button
+                                className="bg-[#3b7bcf] hover:bg-[#3166ac] px-4 py-2 rounded-md text-white font-medium flex items-center gap-1 font-poppins text-sm"
+                              >
+                                <img
+                                  src="src/assets/Images/print.png"
+                                  alt="Print"
+                                  className="w-5 h-5 invert self-center"
+                                />
+                                Print
+                              </button>
+                              <button
+                                onClick={() => deleteRow(index)}
+                                className="bg-[#FF6767] hover:bg-[#f35656] px-4 py-2 rounded-md text-white font-medium flex items-center gap-1 font-poppins text-sm"
+                              >
+                                <img
+                                  src="src/assets/Images/delete.png"
+                                  alt="Delete"
+                                  className="w-5 h-5 invert self-center"
+                                />
+                                Delete
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td
+                          colSpan="6"
+                          className="text-center text-gray-500 py-6 text-md font-poppins"
+                        >
+                          No data yet
                         </td>
                       </tr>
-                    ))}
+                    )}
                   </tbody>
                 </table>
               </div>
-
             </div>
           </div>
         </div>
