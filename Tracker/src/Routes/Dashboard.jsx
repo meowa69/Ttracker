@@ -42,93 +42,6 @@ function Dashboard() {
       remarks: "No Remarks",
     },
 
-    {
-      ordinanceNo: "001-2024",
-      dateApproved: "Jan 15, 2024",
-      title: "RESOLUTION RETURNING TO THE BARANGAY COUNCIL OF BARANGAY AGUSAN, THIS CITY, ITS ORDINANCE NO. 02, S. 2024, COVERING ITS SUPPLEMENTAL BUDGET NO. 1 FOR CY 2024 WITH AN ESTIMATED INCOME OF ₱220,000.00, WITH THE INFORMATION THAT SAID ORDINANCE IS OPERATIVE IN ITS ENTIRETY",
-      sponsor: "John Doe",
-      status: "Pending",
-      vmForwarded: "Jan 16, 2024",
-      vmReceived: "Jan 18, 2024",
-      cmForwarded: "Jan 20, 2024",
-      cmReceived: "Jan 22, 2024",
-      transmittedTo: "Department A",
-      dateTransmitted: "Jan 25, 2024",
-      completed: "False",
-      dateOfCompletion: "Feb 1, 2024",
-      remarks: "No Remarks",
-    },
-
-
-    {
-      ordinanceNo: "001-2024",
-      dateApproved: "Jan 15, 2024",
-      title: "RESOLUTION RETURNING TO THE BARANGAY COUNCIL OF BARANGAY AGUSAN, THIS CITY, ITS ORDINANCE NO. 02, S. 2024, COVERING ITS SUPPLEMENTAL BUDGET NO. 1 FOR CY 2024 WITH AN ESTIMATED INCOME OF ₱220,000.00, WITH THE INFORMATION THAT SAID ORDINANCE IS OPERATIVE IN ITS ENTIRETY",
-      sponsor: "John Doe",
-      status: "Pending",
-      vmForwarded: "Jan 16, 2024",
-      vmReceived: "Jan 18, 2024",
-      cmForwarded: "Jan 20, 2024",
-      cmReceived: "Jan 22, 2024",
-      transmittedTo: "Department A",
-      dateTransmitted: "Jan 25, 2024",
-      completed: "False",
-      dateOfCompletion: "Feb 1, 2024",
-      remarks: "No Remarks",
-    },
-
-
-    {
-      ordinanceNo: "001-2024",
-      dateApproved: "Jan 15, 2024",
-      title: "RESOLUTION RETURNING TO THE BARANGAY COUNCIL OF BARANGAY AGUSAN, THIS CITY, ITS ORDINANCE NO. 02, S. 2024, COVERING ITS SUPPLEMENTAL BUDGET NO. 1 FOR CY 2024 WITH AN ESTIMATED INCOME OF ₱220,000.00, WITH THE INFORMATION THAT SAID ORDINANCE IS OPERATIVE IN ITS ENTIRETY",
-      sponsor: "John Doe",
-      status: "Pending",
-      vmForwarded: "Jan 16, 2024",
-      vmReceived: "Jan 18, 2024",
-      cmForwarded: "Jan 20, 2024",
-      cmReceived: "Jan 22, 2024",
-      transmittedTo: "Department A",
-      dateTransmitted: "Jan 25, 2024",
-      completed: "False",
-      dateOfCompletion: "Feb 1, 2024",
-      remarks: "No Remarks",
-    },
-
-    {
-      ordinanceNo: "001-2024",
-      dateApproved: "Jan 15, 2024",
-      title: "RESOLUTION RETURNING TO THE BARANGAY COUNCIL OF BARANGAY AGUSAN, THIS CITY, ITS ORDINANCE NO. 02, S. 2024, COVERING ITS SUPPLEMENTAL BUDGET NO. 1 FOR CY 2024 WITH AN ESTIMATED INCOME OF ₱220,000.00, WITH THE INFORMATION THAT SAID ORDINANCE IS OPERATIVE IN ITS ENTIRETY",
-      sponsor: "John Doe",
-      status: "Pending",
-      vmForwarded: "Jan 16, 2024",
-      vmReceived: "Jan 18, 2024",
-      cmForwarded: "Jan 20, 2024",
-      cmReceived: "Jan 22, 2024",
-      transmittedTo: "Department A",
-      dateTransmitted: "Jan 25, 2024",
-      completed: "False",
-      dateOfCompletion: "Feb 1, 2024",
-      remarks: "No Remarks",
-    },
-
-    {
-      ordinanceNo: "001-2024",
-      dateApproved: "Jan 15, 2024",
-      title: "RESOLUTION RETURNING TO THE BARANGAY COUNCIL OF BARANGAY AGUSAN, THIS CITY, ITS ORDINANCE NO. 02, S. 2024, COVERING ITS SUPPLEMENTAL BUDGET NO. 1 FOR CY 2024 WITH AN ESTIMATED INCOME OF ₱220,000.00, WITH THE INFORMATION THAT SAID ORDINANCE IS OPERATIVE IN ITS ENTIRETY",
-      sponsor: "John Doe",
-      status: "Pending",
-      vmForwarded: "Jan 16, 2024",
-      vmReceived: "Jan 18, 2024",
-      cmForwarded: "Jan 20, 2024",
-      cmReceived: "Jan 22, 2024",
-      transmittedTo: "Department A",
-      dateTransmitted: "Jan 25, 2024",
-      completed: "False",
-      dateOfCompletion: "Feb 1, 2024",
-      remarks: "No Remarks",
-    },
-
 
   ]);
 
@@ -325,6 +238,7 @@ function Dashboard() {
                 <option value="Document">Document</option>
                 <option value="Ordinance">Ordinance</option>
                 <option value="Resolution">Resolution</option>
+                <option value="Resolution">Motion</option>
               </select>
               <img 
                 src="src/assets/Images/down2.png" 

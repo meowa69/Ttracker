@@ -1,4 +1,4 @@
-import Sidebar from "./Sidebar";
+import Sidebar from "../../Components/Sidebar";
 import { useState } from "react";
 import Swal from "sweetalert2";
 import RecordModal from "./../Modal/RecordModal";
@@ -13,7 +13,7 @@ function AddRecords() {
         
     });
 
-    const documentTypes = ["Select type", "Ordinance", "Resolution"]; // Document type options
+    const documentTypes = ["Select type", "Ordinance", "Resolution", "Motion"]; // Document type options
 
     const handleChange = (e) => {
         const { name, value } = e.target;
