@@ -1,4 +1,4 @@
-import Sidebar from "./Sidebar";
+import Sidebar from "../Components/Sidebar";
 import { useState } from "react";
 import Swal from "sweetalert2"; // Import SweetAlert2
 import EditProfileModal from "./../Modal/EditProfileModal";

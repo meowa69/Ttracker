@@ -1,4 +1,4 @@
-import Sidebar from "./Sidebar";
+import Sidebar from "../Components/Sidebar";
 import { useState, useEffect, useRef } from "react";
 import "react-datepicker/dist/react-datepicker.css";
 import EditModal from "../Modal/EditModal";

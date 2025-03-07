@@ -1,4 +1,4 @@
-import Sidebar from "./Sidebar";
+import Sidebar from "../Components/Sidebar";
 
 function CreateAccount() {
     return (

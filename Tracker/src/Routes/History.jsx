@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import Sidebar from "./Sidebar";
+import Sidebar from "../Components/Sidebar";
 
 const History = () => {
   const [selectedCategory, setSelectedCategory] = useState("All");

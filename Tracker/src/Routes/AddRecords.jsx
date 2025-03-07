@@ -1,4 +1,4 @@
-import Sidebar from "../../Components/Sidebar";
+import Sidebar from "../Components/Sidebar";
 import { useState } from "react";
 import Swal from "sweetalert2";
 import RecordModal from "./../Modal/RecordModal";
