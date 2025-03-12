@@ -126,6 +126,7 @@ function CommitteeManage() {
                 <select
                     className="w-full p-2 border rounded mb-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#408286] bg-gray-100 cursor-pointer"
                 >
+                    
                     <option value="" disabled>View Term List</option>
                     {terms.map((term, idx) => (
                     <option key={idx} value={term} disabled>
@@ -141,7 +142,7 @@ function CommitteeManage() {
                     Add
                     </button>
                 </div>
-                </div>
+            </div>
           </div>
 
           <div className="flex w-full space-x-4">
