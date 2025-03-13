@@ -1,13 +1,41 @@
 import { Link, useNavigate } from "react-router-dom";
+import { useState } from "react";
+import axios from "axios";
 
 function Login() {
-  const navigate = useNavigate(); // Hook for navigation
+  const navigate = useNavigate();
+  const [user_name, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    navigate("/dashboard"); // Navigate to dashboard without checking credentials
+  
+    try {
+      const response = await axios.post("http://127.0.0.1:8000/api/login", {
+        user_name,
+        password,
+      });
+  
+      console.log("Login Response:", response.data); // Debug response
+  
+      if (response.status === 200 && response.data.token) {
+        localStorage.setItem("token", response.data.token);
+        navigate("/dashboard");
+      } else {
+        setError("Invalid response from server");
+      }
+    } catch (err) {
+      console.error("Error Response:", err.response); // Debug error
+  
+      // Ensure token is NOT saved on error
+      localStorage.removeItem("token");
+  
+      setError("Invalid username or password");
+    }
   };
-
+  
+  
   return (
     <div className="w-full h-screen flex justify-center items-center bg-gray-900 relative backdrop-blur">
       <div className="absolute inset-0 bg-cover bg-center opacity-50 backdrop-blur-md" style={{ backgroundImage: "url(src/assets/Images/ysalina_bridge.jpg)" }}></div>
