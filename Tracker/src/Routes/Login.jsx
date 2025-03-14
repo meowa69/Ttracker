@@ -10,31 +10,49 @@ function Login() {
 
   const handleLogin = async (e) => {
     e.preventDefault();
+    setError(""); // Clear previous errors
+  
+    // Check if fields are empty
+    if (!user_name.trim() || !password.trim()) {
+      setError("Please input credentials first.");
+      return; // Stop the function from executing further
+    }
   
     try {
-      const response = await axios.post("http://127.0.0.1:8000/api/login", {
-        user_name,
-        password,
-      });
+      const response = await axios.post(
+        "http://127.0.0.1:8000/api/login",
+        { user_name, password },
+        { headers: { "Content-Type": "application/json" } }
+      );
   
-      console.log("Login Response:", response.data); // Debug response
+      console.log("Login Response:", response.data);
   
       if (response.status === 200 && response.data.token) {
         localStorage.setItem("token", response.data.token);
-        navigate("/dashboard");
-      } else {
-        setError("Invalid response from server");
-      }
+        localStorage.setItem("userData", JSON.stringify(response.data.user)); // Store user info
+        navigate("/dashboard"); // Redirect after successful login
+    }
+    
     } catch (err) {
-      console.error("Error Response:", err.response); // Debug error
+      console.error("Error Response:", err.response);
   
-      // Ensure token is NOT saved on error
+      if (err.response && err.response.status === 401) {
+        const message = err.response.data.message;
+  
+        if (message.includes("password")) {
+          setError("Incorrect password.");
+        } else if (message.includes("username")) {
+          setError("Username not found.");
+        } else {
+          setError("Invalid username or password.");
+        }
+      } else {
+        setError("Something went wrong. Please try again.");
+      }
+  
       localStorage.removeItem("token");
-  
-      setError("Invalid username or password");
     }
   };
-  
   
   return (
     <div className="w-full h-screen flex justify-center items-center bg-gray-900 relative backdrop-blur">
@@ -49,24 +67,33 @@ function Login() {
                 <h2 className="text-[30px] font-bold text-center text-white">LOG IN</h2>
                 <form onSubmit={handleLogin}>
                   <div className="mb-4">
-                    <label className="block text-white ">Username</label>
+                    <label className="block text-white">Username</label>
                     <input
                       type="text"
                       className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      value={user_name}
+                      onChange={(e) => setUsername(e.target.value)}
                     />
+                    {error && error.includes("Username") && (
+                      <p className="text-red-500 text-sm mt-1">{error}</p>
+                    )}
                   </div>
+
                   <div className="mb-1">
                     <label className="block text-white">Password</label>
                     <input
                       type="password"
                       className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
                     />
                   </div>
                   <div className="flex items-center justify-between mb-6">
-                    <label className="flex items-center text-white">
-                      <input type="checkbox" className="mr-2" />
-                      Remember Me
-                    </label>
+                    <div>
+                      {error && error.includes("password") && (
+                          <p className="text-[#ff6161] text-sm mt-1">{error}</p>
+                        )}
+                    </div>
                     <Link to="/forgot-password" className="text-white hover:underline">
                       Forgot password?
                     </Link>
@@ -77,6 +104,10 @@ function Login() {
                   >
                     LOG IN
                   </button>
+
+                  {error && (
+                      <p className="text-white text-sm mt-2 text-center">{error}</p>
+                    )} 
                 </form>
               </div>
             </div>

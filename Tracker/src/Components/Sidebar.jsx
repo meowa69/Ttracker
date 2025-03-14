@@ -1,36 +1,59 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { HiMenuAlt3 } from "react-icons/hi";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
+import axios from "axios";
+import { getFilteredMenus } from "../Components/menuUtils";
 
 const Sidebar = () => {
     const navigate = useNavigate();
     const sidebarRef = useRef(null);
 
-    const menus = [
-        { title: "Dashboard", src: "src/assets/Images/dashboard.png", path: "/dashboard" },
-        { title: "Add Record", src: "src/assets/Images/add.png", path: "/add-records" },
-        { 
-            title: "Manage Record", 
-            src: "src/assets/Images/manage.png", 
-            submenus: [
-                { title: "Request", src: "src/assets/Images/request.png", path: "/request" },
-                { title: "History", src: "src/assets/Images/history.png", path: "/history" },
-            ]
-        },
-        { title: "Manage Committees", src: "src/assets/Images/management.png", path: "/committee-management" },
-        { title: "Create Account", src: "src/assets/Images/create.png", path: "/create-account", isSeparated: true },
-        { title: "Settings", src: "src/assets/Images/setting.png", path: "/settings" },
-        { title: "Logout", src: "src/assets/Images/logout.png", path: "/" },
-    ];
-
-    
-    const [displayName, setDisplayName] = useState("Admin User");
-    const [activeMenu, setActiveMenu] = useState(null);
-
+    // Sidebar state (open by default)
     const [open, setOpen] = useState(() => {
         return localStorage.getItem("sidebarOpen") === "false" ? false : true;
     });
-    
+
+    const [user, setUser] = useState(() => {
+        const storedUser = localStorage.getItem("userData");
+        return storedUser && storedUser !== 'undefined' ? JSON.parse(storedUser) : null;
+    });
+
+    const [activeMenu, setActiveMenu] = useState(null);
+
+    // Fetch user data from API
+    useEffect(() => {
+        const fetchUserData = async () => {
+            const token = localStorage.getItem("token");
+
+            if (!token) {
+                navigate("/login");  // Redirect to login if no token
+                return;
+            }
+
+            try {
+                const response = await axios.get("http://127.0.0.1:8000/api/user", {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+
+                if (response.data) {
+                    setUser(response.data);
+                    localStorage.setItem("userData", JSON.stringify(response.data)); // Save latest user data
+                }
+            } catch (error) {
+                console.error("Error fetching user data:", error);
+                localStorage.removeItem("token");
+                navigate("/login");
+            }
+        };
+
+        fetchUserData();
+    }, [navigate]);
+
+    if (!user) return null;
+
+    const menus = getFilteredMenus(user.role);
+
+    // Toggle sidebar and save state
     const toggleSidebar = () => {
         setOpen((prev) => {
             const newState = !prev;
@@ -38,65 +61,48 @@ const Sidebar = () => {
             return newState;
         });
     };
-    
 
+    // Handle menu click for submenu toggle
+    const handleMenuClick = (menuTitle) => {
+        setActiveMenu((prev) => (prev === menuTitle ? null : menuTitle));
+    };
+
+    // Navigation function
     const handleNavigation = (path) => {
         navigate(path);
-        setActiveMenu(null); // Close submenu after navigating
+        setActiveMenu(null);
     };
 
-    const handleMenuClick = (menuTitle) => {
-        setActiveMenu(activeMenu === menuTitle ? null : menuTitle);
-    };
-
-    // Detect clicks outside of the sidebar
-    useEffect(() => {
-        const handleClickOutside = (event) => {
-            if (sidebarRef.current && !sidebarRef.current.contains(event.target)) {
-                setActiveMenu(null); // Close submenu when clicking outside
-            }
-        };
-
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => {
-            document.removeEventListener("mousedown", handleClickOutside);
-        };
-    }, []);
-
-    const getInitials = (name) => {
-        return name
-            .split(" ")
-            .map((word) => word.charAt(0).toUpperCase())
-            .join("");
-    };
+    // Get initials from name
+    const getInitials = (name) => name
+        .split(" ")
+        .map((word) => word.charAt(0).toUpperCase())
+        .join("");
 
     return (
         <section className="min-h-screen flex flex-row bg-white">
             {/* Sidebar */}
             <div
                 ref={sidebarRef}
-                className={`bg-gradient-to-t from-[#135155] to-[#5FA8AD] shadow-lg min-h-screen fixed top-0 left-0 ${
-                    open ? "w-[300px]" : "w-[85px]"
-                } transition-all duration-300 ease-in-out z-30`}
+                className={`bg-gradient-to-t from-[#135155] to-[#5FA8AD] shadow-lg min-h-screen fixed top-0 left-0 
+                ${open ? "w-[300px]" : "w-[85px]"} transition-all duration-300 ease-in-out z-30`}
             >
                 <div className="w-full">
-                    {/* Menu Toggle and Profile */}
+                    {/* Profile & Toggle */}
                     <div className="py-3 flex justify-between items-center border-b w-full border-white">
                         <div className="flex items-center gap-3 ml-3">
-                            <div
-                                className={`transition-all duration-300 ease-in-out bg-white rounded-full ${
-                                    open ? "w-[70px] h-[70px]" : "w-[40px] h-[40px]"
-                                }`}
+                            <div className={`transition-all duration-300 ease-in-out bg-white rounded-full 
+                                ${open ? "w-[70px] h-[70px]" : "w-[40px] h-[40px]"}` }
                             >
                                 <div className="w-full h-full bg-white text-gray-700 flex items-center justify-center rounded-full font-poppins font-bold">
-                                    {getInitials(displayName)}
+                                    {getInitials(user.name)}
                                 </div>
                             </div>
 
                             {open && (
                                 <div className="flex flex-col">
-                                    <h2 className="font-poppins text-white font-semibold text-md">Admin</h2>
-                                    <h1 className="font-poppins text-white font-bold text-xl">{displayName}</h1>
+                                    <h2 className="font-poppins text-white font-semibold text-md">{user.role}</h2>
+                                    <h1 className="font-poppins text-white font-bold text-xl">{user.name}</h1>
                                 </div>
                             )}
                         </div>
@@ -134,14 +140,17 @@ const Sidebar = () => {
                                     </h2>
 
                                     {/* Tooltip for minimized mode */}
-                                    <h2
-                                        className={`${
-                                            open && "hidden"
-                                        } z-50 absolute left-48 bg-white font-semibold whitespace-pre text-gray-900 rounded-md drop-shadow-lg px-0 py-0 w-0 overflow-hidden group-hover:px-2 group-hover:py-1 group-hover:left-[55px] group-hover:duration-300 group-hover:w-fit`}
-                                    >
-                                        {menu.title}
-                                    </h2>
+                                    {!open && (
+                                        <h2 className="z-50 absolute left-48 bg-white font-semibold text-gray-900 rounded-md drop-shadow-lg px-0 py-0 w-0 overflow-hidden group-hover:px-2 group-hover:py-1 group-hover:left-[55px] group-hover:duration-300 group-hover:w-fit">
+                                            {menu.title}
+                                        </h2>
+                                    )}
                                 </button>
+
+                                {/* Add separator for "user" role under "Add Record" */}
+                                {user.role === "user" && menu.title === "Add Record" && (
+                                    <div className="border-t border-white my-4"></div>
+                                )}
 
                                 {/* Submenus */}
                                 {menu.submenus && (
@@ -174,11 +183,7 @@ const Sidebar = () => {
             </div>
 
             {/* Main Content */}
-            <div
-                className={`flex-grow transition-all duration-300 ease-in-out ${
-                    open ? "ml-[300px]" : "ml-[85px]"
-                }`}
-            >
+            <div className={`flex-grow transition-all duration-300 ease-in-out ${open ? "ml-[300px]" : "ml-[85px]"}`}>
             </div>
         </section>
     );

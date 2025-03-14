@@ -1,8 +1,62 @@
-import React from "react";
+import React, { useState } from "react";
+import axios from "axios";
+import Swal from "sweetalert2";
 
-function EditProfileModal({ isOpen, onClose, name, setName, profilePic, handleImageUpload, getInitials }) {
+function EditProfileModal({ isOpen, onClose, name, setName, profilePic, setProfilePic, getInitials }) {
+  const [selectedFile, setSelectedFile] = useState(null);
+
   if (!isOpen) return null;
 
+  // Handle file selection
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setSelectedFile(file);
+      if (typeof setProfilePic === "function") {
+        setProfilePic(URL.createObjectURL(file)); // ✅ Prevents crash
+      } else {
+        console.error("setProfilePic is not a function");
+      }
+    }
+  };
+  
+
+  // Handle saving profile
+  const handleSave = async () => {
+    const formData = new FormData();
+    formData.append("name", name);
+    if (selectedFile) {
+      formData.append("profile_picture", selectedFile);
+    }
+  
+    const token = localStorage.getItem("token");
+  
+    try {
+      const response = await axios.post(
+        "http://127.0.0.1:8000/api/profiles",
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+            Authorization: `Bearer ${token}`, // ✅ Ensure correct token format
+          },
+          withCredentials: true, // 🔥 Needed for Sanctum authentication
+        }
+      );
+  
+      console.log("Profile update response:", response.data);
+      if (response.data.profile_picture) {
+        setProfilePic(response.data.profile_picture);
+      }
+  
+      Swal.fire("Success", "Profile updated successfully!", "success");
+      onClose();
+    } catch (error) {
+      console.error("Error updating profile:", error.response || error);
+      Swal.fire("Error", "Failed to update profile", "error");
+    }
+  };
+  
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
       <div className="bg-white rounded-lg shadow-lg w-96 p-6">
@@ -38,7 +92,7 @@ function EditProfileModal({ isOpen, onClose, name, setName, profilePic, handleIm
 
         <div className="flex justify-end space-x-4">
           <button onClick={onClose} className="text-sm text-gray-600 hover:text-gray-800">Cancel</button>
-          <button onClick={onClose} className="text-white bg-[#408286] hover:bg-[#356f6f] rounded-md px-4 py-2">Save</button>
+          <button onClick={handleSave} className="text-white bg-[#408286] hover:bg-[#356f6f] rounded-md px-4 py-2">Save</button>
         </div>
       </div>
     </div>
