@@ -38,53 +38,33 @@ const Sidebar = () => {
 
     useEffect(() => {
         const fetchUserData = async () => {
-          const token = localStorage.getItem("token");
-      
-          if (!token) {
-            navigate("/login");
-            return;
-          }
-      
-          try {
-            const response = await axios.get("http://127.0.0.1:8000/api/user", {
-              headers: { Authorization: `Bearer ${token}` },
-            });
-      
-            if (response.data) {
-              setUser(response.data);
-              localStorage.setItem("userData", JSON.stringify(response.data));
+            const token = localStorage.getItem("token");
+
+            if (!token) {
+                navigate("/login");
+                return;
             }
-          } catch (error) {
-            console.error("Error fetching user data:", error);
-            localStorage.removeItem("token");
-            navigate("/login");
-          }
+
+            try {
+                const response = await axios.get("http://127.0.0.1:8000/api/user", {
+                    headers: { Authorization: `Bearer ${token}` },
+                });
+
+                if (response.data) {
+                    setUser(response.data);
+                    localStorage.setItem("userData", JSON.stringify(response.data));
+                }
+            } catch (error) {
+                console.error("Error fetching user data:", error);
+                localStorage.removeItem("token");
+                navigate("/login");
+            }
         };
-      
+
+        // Fetch user data in the background
         fetchUserData();
-      
-        // Listen for changes in localStorage
-        const handleUserDataUpdate = () => {
-            const updatedUser = JSON.parse(localStorage.getItem("userData")) || {
-                name: "User",
-                role: "default",
-                profile_picture: "https://via.placeholder.com/150",
-            };
-            setUser(updatedUser);
-        };
-
-        window.addEventListener("userDataUpdated", handleUserDataUpdate);
-
-        return () => {
-            window.removeEventListener("userDataUpdated", handleUserDataUpdate);
-        };
     }, [navigate]);
-      
-      useEffect(() => {
-        const storedUser = JSON.parse(localStorage.getItem("user"));
-        setUser(storedUser);
-      }, []);
-      
+
     // Close submenus when clicking outside the sidebar
     useEffect(() => {
         const handleClickOutside = (event) => {
@@ -208,19 +188,8 @@ const Sidebar = () => {
                 {user && (
                     <div className="border-t border-white py-3 px-6">
                         <div className="flex items-center gap-3">
-                            <div className="bg-white rounded-full flex items-center justify-center w-[37px] h-[37px] overflow-hidden">
-                                {user.profile_picture &&
-                                    user.profile_picture !== "https://via.placeholder.com/150" ? (
-                                        <img
-                                            src={user.profile_picture}
-                                            alt="Profile"
-                                            className="w-full h-full object-cover"
-                                        />
-                                    ) : (
-                                    <div className="text-gray-700 font-poppins font-bold text-lg">
-                                        {getInitials(user.name)}
-                                    </div>
-                                )}
+                            <div className="bg-white rounded-full flex items-center justify-center w-[37px] h-[37px]">
+                                <div className="text-gray-700 font-poppins font-bold text-lg">{getInitials(user.name)}</div>
                             </div>
 
                             {open && (
