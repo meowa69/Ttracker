@@ -47,7 +47,7 @@ function CommitteeManage() {
           </h1>
         </div>
 
-        <div className="w-full border rounded-lg shadow-lg p-8 bg-white border-gray-300">
+        <div className="w-full border rounded-lg shadow-lg p-6 bg-white border-gray-300">
           <div className="flex space-x-3">
             {/* Add Committee Section */}
             <div className="w-1/3 bg-white p-6 rounded-md shadow-sm mb-6 border flex flex-col">

@@ -6,6 +6,8 @@ use Illuminate\Http\Request;
 use App\Models\User;
 use App\Models\Profile;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 
 class AuthController extends Controller
 {
@@ -94,31 +96,38 @@ class AuthController extends Controller
 
     // Update Profile
     public function updateProfile(Request $request)
-    {
-        $request->validate([
-            'name' => 'nullable|string|max:255',
-            'profile_picture' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
-        ]);
+{
+    $user = Auth::user(); // Get authenticated user
 
-        $user = auth()->user();
+    // Validate input data
+    $request->validate([
+        'name' => 'required|string|max:255',
+        'profile_picture' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+    ]);
 
-        if ($request->has('name')) {
-            $user->name = $request->name;
-            $user->save();
+    // Find the existing profile or create a new one
+    $profile = Profile::updateOrCreate(
+        ['user_id' => $user->id], // Find by user_id
+        ['name' => $request->input('name')] // Update name
+    );
+
+    // Handle profile picture upload
+    if ($request->hasFile('profile_picture')) {
+        if ($profile->profile_picture) {
+            Storage::delete(str_replace(asset('storage/'), '', $profile->profile_picture));
         }
 
-        if ($request->hasFile('profile_picture')) {
-            $imagePath = $request->file('profile_picture')->store('profile_pictures', 'public');
+        $path = $request->file('profile_picture')->store('profile_pictures', 'public');
+        $profile->profile_picture = asset('storage/' . $path);
+    }
 
-            // Find or create profile
-            $profile = Profile::firstOrCreate(['user_id' => $user->id]);
-            $profile->profile_picture = $imagePath;
-            $profile->save();
-        }
+    $profile->save(); // Save changes
 
-        return response()->json([
-            'message' => 'Profile updated successfully',
-            'profile_picture' => asset('storage/' . $profile->profile_picture ?? ''),
-        ]);
-    } 
+    return response()->json([
+        'message' => 'Profile updated successfully!',
+        'name' => $profile->name,
+        'profile_picture' => $profile->profile_picture,
+    ]);
+}
+
 }

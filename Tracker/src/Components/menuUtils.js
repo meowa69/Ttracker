@@ -13,7 +13,7 @@ export const getFilteredMenus = (role) => {
         { title: "Manage Committees", src: "src/assets/Images/management.png", path: "/committee-management" },
         { title: "Create Account", src: "src/assets/Images/create.png", path: "/create-account", isSeparated: true },
         { title: "Settings", src: "src/assets/Images/setting.png", path: "/settings" },
-        { title: "Logout", src: "src/assets/Images/logout.png", path: "/" },
+        { title: "Logout", src: "src/assets/Images/logout.png", path: "/", isSeparated: true },
     ];
 
     // Filter menu based on role

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import axios from "axios";
 import Swal from "sweetalert2";
 
@@ -12,14 +12,9 @@ function EditProfileModal({ isOpen, onClose, name, setName, profilePic, setProfi
     const file = e.target.files[0];
     if (file) {
       setSelectedFile(file);
-      if (typeof setProfilePic === "function") {
-        setProfilePic(URL.createObjectURL(file)); // ✅ Prevents crash
-      } else {
-        console.error("setProfilePic is not a function");
-      }
+      setProfilePic(URL.createObjectURL(file)); // Update UI immediately
     }
   };
-  
 
   // Handle saving profile
   const handleSave = async () => {
@@ -28,9 +23,9 @@ function EditProfileModal({ isOpen, onClose, name, setName, profilePic, setProfi
     if (selectedFile) {
       formData.append("profile_picture", selectedFile);
     }
-  
+
     const token = localStorage.getItem("token");
-  
+
     try {
       const response = await axios.post(
         "http://127.0.0.1:8000/api/profiles",
@@ -38,17 +33,25 @@ function EditProfileModal({ isOpen, onClose, name, setName, profilePic, setProfi
         {
           headers: {
             "Content-Type": "multipart/form-data",
-            Authorization: `Bearer ${token}`, // ✅ Ensure correct token format
+            Authorization: `Bearer ${token}`,
           },
-          withCredentials: true, // 🔥 Needed for Sanctum authentication
         }
       );
-  
-      console.log("Profile update response:", response.data);
-      if (response.data.profile_picture) {
-        setProfilePic(response.data.profile_picture);
-      }
-  
+
+      // Ensure profile picture updates correctly
+      const newProfilePic = response.data.profile_picture || profilePic;
+      setProfilePic(newProfilePic);
+
+      // Update localStorage to store the new image URL
+      const updatedUser = {
+        ...JSON.parse(localStorage.getItem("user")),
+        name: response.data.name,
+        profile_picture: response.data.profile_picture, // Ensure correct field
+      };
+      
+      localStorage.setItem("user", JSON.stringify(updatedUser));
+      setProfilePic(response.data.profile_picture);
+      
       Swal.fire("Success", "Profile updated successfully!", "success");
       onClose();
     } catch (error) {
@@ -56,7 +59,7 @@ function EditProfileModal({ isOpen, onClose, name, setName, profilePic, setProfi
       Swal.fire("Error", "Failed to update profile", "error");
     }
   };
-  
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
       <div className="bg-white rounded-lg shadow-lg w-96 p-6">

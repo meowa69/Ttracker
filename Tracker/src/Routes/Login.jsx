@@ -1,44 +1,52 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import axios from "axios";
+import { FaEye, FaEyeSlash } from "react-icons/fa";
+import { AiOutlineLoading3Quarters } from "react-icons/ai"; // Import loading icon
 
 function Login() {
   const navigate = useNavigate();
   const [user_name, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false); // State for loading
 
   const handleLogin = async (e) => {
+    localStorage.setItem("sidebarOpen", "true"); // Ensure sidebar stays open
     e.preventDefault();
-    setError(""); // Clear previous errors
-  
-    // Check if fields are empty
+
+    // Clear previous errors
+    setError("");
+    
+    // PRIORITY: Empty fields error
     if (!user_name.trim() || !password.trim()) {
       setError("Please input credentials first.");
-      return; // Stop the function from executing further
+      return;
     }
-  
+
+    setLoading(true); // Start loading
+
     try {
       const response = await axios.post(
         "http://127.0.0.1:8000/api/login",
         { user_name, password },
         { headers: { "Content-Type": "application/json" } }
       );
-  
+
       console.log("Login Response:", response.data);
-  
+
       if (response.status === 200 && response.data.token) {
         localStorage.setItem("token", response.data.token);
         localStorage.setItem("userData", JSON.stringify(response.data.user)); // Store user info
         navigate("/dashboard"); // Redirect after successful login
-    }
-    
+      }
     } catch (err) {
       console.error("Error Response:", err.response);
-  
+      
       if (err.response && err.response.status === 401) {
         const message = err.response.data.message;
-  
+
         if (message.includes("password")) {
           setError("Incorrect password.");
         } else if (message.includes("username")) {
@@ -49,11 +57,13 @@ function Login() {
       } else {
         setError("Something went wrong. Please try again.");
       }
-  
+
       localStorage.removeItem("token");
+    } finally {
+      setLoading(false); // Stop loading after response
     }
   };
-  
+
   return (
     <div className="w-full h-screen flex justify-center items-center bg-gray-900 relative backdrop-blur">
       <div className="absolute inset-0 bg-cover bg-center opacity-50 backdrop-blur-md" style={{ backgroundImage: "url(src/assets/Images/ysalina_bridge.jpg)" }}></div>
@@ -64,50 +74,70 @@ function Login() {
           <div className="w-1/2 flex justify-center items-center">
             <div className="bg-white bg-opacity-30 rounded-tl-lg rounded-bl-lg shadow-lg w-full h-full flex justify-center items-center">
               <div className="w-4/5">
-                <h2 className="text-[30px] font-bold text-center text-white">LOG IN</h2>
+                <h2 className="text-[30px] font-bold text-center font-poppins text-white">LOG IN</h2>
                 <form onSubmit={handleLogin}>
                   <div className="mb-4">
-                    <label className="block text-white">Username</label>
+                    <label className="block text-white font-poppins text-[14px]">Username</label>
                     <input
                       type="text"
+                      placeholder="Enter your username"
                       className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                       value={user_name}
                       onChange={(e) => setUsername(e.target.value)}
+                      autoComplete="username"
                     />
-                    {error && error.includes("Username") && (
+
+                    {/* Error for incorrect username */}
+                    {error === "Username not found." && (
                       <p className="text-red-500 text-sm mt-1">{error}</p>
                     )}
                   </div>
 
-                  <div className="mb-1">
-                    <label className="block text-white">Password</label>
+                  <div className="mb-1 relative">
+                    <label className="block text-white font-poppins text-[14px]">Password</label>
                     <input
-                      type="password"
-                      className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                    />
+                        placeholder="Enter your password"
+                        type={showPassword ? "text" : "password"}
+                        className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        autoComplete="current-password" // ✅ Added this
+                      />
+                    <button
+                      type="button"
+                      className="absolute right-3 top-9 text-gray-500 hover:text-gray-400"
+                      onClick={() => setShowPassword((prev) => !prev)} // Toggle state
+                    >
+                      {showPassword ? <FaEye size={18} /> : <FaEyeSlash size={18} />}  
+                    </button>
                   </div>
+                  
                   <div className="flex items-center justify-between mb-6">
                     <div>
-                      {error && error.includes("password") && (
-                          <p className="text-[#ff6161] text-sm mt-1">{error}</p>
-                        )}
+                      {/* Error for incorrect password */}
+                      {error === "Incorrect password." && (
+                        <p className="text-[#ffffff] text-[13px] font-poppins mt-1">{error}</p>
+                      )}
                     </div>
-                    <Link to="/forgot-password" className="text-white hover:underline">
+                    <Link to="/forgot-password" className="text-white font-poppins text-[13px] hover:underline">
                       Forgot password?
                     </Link>
                   </div>
+
                   <button
                     type="submit"
-                    className="w-full bg-[#5FA8AD] text-white font-bold py-2 rounded-lg hover:bg-[#52969b] transition duration-200"
+                    className={`w-full flex justify-center items-center gap-2 bg-[#5FA8AD] text-white font-bold py-2 rounded-lg transition duration-200 ${loading ? 'cursor-not-allowed' : 'hover:bg-[#52969b]'}`}
+                    disabled={loading} // Disable button when loading
                   >
-                    LOG IN
+                    {loading && <AiOutlineLoading3Quarters className="animate-spin" size={20} />} 
+                    {loading ? "Processing..." : "LOG IN"}
                   </button>
+                  
+                  {/* PRIORITY: No credentials input error */}
+                  {error === "Please input credentials first." && (
+                    <p className="text-white text-sm mt-2 text-center">{error}</p>
+                  )}
 
-                  {error && (
-                      <p className="text-white text-sm mt-2 text-center">{error}</p>
-                    )} 
                 </form>
               </div>
             </div>

@@ -6,23 +6,20 @@ import PasswordResetModal from "./../Modal/PasswordResetModal";
 import axios from "axios";
 
 function Settings() {
-  // Load initial user data from localStorage
   const storedUser = JSON.parse(localStorage.getItem("user")) || {};
 
   const [name, setName] = useState(storedUser.name || "");
   const [username, setUsername] = useState(storedUser.user_name || "");
   const [role, setRole] = useState(storedUser.role || "");
-  const [profilePic, setProfilePic] = useState(storedUser.profilePic || "https://via.placeholder.com/150"); 
+  const [profilePic, setProfilePic] = useState(storedUser.profile_picture || "https://via.placeholder.com/150"); 
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Other states
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [theme, setTheme] = useState("light");
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
-  // Fetch user data only if not in localStorage
   useEffect(() => {
     const fetchUserData = async () => {
       const token = localStorage.getItem("token");
@@ -41,10 +38,15 @@ function Settings() {
           setName(response.data.name);
           setUsername(response.data.user_name);
           setRole(response.data.role);
-          setProfilePic(response.data.profilePic || "https://via.placeholder.com/150");
+          
+          // Ensure profile picture is correctly set
+          const profilePictureUrl = response.data.profile_picture
+            ? `http://127.0.0.1:8000/uploads/${response.data.profile_picture}` // Adjust path if needed
+            : "https://via.placeholder.com/150";
 
-          // Store in localStorage to prevent reload issues
-          localStorage.setItem("user", JSON.stringify(response.data));
+          setProfilePic(profilePictureUrl);
+
+          localStorage.setItem("user", JSON.stringify({ ...response.data, profile_picture: profilePictureUrl }));
         }
       } catch (error) {
         console.error("Error fetching user data:", error);
@@ -52,13 +54,12 @@ function Settings() {
       }
     };
 
-    // Fetch data only if user info is not in localStorage
     if (!storedUser.name) {
       fetchUserData();
     }
   }, []);
 
-  // Function to get initials of the user
+  // Function to get user initials
   const getInitials = (name) => {
     if (!name) return "U"; 
     return name.split(" ").map((part) => part[0]).join("").toUpperCase();
@@ -93,9 +94,9 @@ function Settings() {
 
               {/* Profile Details */}
               <div className="flex flex-col">
-                <h2 className="text-2xl font-semibold text-[#408286]">{name}</h2>
-                <p className="text-lg text-gray-600">Username: {username}</p>
-                <p className="text-sm text-gray-500 mt-1">Role: {role}</p>
+                <h2 className="text-2xl font-bold text-[#408286] font-poppins uppercase">{name}</h2>
+                <p className="text-sm text-gray-600 flex gap-2 font-poppins">Username: <span className="font-medium font-poppins">{username}</span></p>
+                <p className="text-sm text-gray-500 mt-1 flex gap-2 font-poppins">Role: <span className="font-medium font-poppins text-[#408286]">{role}</span></p>
               </div>
             </div>
 

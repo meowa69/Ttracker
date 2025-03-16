@@ -14,6 +14,6 @@ Route::middleware('auth:sanctum')->group(function () {
         return response()->json($request->user());
     });
 
-    Route::post('/profiles', [ProfileController::class, 'updateProfile']);
+    Route::post('/profiles', [AuthController::class, 'updateProfile']);
 
 });

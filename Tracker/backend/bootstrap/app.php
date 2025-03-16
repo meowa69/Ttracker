@@ -13,14 +13,15 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        // Register Sanctum authentication middleware
+        // ✅ Register Sanctum authentication middleware
         $middleware->alias([
             'auth:sanctum' => EnsureFrontendRequestsAreStateful::class,
         ]);
 
-        // Append CORS middleware (Laravel 11 automatically applies CORS settings)
+        // ✅ Append CORS middleware (ensures CORS is applied globally)
         $middleware->append(HandleCors::class);
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        // You can configure custom exception handling here if needed
+        // Custom exception handling (if needed)
     })->create();
+
