@@ -6,8 +6,7 @@ import PasswordResetModal from "./../Modal/PasswordResetModal";
 import axios from "axios";
 
 function Settings() {
-  const storedUser = JSON.parse(localStorage.getItem("user")) || {};
-
+  const storedUser = JSON.parse(localStorage.getItem("userData")) || {};
   const [name, setName] = useState(storedUser.name || "");
   const [username, setUsername] = useState(storedUser.user_name || "");
   const [role, setRole] = useState(storedUser.role || "");
@@ -23,34 +22,33 @@ function Settings() {
   useEffect(() => {
     const fetchUserData = async () => {
       const token = localStorage.getItem("token");
-  
+
       if (!token) {
         Swal.fire("Error", "You are not logged in!", "error");
         return;
       }
-  
+
       try {
         const response = await axios.get("http://127.0.0.1:8000/api/user", {
           headers: { Authorization: `Bearer ${token}` }
         });
-  
+
         if (response.data) {
           setName(response.data.name);
           setUsername(response.data.user_name);
           setRole(response.data.role);
-          
-          localStorage.setItem("user", JSON.stringify(response.data));
+          if (response.data.profilePic) {
+            setProfilePic(response.data.profilePic);
+          }
         }
       } catch (error) {
+        console.error("Error fetching user data:", error);
         Swal.fire("Error", "Failed to fetch user details", "error");
       }
     };
-  
-    if (!storedUser.name) {
-      fetchUserData();
-    }
+
+    fetchUserData();
   }, []);
-  
 
   // Function to get user initials
   const getInitials = (name) => {
