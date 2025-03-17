@@ -23,41 +23,34 @@ function Settings() {
   useEffect(() => {
     const fetchUserData = async () => {
       const token = localStorage.getItem("token");
-
+  
       if (!token) {
         Swal.fire("Error", "You are not logged in!", "error");
         return;
       }
-
+  
       try {
         const response = await axios.get("http://127.0.0.1:8000/api/user", {
           headers: { Authorization: `Bearer ${token}` }
         });
-
+  
         if (response.data) {
           setName(response.data.name);
           setUsername(response.data.user_name);
           setRole(response.data.role);
           
-          // Ensure profile picture is correctly set
-          const profilePictureUrl = response.data.profile_picture
-            ? `http://127.0.0.1:8000/uploads/${response.data.profile_picture}` // Adjust path if needed
-            : "https://via.placeholder.com/150";
-
-          setProfilePic(profilePictureUrl);
-
-          localStorage.setItem("user", JSON.stringify({ ...response.data, profile_picture: profilePictureUrl }));
+          localStorage.setItem("user", JSON.stringify(response.data));
         }
       } catch (error) {
-        console.error("Error fetching user data:", error);
         Swal.fire("Error", "Failed to fetch user details", "error");
       }
     };
-
+  
     if (!storedUser.name) {
       fetchUserData();
     }
   }, []);
+  
 
   // Function to get user initials
   const getInitials = (name) => {
