@@ -104,6 +104,7 @@ const Sidebar = () => {
             .join("");
     };
 
+    
     return (
         <section className="min-h-screen flex flex-row bg-white">
             <div
@@ -194,7 +195,7 @@ const Sidebar = () => {
 
                             {open && (
                                 <div className="flex flex-col">
-                                    <h1 className="font-poppins text-white font-bold text-md">{user.name}</h1>
+                                    <h1 className="font-poppins text-white font-bold text-md uppercase">{user.name}</h1>
                                     <h2 className="font-poppins text-gray-100 font-medium text-sm">Role: {user.role}</h2>
                                 </div>
                             )}

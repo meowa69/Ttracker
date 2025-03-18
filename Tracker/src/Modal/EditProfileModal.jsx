@@ -1,101 +1,219 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import axios from "axios";
 import Swal from "sweetalert2";
 
-function EditProfileModal({ isOpen, onClose, name, setName, profilePic, setProfilePic, getInitials }) {
+function EditProfileModal({ isOpen, onClose, name, setName, profilePic, setProfilePic }) {
   const [selectedFile, setSelectedFile] = useState(null);
+  const [selectedAvatar, setSelectedAvatar] = useState(profilePic);
+  const [activeTab, setActiveTab] = useState("avatar"); // "avatar" or "upload"
+  const [dragOver, setDragOver] = useState(false);
+  const fileInputRef = useRef(null);
+
+  // List of default avatars (Replace with actual image URLs)
+  const defaultAvatars = [
+    // man
+    "src/assets/Images/avatars/man1.png",
+    "src/assets/Images/avatars/man2.png",
+    "src/assets/Images/avatars/man3.png",
+    "src/assets/Images/avatars/man4.png",
+    "src/assets/Images/avatars/man5.png",
+    "src/assets/Images/avatars/man6.png",
+    // woman
+    "src/assets/Images/avatars/woman1.png",
+    "src/assets/Images/avatars/woman2.png",
+    "src/assets/Images/avatars/woman3.png",
+    "src/assets/Images/avatars/woman4.png",
+    "src/assets/Images/avatars/woman5.png",
+    "src/assets/Images/avatars/woman6.png",
+    
+  ];
 
   if (!isOpen) return null;
 
-  // Handle file selection
+  // Handle avatar selection
+  const handleAvatarSelect = (avatar) => {
+    setSelectedAvatar(avatar);
+    setProfilePic(avatar); // Update profile picture state
+    setSelectedFile(null); // Clear the selected file
+    console.log("Avatar selected:", avatar); // Debugging
+  };
+
+  // Handle file upload from input
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
+    processFile(file);
+  };
+
+  // Handle file drop
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setDragOver(false);
+    const file = e.dataTransfer.files[0];
+    processFile(file);
+  };
+
+  // Process uploaded file
+  const processFile = (file) => {
     if (file) {
+      if (!file.type.startsWith("image/")) {
+        Swal.fire("Error", "Please upload a valid image file.", "error");
+        return;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        Swal.fire("Error", "File size must be less than 10MB.", "error");
+        return;
+      }
+  
+      const objectURL = URL.createObjectURL(file);
       setSelectedFile(file);
-      setProfilePic(URL.createObjectURL(file)); // Update UI immediately
+      setSelectedAvatar(objectURL);
+      setProfilePic(objectURL);  // Update profile pic immediately
     }
   };
+  
 
   // Handle saving profile
   const handleSave = async () => {
     const formData = new FormData();
     formData.append("name", name);
+  
+    // Use selectedFile if it exists, otherwise use selectedAvatar
     if (selectedFile) {
       formData.append("profile_picture", selectedFile);
+    } else if (selectedAvatar) {
+      // If an avatar is selected, send its URL
+      formData.append("profile_picture_url", selectedAvatar);
     }
-
+  
     const token = localStorage.getItem("token");
-
+  
     try {
       const response = await axios.post(
         "http://127.0.0.1:8000/api/profiles",
         formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-            Authorization: `Bearer ${token}`,
-          },
-        }
+        { headers: { "Content-Type": "multipart/form-data", Authorization: `Bearer ${token}` } }
       );
-
-      // Ensure profile picture updates correctly
-      const newProfilePic = response.data.profile_picture || profilePic;
-      setProfilePic(newProfilePic);
-
-      // Update localStorage to store the new image URL
-      const updatedUser = {
-        ...JSON.parse(localStorage.getItem("user")),
-        name: response.data.name,
-        profile_picture: response.data.profile_picture, // Ensure correct field
-      };
-      
-      localStorage.setItem("user", JSON.stringify(updatedUser));
-      setProfilePic(response.data.profile_picture);
-      
-      Swal.fire("Success", "Profile updated successfully!", "success");
+  
+      if (response.data) {
+        setName(response.data.user.name);
+        const updatedProfilePic = response.data.user.profile_picture || selectedAvatar || "https://via.placeholder.com/150";
+        
+        console.log("Updated profile picture:", updatedProfilePic); // Debugging
+        setProfilePic(updatedProfilePic);
+        localStorage.setItem("profilePic", updatedProfilePic);
+        localStorage.setItem("name", response.data.user.name);
+    }
+    
+  
+      Swal.fire("Success", "Profile updated!", "success");
       onClose();
     } catch (error) {
-      console.error("Error updating profile:", error.response || error);
+      console.error("Error updating profile:", error);
       Swal.fire("Error", "Failed to update profile", "error");
     }
   };
 
+  
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-      <div className="bg-white rounded-lg shadow-lg w-96 p-6">
-        <h2 className="text-2xl font-semibold text-[#408286] mb-4">Edit Profile</h2>
+      <div className="bg-white rounded-lg shadow-lg w-[550px] p-6">
+        <h2 className="text-2xl font-semibold text-gray-800 mb-4 font-poppins">Edit Profile</h2>
 
-        <div className="flex justify-center mb-4">
-          <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-[#408286]">
-            {profilePic === "https://via.placeholder.com/150" ? (
-              <span className="text-white text-2xl font-semibold">
-                {getInitials(name)}
-              </span>
-            ) : (
-              <img src={profilePic} alt="Profile" className="w-full h-full object-cover" />
-            )}
-          </div>
-        </div>
-
+        {/* Name Input at the Top */}
         <div className="mb-4">
-          <label htmlFor="name" className="text-sm font-semibold text-gray-600">Full Name</label>
+          <label className="text-sm font-semibold text-gray-600">Full Name</label>
           <input
             type="text"
-            id="name"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-[#408286]"
+            className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-[#408286] uppercase"
           />
         </div>
 
-        <div className="mb-4">
-          <label htmlFor="profilePic" className="text-sm font-semibold text-gray-600">Profile Picture</label>
-          <input type="file" id="profilePic" accept="image/*" onChange={handleImageUpload} className="w-full p-2 border border-gray-300 rounded-md" />
+        {/* Tabs for Avatar & Upload */}
+        <div className="border-b flex mb-4">
+          <button
+            className={`w-1/2 text-center py-2 ${activeTab === "avatar" ? "border-b-2 border-[#408286] font-semibold" : "text-gray-500"}`}
+            onClick={() => setActiveTab("avatar")}
+          >
+            Select Avatar
+          </button>
+          <button
+            className={`w-1/2 text-center py-2 ${activeTab === "upload" ? "border-b-2 border-[#408286] font-semibold" : "text-gray-500"}`}
+            onClick={() => setActiveTab("upload")}
+          >
+            Upload Photo
+          </button>
         </div>
 
-        <div className="flex justify-end space-x-4">
-          <button onClick={onClose} className="text-sm text-gray-600 hover:text-gray-800">Cancel</button>
-          <button onClick={handleSave} className="text-white bg-[#408286] hover:bg-[#356f6f] rounded-md px-4 py-2">Save</button>
+        {/* Avatar Selection Tab */}
+        {activeTab === "avatar" && (
+          <div className="mb-4 grid grid-cols-5 gap-5 place-items-center">
+            {defaultAvatars.map((avatar, index) => (
+              <div key={index} className="flex items-center justify-center">
+                <img
+                  src={avatar}
+                  alt={`Avatar ${index + 1}`}
+                  className={`w-12 h-12 rounded-full cursor-pointer border-2 ${
+                    selectedAvatar === avatar ? "border-[#408286]" : "border-transparent"
+                  }`}
+                  onClick={() => handleAvatarSelect(avatar)}
+                />
+              </div>
+            ))}
+          </div>
+        )}
+
+
+        {/* Upload Photo Tab */}
+        {activeTab === "upload" && (
+          <div className="mb-4">
+            <div
+              className={`mt-2 border-2 ${
+                dragOver ? "border-[#408286]" : "border-gray-300"
+              } border-dashed rounded-lg p-6 text-center cursor-pointer`}
+              onDragOver={(e) => {
+                e.preventDefault();
+                setDragOver(true);
+              }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={handleDrop}
+              onClick={() => fileInputRef.current.click()}
+            >
+              {selectedFile ? (
+                <img src={URL.createObjectURL(selectedFile)} alt="Uploaded" className="w-24 h-24 rounded-full mx-auto" />
+              ) : (
+                <>
+                  <div className="flex justify-center mb-2">
+                    <span className="w-10 h-10 border border-gray-400 rounded-full flex items-center justify-center text-gray-500 text-xl">
+                      +
+                    </span>
+                  </div>
+                  <p className="text-gray-500 text-sm">
+                    Upload a photo or drag and drop
+                  </p>
+                  <p className="text-gray-400 text-xs">
+                    Supports JPG, PNG and GIF. Max file size: 10MB
+                  </p>
+                </>
+              )}
+            </div>
+            <input type="file" ref={fileInputRef} accept="image/*" hidden onChange={handleImageUpload} />
+          </div>
+        )}
+
+        {/* Action Buttons */}
+        <div className="flex justify-end mt-4">
+          <button onClick={onClose} className="text-sm font-poppins font-semibold text-gray-600 hover:text-gray-800 px-3 py-1">Cancel</button>
+          <button
+            onClick={handleSave}
+            className={`text-white text-sm font-poppins font-semibold bg-[#408286] hover:bg-[#356f6f] rounded-md px-4 py-2 ${
+              selectedAvatar || selectedFile ? "" : "opacity-50 cursor-not-allowed"
+            }`}
+            disabled={!selectedAvatar && !selectedFile}
+          >
+            Save
+          </button>
         </div>
       </div>
     </div>

@@ -6,11 +6,10 @@ import PasswordResetModal from "./../Modal/PasswordResetModal";
 import axios from "axios";
 
 function Settings() {
-  const storedUser = JSON.parse(localStorage.getItem("userData")) || {};
-  const [name, setName] = useState(storedUser.name || "");
-  const [username, setUsername] = useState(storedUser.user_name || "");
-  const [role, setRole] = useState(storedUser.role || "");
-  const [profilePic, setProfilePic] = useState(storedUser.profile_picture || "https://via.placeholder.com/150"); 
+  const [name, setName] = useState("");
+  const [username, setUsername] = useState("");
+  const [role, setRole] = useState("");
+  const [profilePic, setProfilePic] = useState("https://via.placeholder.com/150");
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -20,36 +19,57 @@ function Settings() {
   const [confirmPassword, setConfirmPassword] = useState("");
 
   useEffect(() => {
-    const fetchUserData = async () => {
-      const token = localStorage.getItem("token");
-
-      if (!token) {
-        Swal.fire("Error", "You are not logged in!", "error");
-        return;
-      }
-
-      try {
-        const response = await axios.get("http://127.0.0.1:8000/api/user", {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-
-        if (response.data) {
-          setName(response.data.name);
-          setUsername(response.data.user_name);
-          setRole(response.data.role);
-          if (response.data.profilePic) {
-            setProfilePic(response.data.profilePic);
-          }
-        }
-      } catch (error) {
-        console.error("Error fetching user data:", error);
-        Swal.fire("Error", "Failed to fetch user details", "error");
-      }
-    };
-
-    fetchUserData();
+    const storedName = localStorage.getItem("name");
+    const storedUsername = localStorage.getItem("username");
+    const storedRole = localStorage.getItem("role");
+    const storedProfilePic = localStorage.getItem("profilePic");
+    if (storedProfilePic) {
+      console.log("Loaded Profile Pic:", storedProfilePic); // Debugging log
+      setProfilePic(storedProfilePic);
+    }
+  
+    if (storedName && storedUsername && storedRole && storedProfilePic) {
+      setName(storedName);
+      setUsername(storedUsername);
+      setRole(storedRole);
+      setProfilePic(storedProfilePic);
+    } else {
+      fetchUserData();
+    }
   }, []);
-
+  
+  const fetchUserData = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      Swal.fire("Error", "You are not logged in!", "error");
+      return;
+    }
+  
+    try {
+      const response = await axios.get("http://127.0.0.1:8000/api/user", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+  
+      console.log("API Response:", response.data); // Debugging log
+  
+      if (response.data) {
+        setName(response.data.name);
+        setUsername(response.data.user_name);
+        setRole(response.data.role);
+  
+        const updatedProfilePic = response.data.profile_picture 
+          ? "http://127.0.0.1:8000" + response.data.profile_picture
+          : "/default-profile.png"; 
+  
+        setProfilePic(updatedProfilePic);
+        localStorage.setItem("profilePic", updatedProfilePic);
+      }
+    } catch (error) {
+      console.error("Error fetching user details:", error);
+      Swal.fire("Error", "Failed to fetch user details", "error");
+    }
+  };
+  
   // Function to get user initials
   const getInitials = (name) => {
     if (!name) return "U"; 
@@ -70,17 +90,22 @@ function Settings() {
             <div className="flex gap-4">
               {/* Profile Picture or Initials */}
               <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-[#408286] flex items-center justify-center bg-[#408286]">
-                {profilePic === "https://via.placeholder.com/150" ? (
-                  <span className="text-white text-2xl font-semibold font-poppins">
-                    {getInitials(name)}
-                  </span>
-                ) : (
-                  <img
-                    src={profilePic}
-                    alt="Profile"
-                    className="w-full h-full object-cover"
+                {profilePic && profilePic !== "https://via.placeholder.com/150" ? (
+                    <img
+                      src={profilePic}
+                      alt="Profile"
+                      className="w-full h-full object-cover"
+                      onError={(e) => { 
+                          e.target.onerror = null; 
+                          e.target.src = "/default-profile.png"; // Fallback image
+                      }}
                   />
-                )}
+                  
+                  ) : (
+                    <span className="text-white text-2xl font-semibold font-poppins">
+                      {getInitials(name)}
+                    </span>
+                  )}
               </div>
 
               {/* Profile Details */}
