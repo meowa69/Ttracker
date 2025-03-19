@@ -19,23 +19,17 @@ function Settings() {
   const [confirmPassword, setConfirmPassword] = useState("");
 
   useEffect(() => {
-    const storedName = localStorage.getItem("name");
-    const storedUsername = localStorage.getItem("username");
-    const storedRole = localStorage.getItem("role");
-    const storedProfilePic = localStorage.getItem("profilePic");
-    if (storedProfilePic) {
-      console.log("Loaded Profile Pic:", storedProfilePic); // Debugging log
-      setProfilePic(storedProfilePic);
+    // Load user data from local storage immediately
+    const storedUser = JSON.parse(localStorage.getItem("user_profile"));
+    if (storedUser) {
+      setName(storedUser.name || "");
+      setUsername(storedUser.username || "");
+      setRole(storedUser.role || "");
+      setProfilePic(storedUser.profilePic || "https://via.placeholder.com/150");
     }
   
-    if (storedName && storedUsername && storedRole && storedProfilePic) {
-      setName(storedName);
-      setUsername(storedUsername);
-      setRole(storedRole);
-      setProfilePic(storedProfilePic);
-    } else {
-      fetchUserData();
-    }
+    // Fetch latest data from API (but UI already has data)
+    fetchUserData();
   }, []);
   
   const fetchUserData = async () => {
@@ -50,25 +44,31 @@ function Settings() {
         headers: { Authorization: `Bearer ${token}` },
       });
   
-      console.log("API Response:", response.data); // Debugging log
-  
       if (response.data) {
-        setName(response.data.name);
-        setUsername(response.data.user_name);
-        setRole(response.data.role);
+        const userData = {
+          name: response.data.name,
+          username: response.data.user_name,
+          role: response.data.role,
+          profilePic: response.data.profile_picture
+            ? `http://127.0.0.1:8000${response.data.profile_picture}`
+            : "/default-profile.png",
+        };
   
-        const updatedProfilePic = response.data.profile_picture 
-          ? "http://127.0.0.1:8000" + response.data.profile_picture
-          : "/default-profile.png"; 
+        // Update state
+        setName(userData.name);
+        setUsername(userData.username);
+        setRole(userData.role);
+        setProfilePic(userData.profilePic);
   
-        setProfilePic(updatedProfilePic);
-        localStorage.setItem("profilePic", updatedProfilePic);
+        // Save updated data to localStorage
+        localStorage.setItem("user_profile", JSON.stringify(userData));
       }
     } catch (error) {
       console.error("Error fetching user details:", error);
       Swal.fire("Error", "Failed to fetch user details", "error");
     }
   };
+  
   
   // Function to get user initials
   const getInitials = (name) => {

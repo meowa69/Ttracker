@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import axios from "axios";
 import Swal from "sweetalert2";
 
-function EditProfileModal({ isOpen, onClose, name, setName, profilePic, setProfilePic }) {
+function EditProfileModal({ isOpen, onClose, name, setName, profilePic, setProfilePic, fetchUserData}) {
   const [selectedFile, setSelectedFile] = useState(null);
   const [selectedAvatar, setSelectedAvatar] = useState(profilePic);
   const [activeTab, setActiveTab] = useState("avatar"); // "avatar" or "upload"
@@ -12,19 +12,19 @@ function EditProfileModal({ isOpen, onClose, name, setName, profilePic, setProfi
   // List of default avatars (Replace with actual image URLs)
   const defaultAvatars = [
     // man
-    "src/assets/Images/avatars/man1.png",
-    "src/assets/Images/avatars/man2.png",
-    "src/assets/Images/avatars/man3.png",
-    "src/assets/Images/avatars/man4.png",
-    "src/assets/Images/avatars/man5.png",
-    "src/assets/Images/avatars/man6.png",
+    "/avatars/man1.png",
+    "/avatars/man2.png",
+    "/avatars/man3.png",
+    "/avatars/man4.png",
+    "/avatars/man5.png",
+    "/avatars/man6.png",
     // woman
-    "src/assets/Images/avatars/woman1.png",
-    "src/assets/Images/avatars/woman2.png",
-    "src/assets/Images/avatars/woman3.png",
-    "src/assets/Images/avatars/woman4.png",
-    "src/assets/Images/avatars/woman5.png",
-    "src/assets/Images/avatars/woman6.png",
+    "/avatars/woman1.png",
+    "/avatars/woman2.png",
+    "/avatars/woman3.png",
+    "/avatars/woman4.png",
+    "/avatars/woman5.png",
+    "/avatars/woman6.png",
     
   ];
 
@@ -76,13 +76,11 @@ function EditProfileModal({ isOpen, onClose, name, setName, profilePic, setProfi
   const handleSave = async () => {
     const formData = new FormData();
     formData.append("name", name);
-  
-    // Use selectedFile if it exists, otherwise use selectedAvatar
+    
     if (selectedFile) {
       formData.append("profile_picture", selectedFile);
-    } else if (selectedAvatar) {
-      // If an avatar is selected, send its URL
-      formData.append("profile_picture_url", selectedAvatar);
+    } else {
+      formData.append("profile_picture_url", profilePic); // Keep existing pic
     }
   
     const token = localStorage.getItem("token");
@@ -95,15 +93,21 @@ function EditProfileModal({ isOpen, onClose, name, setName, profilePic, setProfi
       );
   
       if (response.data) {
-        setName(response.data.user.name);
-        const updatedProfilePic = response.data.user.profile_picture || selectedAvatar || "https://via.placeholder.com/150";
+        const userId = response.data.user.id;
+  
+        // Save updated profile details in localStorage
+        const updatedProfilePic = response.data.user.profile_picture
+        ? `http://127.0.0.1:8000${response.data.user.profile_picture}`
+        : profilePic;
+
+        localStorage.setItem("user_profile", JSON.stringify({
+          name: response.data.user.name,
+          profilePic: updatedProfilePic
+        }));
         
-        console.log("Updated profile picture:", updatedProfilePic); // Debugging
+        setName(response.data.user.name);
         setProfilePic(updatedProfilePic);
-        localStorage.setItem("profilePic", updatedProfilePic);
-        localStorage.setItem("name", response.data.user.name);
-    }
-    
+      }
   
       Swal.fire("Success", "Profile updated!", "success");
       onClose();
@@ -112,6 +116,7 @@ function EditProfileModal({ isOpen, onClose, name, setName, profilePic, setProfi
       Swal.fire("Error", "Failed to update profile", "error");
     }
   };
+  
 
   
   return (

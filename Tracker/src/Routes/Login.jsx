@@ -12,20 +12,22 @@ function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false); // State for loading
 
-  const handleLogin = async (e) => {
-    localStorage.setItem("sidebarOpen", "true"); // Ensure sidebar stays open
+  const handleLogin = async (e) => { 
     e.preventDefault();
-
-    // Clear previous errors
-    setError("");
+    localStorage.setItem("sidebarOpen", "true"); 
     
-    // PRIORITY: Empty fields error
+    setError(""); 
+
     if (!user_name.trim() || !password.trim()) {
       setError("Please input credentials first.");
       return;
     }
 
-    setLoading(true); // Start loading
+    setLoading(true);
+
+    // ✅ CLEAR OLD DATA IMMEDIATELY
+    localStorage.removeItem("userData");
+    localStorage.removeItem("token");
 
     try {
       const response = await axios.post(
@@ -37,32 +39,36 @@ function Login() {
       console.log("Login Response:", response.data);
 
       if (response.status === 200 && response.data.token) {
+        // ✅ Store the new token & user data
         localStorage.setItem("token", response.data.token);
-        localStorage.setItem("userData", JSON.stringify(response.data.user)); // Store user info
-        navigate("/dashboard"); // Redirect after successful login
+        localStorage.setItem("userData", JSON.stringify(response.data.user));
+        
+        navigate("/dashboard"); 
       }
     } catch (err) {
       console.error("Error Response:", err.response);
-      
-      if (err.response && err.response.status === 401) {
-        const message = err.response.data.message;
 
-        if (message.includes("password")) {
+      if (err.response) {
+        const message = err.response.data?.message || "Invalid credentials.";
+        
+        if (message.toLowerCase().includes("password")) {
           setError("Incorrect password.");
-        } else if (message.includes("username")) {
+        } else if (message.toLowerCase().includes("username")) {
           setError("Username not found.");
         } else {
           setError("Invalid username or password.");
         }
-      } else {
-        setError("Something went wrong. Please try again.");
-      }
 
-      localStorage.removeItem("token");
+        localStorage.removeItem("token"); 
+      } else {
+        setError("Network error. Please check your connection and try again.");
+      }
     } finally {
-      setLoading(false); // Stop loading after response
+      setLoading(false);
     }
-  };
+};
+
+
 
   return (
     <div className="w-full h-screen flex justify-center items-center bg-gray-900 relative backdrop-blur">
