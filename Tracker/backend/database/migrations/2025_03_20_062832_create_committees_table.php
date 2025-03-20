@@ -9,13 +9,11 @@ return new class extends Migration
     /**
      * Run the migrations.
      */
-    public function up()
+    public function up(): void
     {
-        Schema::create('manage_committees', function (Blueprint $table) {
+        Schema::create('committees', function (Blueprint $table) {
             $table->id();
-            $table->string('committee_name');
-            $table->string('committee_member');
-            $table->string('term');
+            $table->string('committee_name')->unique();
             $table->timestamps();
         });
     }

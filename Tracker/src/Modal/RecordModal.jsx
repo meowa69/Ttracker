@@ -8,8 +8,6 @@ function RecordModal({ formData = {}, onClose, onConfirm }) {
         onConfirm();
     };
 
-    if (!shouldShow) return null; // Don't render modal if it should be hidden
-
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center transition-opacity duration-300 z-50">
             <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-[1300px] animate-fadeIn">
@@ -24,15 +22,15 @@ function RecordModal({ formData = {}, onClose, onConfirm }) {
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <p className="text-gray-600 font-medium">No.:</p>
-                            <p className="text-gray-800">{formData.No || "N/A"}</p>
+                            <p className="text-gray-800">{formData.no || "N/A"}</p>
                         </div>
                         <div>
                             <p className="text-gray-600 font-medium">Document Type:</p>
-                            <p className="text-gray-800">{formData.documentType || "N/A"}</p>
+                            <p className="text-gray-800">{formData.document_type || "N/A"}</p>
                         </div>
                         <div>
                             <p className="text-gray-600 font-medium">Date Approved:</p>
-                            <p className="text-gray-800">{formData.dateApproved || "N/A"}</p>
+                            <p className="text-gray-800">{formData.date_approved || "N/A"}</p>
                         </div>
                         <div>
                             <p className="text-gray-600 font-medium">Title:</p>
@@ -101,16 +99,6 @@ function RecordModal({ formData = {}, onClose, onConfirm }) {
                             <p className="text-gray-800">{formData.remarks || "N/A"}</p>
                         </div>
                     </div>
-                </div>
-
-                {/* Do Not Show Again Checkbox */}
-                <div className="mt-6 flex items-center">
-                    <input
-                        type="checkbox"
-                        id="doNotShow"
-                        className="mr-2"
-                    />
-                    <label htmlFor="doNotShow" className="text-sm text-gray-600">Do not show again</label>
                 </div>
 
                 {/* Modal Footer */}

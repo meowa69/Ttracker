@@ -22,7 +22,7 @@ const EditModal = ({ isOpen, onClose, rowData, onSave, setRowData }) => {
     "City Mayor's Office",
     "Other",
   ];
-  const documentTypes = ["Select type", "Ordinance", "Resolution"];
+  const documentTypes = ["Select type", "Ordinance", "Resolution", "Motion"]; // Add "Motion" to the list
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
@@ -37,19 +37,19 @@ const EditModal = ({ isOpen, onClose, rowData, onSave, setRowData }) => {
               <label className="block text-gray-700">No.</label>
               <input
                 type="text"
-                name="No"
-                value={rowData.No}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border rounded-lg"
+                name="no"
+                value={rowData.no}
+                readOnly
+                className="w-full px-3 py-2 border rounded-lg bg-gray-100 pointer-events-none cursor-not-allowed"
               />
             </div>
             <div>
               <label className="block text-gray-700">Document Type</label>
               <select
-                name="documentType"
-                value={rowData.documentType}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border rounded-lg"
+                name="document_type"
+                value={rowData.document_type} // Use rowData.document_type
+                disabled
+                className="w-full px-3 py-2 border rounded-lg bg-gray-100 cursor-not-allowed"
               >
                 {documentTypes.map((type, index) => (
                   <option key={index} value={type}>
@@ -62,11 +62,10 @@ const EditModal = ({ isOpen, onClose, rowData, onSave, setRowData }) => {
               <label className="block text-gray-700">Date Approved</label>
               <input
                 type="date"
-                name="dateApproved"
-                value={rowData.dateApproved}
-                onFocus={(e) => e.target.showPicker()}
-                onChange={handleChange}
-                className="cursor-pointer w-full px-3 py-2 border rounded-lg"
+                name="date_approved"
+                value={rowData.date_approved}
+                readOnly
+                className="w-full px-3 py-2 border rounded-lg bg-gray-100 pointer-events-none cursor-not-allowed"
               />
             </div>
           </div>
@@ -77,8 +76,8 @@ const EditModal = ({ isOpen, onClose, rowData, onSave, setRowData }) => {
             <textarea
               name="title"
               value={rowData.title}
-              onChange={handleChange}
-              className="w-full px-3 py-2 border rounded-lg"
+              readOnly
+              className="w-full px-3 py-2 border rounded-lg bg-gray-100 pointer-events-none cursor-not-allowed focus:outline-none focus:ring-0 focus:border-gray-300"
               rows="3"
             />
           </label>

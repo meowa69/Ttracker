@@ -13,18 +13,22 @@ return new class extends Migration
     {
         Schema::create('add_record', function (Blueprint $table) {
             $table->id();
-            $table->string('document_type');
+            $table->string('no')->unique(); // Ensure "No" is unique
+            $table->enum('document_type', ['Ordinance', 'Resolution', 'Motion']);
             $table->date('date_approved');
-            $table->string('title');
+            $table->text('title'); 
             $table->timestamps();
         });
+        
     }
 
     /**
      * Reverse the migrations.
      */
-    public function down(): void
+    public function down()
     {
-        Schema::dropIfExists('add_record'); 
+        Schema::table('add_record', function (Blueprint $table) {
+            $table->string('title', 255)->change(); // Rollback to original
+        });
     }
 };

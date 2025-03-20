@@ -3,17 +3,16 @@ import { useState } from "react";
 import Swal from "sweetalert2";
 import RecordModal from "./../Modal/RecordModal";
 
-function AddRecords() {
+function AddRecords({ onRecordAdded }) {
     const [showModal, setShowModal] = useState(false);
     const [formData, setFormData] = useState({
-        No: "",
-        documentType: "Select type", // Added documentType field
-        dateApproved: "",
+        no: "", // Fixed to match API expectations
+        document_type: "Select type",
+        date_approved: "",
         title: "",
-        
     });
 
-    const documentTypes = ["Select type", "Ordinance", "Resolution", "Motion"]; // Document type options
+    const documentTypes = ["Select type", "Ordinance", "Resolution", "Motion"];
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -22,37 +21,72 @@ function AddRecords() {
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        
-        // Prevent empty submission
-        if (!formData.No || formData.documentType === "Select type" || !formData.dateApproved || !formData.title) {
+
+        if (!formData.no || formData.document_type === "Select type" || !formData.date_approved || !formData.title) {
             alert("Please fill in all required fields.");
             return;
         }
-    
+
         console.log("Form Submitted:", formData);
-        setShowModal(true); // Open the confirmation modal
+        setShowModal(true);
     };
-    
 
-    const handleConfirm = () => {
-        setShowModal(false);
+    const handleConfirm = async () => {
+        try {
+            console.log("Submitting data:", formData);
 
-        // Show success message
-        Swal.fire({
-            title: "Success!",
-            text: "New record added successfully",
-            icon: "success",
-            confirmButtonText: "OK",
-        });
+            const response = await fetch("http://127.0.0.1:8000/api/add-record", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${localStorage.getItem("token")}`, // Remove this if not needed
+                },
+                body: JSON.stringify(formData), // Fixed: Sending correct data format
+            });
 
-        // Clear form after submission
-        setFormData({
-            No: "",
-            documentType: "Select type",
-            dateApproved: "",
-            title: "",
+            const result = await response.json();
 
-        });
+            if (!response.ok) {
+                throw new Error(result.message || "Failed to add record.");
+            }
+
+            Swal.fire({
+                title: "Success!",
+                text: "New record added successfully",
+                icon: "success",
+                confirmButtonText: "OK",
+            });
+
+            // Send new record to Dashboard
+            if (onRecordAdded) {
+                onRecordAdded({
+                    no: formData.no,
+                    document_type: formData.document_type,
+                    date_approved: formData.date_approved,
+                    title: formData.title,
+                    status: "No Status Yet",
+                    remarks: "No Remarks",
+                });
+            }
+
+            setFormData({
+                no: "",
+                document_type: "Select type",
+                date_approved: "",
+                title: "",
+            });
+
+            setShowModal(false);
+
+        } catch (error) {
+            console.error("Error:", error);
+            Swal.fire({
+                title: "Error",
+                text: error.message,
+                icon: "error",
+                confirmButtonText: "OK",
+            });
+        }
     };
 
     return (
@@ -74,22 +108,20 @@ function AddRecords() {
                                 <label className="block text-gray-700 font-medium mb-2">No.</label>
                                 <input
                                     type="text"
-                                    name="No"
+                                    name="no" // Fixed: Matching state variable
                                     placeholder="Ex. 001-2025"
-                                    value={formData.No}
+                                    value={formData.no}
                                     onChange={handleChange}
                                     className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#408286] focus:border-transparent"
-                                    
                                 />
                             </div>
                             <div>
                                 <label className="block text-gray-700 font-medium mb-2">Document Type</label>
                                 <select
-                                    name="documentType"
-                                    value={formData.documentType}
+                                    name="document_type" // Fixed: Matching state variable
+                                    value={formData.document_type}
                                     onChange={handleChange}
                                     className="cursor-pointer w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#408286] focus:border-transparent"
-                                    
                                 >
                                     {documentTypes.map((type, index) => (
                                         <option key={index} value={type}>{type}</option>
@@ -100,12 +132,11 @@ function AddRecords() {
                                 <label className="block text-gray-700 font-medium mb-2">Date Approved</label>
                                 <input
                                     type="date"
-                                    name="dateApproved"
-                                    value={formData.dateApproved}
+                                    name="date_approved" // Fixed: Matching state variable
+                                    value={formData.date_approved}
                                     onFocus={(e) => e.target.showPicker()}
                                     onChange={handleChange}
                                     className="cursor-pointer w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#408286] focus:border-transparent"
-                                    
                                 />
                             </div>
                         </div>
@@ -120,7 +151,6 @@ function AddRecords() {
                                 onChange={handleChange}
                                 className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#408286] focus:border-transparent"
                                 rows="3"
-                                
                             ></textarea>
                         </div>
 
@@ -130,7 +160,11 @@ function AddRecords() {
                                 Add Record
                             </button>
 
-                            <button type="clear" className="bg-gray-600 hover:bg-gray-700 text-sm text-white font-poppins font-semibold py-2 px-4 rounded-md transition duration-300">
+                            <button
+                                type="button"
+                                onClick={() => setFormData({ no: "", document_type: "Select type", date_approved: "", title: "" })}
+                                className="bg-gray-600 hover:bg-gray-700 text-sm text-white font-poppins font-semibold py-2 px-4 rounded-md transition duration-300"
+                            >
                                 Clear
                             </button>
                         </div>

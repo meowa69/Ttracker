@@ -7,75 +7,13 @@ import { motion, AnimatePresence } from "framer-motion";
 import Swal from "sweetalert2";
 
 function Dashboard() {
-  const [rows, setRows] = useState([
-    {
-      ordinanceNo: "001-2024",
-      dateApproved: "Jan 15, 2024",
-      title: "AN ORDINANCE APPROVING THE SIMPLE SUBDIVISION PLAN OF LOT 24205-B-4, PSD-10-063760, WITH AN AREA OF 1,032 SQUARE METERS, CONTAINING 2 LOTS, LOCATED IN BARANGAY CANITOAN, THIS CITY, AS APPLIED FOR BY MR. LUPE E. REYES, SUBJECT TO THE CONDITIONS IMPOSED BY THE CITY HOUSING BOARD, CITY HOUSING AND URBAN DEVELOPMENT DEPARTMENT, AND THE OFFICE OF THE CITY ENGINEER, ALL OF THIS CITY",
-      sponsor: "John Doe",
-      status: "Pending",
-      vmForwarded: "Jan 16, 2024",
-      vmReceived: "Jan 18, 2024",
-      cmForwarded: "Jan 20, 2024",
-      cmReceived: "Jan 22, 2024",
-      transmittedTo: "Department A",
-      dateTransmitted: "Jan 25, 2024",
-      completed: "False",
-      dateOfCompletion: "Feb 1, 2024",
-      remarks: "No Remarks",
-    },
-
-    {
-      ordinanceNo: "001-2024",
-      dateApproved: "Jan 15, 2024",
-      title: "AN ORDINANCE APPROVING THE SIMPLE SUBDIVISION PLAN OF LOT 24205-B-4, PSD-10-063760, WITH AN AREA OF 1,032 SQUARE METERS, CONTAINING 2 LOTS, LOCATED IN BARANGAY CANITOAN, THIS CITY, AS APPLIED FOR BY MR. LUPE E. REYES, SUBJECT TO THE CONDITIONS IMPOSED BY THE CITY HOUSING BOARD, CITY HOUSING AND URBAN DEVELOPMENT DEPARTMENT, AND THE OFFICE OF THE CITY ENGINEER, ALL OF THIS CITY",
-      sponsor: "John Doe",
-      status: "Pending",
-      vmForwarded: "Jan 16, 2024",
-      vmReceived: "Jan 18, 2024",
-      cmForwarded: "Jan 20, 2024",
-      cmReceived: "Jan 22, 2024",
-      transmittedTo: "Department A",
-      dateTransmitted: "Jan 25, 2024",
-      completed: "False",
-      dateOfCompletion: "Feb 1, 2024",
-      remarks: "No Remarks",
-    },
-
-
-  ]);
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(false);
 
   const committees = [
     "Agriculture",
     "Arbitration",
     "Barangay Affairs",
-    "Climate Change Adaptation & Mitigation And Disaster Risk Reduction",
-    "Cooperatives",
-    "Cultural Communities",
-    "Economic Enterprises",
-    "Education",
-    "Energy",
-    "Environment",
-    "Ethics and Blue Ribbon",
-    "Finance, Budget and Appropriations",
-    "Fisheries and Aquatic Resources",
-    "Games & Amusement",
-    "Health, Nutrition and Health Insurance",
-    "Labor and Employment",
-    "Laws and Rules",
-    "Planning, Research & Innovation and People’s Organization Accreditation",
-    "Public Order and Safety",
-    "Public Utilities (Roads & Traffic Management)",
-    "Public Works",
-    "Senior Citizens",
-    "Sister City Relatio0n",
-    "Social Services",
-    "Sports & Youth Development",
-    "Subdivision & Landed Estate",
-    "Tourism",
-    "Trade & Commerce",
-    "Urban & Rural Poor & Housing Development",
-    "Ways & Means"
   ];
 
   
@@ -89,6 +27,7 @@ function Dashboard() {
   const [selectedRow, setSelectedRow] = useState(null);
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [recordsUpdated, setRecordsUpdated] = useState(false);
 
   const filteredCommittees = committees.filter(committee =>
     committee.toLowerCase().startsWith(searchTerm.toLowerCase())
@@ -100,9 +39,42 @@ function Dashboard() {
   const [statusFilter, setStatusFilter] = useState("");
   const [completedStatus, setCompletedStatus] = useState("");
 
+  useEffect(() => {
+    fetchRecords();
+  }, [recordsUpdated]);
+
+  const fetchRecords = async () => {
+    setLoading(true); // Start loading
+    try {
+      const response = await fetch("http://127.0.0.1:8000/api/get-record", {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+  
+      const data = await response.json();
+      if (response.ok) {
+        setRows(data); // Update rows with fetched data
+      } else {
+        throw new Error(data.message || "Failed to fetch records.");
+      }
+    } catch (error) {
+      console.error("Error fetching records:", error);
+    } finally {
+      setLoading(false); // Stop loading
+    }
+  };
+  
+  const handleRecordAdded = () => {
+    setRecordsUpdated((prev) => !prev); // Toggle state to trigger useEffect
+  };
+
+
   // Modal handlers
   const handleEditClick = (index) => {
-    setSelectedRow({ ...rows[index], index });
+    const selectedRow = filteredRows[index]; // Use filteredRows instead of rows
+    setSelectedRow({ ...selectedRow, index });
     setIsEditModalOpen(true);
   };
 
@@ -139,8 +111,8 @@ function Dashboard() {
     };
   }, []);
 
-  // Function to delete a row
-  const deleteRow = (index) => {
+  // Handle deletion
+  const deleteRow = async (index, id) => {
     Swal.fire({
       title: "Are you sure?",
       text: "Do you really want to delete this document?",
@@ -149,12 +121,26 @@ function Dashboard() {
       confirmButtonColor: "#d33",
       cancelButtonColor: "#3085d6",
       confirmButtonText: "Yes, delete it!",
-    }).then((result) => {
+    }).then(async (result) => {
       if (result.isConfirmed) {
-        const updatedRows = rows.filter((_, i) => i !== index);
-        setRows(updatedRows);
-  
-        Swal.fire("Deleted!", "The document has been deleted.", "success");
+        try {
+          const response = await fetch(`http://127.0.0.1:8000/api/add-record/${id}`, {
+            method: "DELETE",
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          });
+
+          if (response.ok) {
+            setRows((prevRows) => prevRows.filter((_, i) => i !== index));
+            Swal.fire("Deleted!", "The document has been deleted.", "success");
+          } else {
+            throw new Error("Failed to delete record.");
+          }
+        } catch (error) {
+          console.error("Error deleting record:", error);
+          Swal.fire("Error", "Failed to delete record.", "error");
+        }
       }
     });
   };
@@ -164,17 +150,18 @@ function Dashboard() {
     const matchesYearRange = !yearRange || row.dateApproved.includes(yearRange);
     const matchesCommitteeType = !committeeType || row.sponsor === committeeType;
     const matchesStatus = !statusFilter || row.status === statusFilter;
-    const matchesCompletedStatus =
-      completedStatus === "" || row.completed === completedStatus;
-
+    const matchesCompletedStatus = completedStatus === "" || row.completed === completedStatus;
+    const matchesDocumentType = selectedType === "Document" || row.document_type === selectedType;
+  
     return (
       matchesYearRange &&
       matchesCommitteeType &&
       matchesStatus &&
-      matchesCompletedStatus
+      matchesCompletedStatus &&
+      matchesDocumentType
     );
   });
-
+  
   // Function to handle zoom in
   const handleZoomIn = () => {
     setZoomLevel((prevZoom) => Math.min(prevZoom + 0.1, 1.5));
@@ -238,7 +225,7 @@ function Dashboard() {
                 <option value="Document">Document</option>
                 <option value="Ordinance">Ordinance</option>
                 <option value="Resolution">Resolution</option>
-                <option value="Resolution">Motion</option>
+                <option value="Motion">Motion</option>
               </select>
               <img 
                 src="src/assets/Images/down2.png" 
@@ -419,8 +406,11 @@ function Dashboard() {
                           ? "No."
                           : selectedType === "Ordinance"
                           ? "Ordinance No."
+                          : selectedType === "Motion"
+                          ? "Motion No."
                           : "Resolution No."}
                       </th>
+
                       <th className="border border-gray-300 px-4 py-4 text-center">
                         Title
                       </th>
@@ -434,7 +424,20 @@ function Dashboard() {
 
                   {/* Table Body */}
                   <tbody>
-                    {filteredRows.length > 0 ? (
+                    {/* Show loader while data is being fetched */}
+                    {loading && (
+                      <tr>
+                        <td colSpan="6" className="text-center py-6">
+                          <div className="flex justify-center items-center">
+                            {/* Simple and professional spinner */}
+                            <div className="w-7 h-7 border-4 border-[#408286] border-t-transparent rounded-full animate-spin"></div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+
+                    {/* Show data when loading is complete */}
+                    {!loading && filteredRows.length > 0 ? (
                       filteredRows.map((row, index) => (
                         <tr
                           key={index}
@@ -442,20 +445,28 @@ function Dashboard() {
                         >
                           {selectedType === "Document" && (
                             <td className="border border-gray-300 px-4 py-2 font-poppins text-sm text-gray-700">
-                              {row.documentType || "Resolution"}
+                              {row.document_type}
                             </td>
                           )}
                           <td className="border border-gray-300 px-4 py-2 font-poppins text-sm text-gray-700">
-                            {row.ordinanceNo}
+                            {row.no}
                           </td>
                           <td className="border border-gray-300 px-4 py-2 w-[41%] text-justify font-poppins text-sm text-gray-700">
                             {row.title}
                           </td>
-                          <td className="border border-gray-300 px-4 py-2 font-poppins text-sm text-gray-700">
-                            {row.status}
+                          <td
+                            className={`border border-gray-300 px-4 py-2 font-poppins text-sm ${
+                              row.status ? "text-gray-700" : row.status === "None" ? "text-gray-400" : "text-gray-400"
+                            }`}
+                          >
+                            {row.status ? row.status : "None"}
                           </td>
-                          <td className="border border-gray-300 px-4 py-2 font-poppins text-sm text-gray-700">
-                            {row.remarks}
+                          <td
+                            className={`border border-gray-300 px-4 py-2 font-poppins text-sm ${
+                              row.remarks ? "text-gray-700" : row.remarks === "None" ? "text-gray-400" : "text-gray-400"
+                            }`}
+                          >
+                            {row.remarks ? row.remarks : "None"}
                           </td>
                           <td className="px-2 py-2 w-[27%] border font-poppins text-sm text-gray-700">
                             <div className="grid grid-cols-2 gap-1 md:flex md:flex-wrap md:justify-start">
@@ -507,14 +518,14 @@ function Dashboard() {
                         </tr>
                       ))
                     ) : (
-                      <tr>
-                        <td
-                          colSpan="6"
-                          className="text-center text-gray-500 py-6 text-md font-poppins"
-                        >
-                          No data yet
-                        </td>
-                      </tr>
+                      // Show "No data yet" if no data is available and loading is complete
+                      !loading && (
+                        <tr>
+                          <td colSpan="6" className="text-center text-gray-500 py-6 text-md font-poppins">
+                            No data yet
+                          </td>
+                        </tr>
+                      )
                     )}
                   </tbody>
                 </table>

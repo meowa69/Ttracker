@@ -5,9 +5,14 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\User;
 use App\Models\Profile;
+use App\Models\AddRecord;
+use App\Models\Committee;
+use App\Models\CommitteeTerm;
+use App\Models\CommitteeMember;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+
 
 class AuthController extends Controller
 {
@@ -133,6 +138,135 @@ class AuthController extends Controller
                 'profile_picture' => $profile->profile_picture ? url($profile->profile_picture) : $request->input('profile_picture_url'),
             ],
         ]);
-        
     }
+
+    // Add Record
+    public function addRecord(Request $request)
+    {
+        
+        try {
+
+            \Log::info('Incoming Request:', $request->all());
+
+            $validated = $request->validate([
+                'no' => 'required|string|unique:add_record,no', // Table name should match DB
+                'document_type' => 'required|string',
+                'date_approved' => 'required|date',
+                'title' => 'required|string',
+            ]);
+            
+            $record = new AddRecord();
+            $record->no = $validated['no'];                 
+            $record->document_type = $validated['document_type'];
+            $record->date_approved = $validated['date_approved'];
+            $record->title = $validated['title'];
+            $record->save();
+            
+            return response()->json(['message' => 'Record added successfully'], 201);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    // Get Records
+    public function getRecords()
+    {
+        try {
+            $record = AddRecord::all();
+            return response()->json($record, 200);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
+
+    // Get all committees
+    public function getCommittees()
+    {
+        return response()->json(Committee::all(), 200);
+    }
+
+    // Add a new committee
+    public function addCommittee(Request $request)
+    {
+        $request->validate([
+            'committee_name' => 'required|string|unique:committees,committee_name',
+        ]);
+
+        $committee = Committee::create(['committee_name' => $request->committee_name]);
+
+        return response()->json(['message' => 'Committee added successfully', 'committee' => $committee], 201);
+    }
+
+    // Get all terms
+    public function getTerms()
+    {
+        return response()->json(CommitteeTerm::all(), 200);
+    }
+
+    // Add a new term
+    public function addTerm(Request $request)
+    {
+        $request->validate([
+            'term' => 'required|string|unique:committee_terms,term',
+        ]);
+
+        $term = CommitteeTerm::create(['term' => $request->term]);
+
+        return response()->json(['message' => 'Term added successfully', 'term' => $term], 201);
+    }
+
+    // Get all committee members
+    public function getCommitteeMembers()
+    {
+        $members = CommitteeMember::with('committee', 'term')->get();
+        return response()->json($members, 200);
+    }
+
+    // Add a new committee member
+    public function addCommitteeMember(Request $request)
+    {
+        $request->validate([
+            'committee_id' => 'required|exists:committees,id',
+            'term_id' => 'required|exists:committee_terms,id',
+            'member_name' => 'required|string',
+        ]);
+    
+        $member = CommitteeMember::create([
+            'committee_id' => $request->committee_id,
+            'term_id' => $request->term_id,
+            'member_name' => $request->member_name,
+        ]);
+    
+        // Reload the member with committee and term relationships
+        $member->load(['committee', 'term']);
+    
+        return response()->json([
+            'message' => 'Committee member added successfully',
+            'member' => $member
+        ], 201);
+    }
+
+    // Delete a committee
+    public function deleteCommittee($id)
+    {
+        $committee = Committee::find($id);
+
+        if (!$committee) {
+            return response()->json(['message' => 'Committee not found'], 404);
+        }
+
+        try {
+            // Delete related committee members first
+            CommitteeMember::where('committee_id', $id)->delete();
+
+            // Now delete the committee
+            $committee->delete();
+
+            return response()->json(['message' => 'Committee deleted successfully'], 200);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Failed to delete committee'], 500);
+        }
+    }
+    
 }
