@@ -53,15 +53,15 @@ const History = () => {
        
 
         {/* Category Tabs */}
-        <div className="flex space-x-6 mb-4 border-b pb-2">
+        <div className="flex space-x-6 mb-4 border-b pb-2 text-sm font-poppins font-semibold">
           {categories.map((category) => (
             <button
               key={category}
               onClick={() => setSelectedCategory(category)}
-              className={`px-4 py-2 ${
+              className={`px-3 py-2 ${
                 selectedCategory === category
-                  ? "text-[#70b8d3] border-[#70b8d3] font-semibold border-b-2"
-                  : "text-gray-700 hover:text-[#70b8d3]"
+                  ? "border-[#408286] text-[#408286] font-semibold border-b-2"
+                  : "text-gray-600"
               }`}
             >
               {category}
