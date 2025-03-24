@@ -179,7 +179,6 @@ class AuthController extends Controller
         }
     }
 
-
     // Get all committees
     public function getCommittees()
     {
@@ -201,7 +200,30 @@ class AuthController extends Controller
     // Get all terms
     public function getTerms()
     {
-        return response()->json(CommitteeTerm::all(), 200);
+        $existingTerms = CommitteeTerm::orderBy('id', 'asc')->get();
+    
+        // If database is empty, generate terms dynamically
+        if ($existingTerms->isEmpty()) {
+            for ($i = 1; $i <= 20; $i++) { // Start from 1 to 20
+                $suffix = $this->getOrdinalSuffix($i);
+                $termText = "{$i}{$suffix} CITY COUNCIL";
+                CommitteeTerm::create(['term' => $termText]);
+            }
+            $existingTerms = CommitteeTerm::orderBy('id', 'asc')->get(); // Fetch in ascending order
+        }
+    
+        return response()->json($existingTerms, 200);
+    }
+    
+    // Function to get ordinal suffix
+    private function getOrdinalSuffix($num)
+    {
+        if (in_array($num, [11, 12, 13])) return "TH"; // Handle special cases
+        $lastDigit = $num % 10;
+        if ($lastDigit === 1) return "ST";
+        if ($lastDigit === 2) return "ND";
+        if ($lastDigit === 3) return "RD";
+        return "TH";
     }
 
     // Add a new term
@@ -216,6 +238,7 @@ class AuthController extends Controller
         return response()->json(['message' => 'Term added successfully', 'term' => $term], 201);
     }
 
+
     // Get all committee members
     public function getCommitteeMembers()
     {
@@ -227,24 +250,61 @@ class AuthController extends Controller
     public function addCommitteeMember(Request $request)
     {
         $request->validate([
-            'committee_id' => 'required|exists:committees,id',
-            'term_id' => 'required|exists:committee_terms,id',
+            'committee' => 'required|string|exists:committees,committee_name',
+            'term' => 'required|string|exists:committee_terms,term',
             'member_name' => 'required|string',
+            'role' => 'required|in:chairman,vice_chairman,member',
         ]);
-    
+
+        // Fetch the correct IDs
+        $committee = Committee::where('committee_name', $request->committee)->first();
+        $term = CommitteeTerm::where('term', $request->term)->first();
+
+        if (!$committee || !$term) {
+            return response()->json(['message' => 'Invalid committee or term.'], 400);
+        }
+
+        $committeeId = $committee->id;
+        $termId = $term->id;
+        $role = $request->role;
+
+        // Check constraints
+        $chairmanExists = CommitteeMember::where('committee_id', $committeeId)
+            ->where('term_id', $termId)
+            ->where('role', 'chairman')
+            ->exists();
+
+        if ($role === 'chairman' && $chairmanExists) {
+            return response()->json(['message' => 'A chairman already exists for this term.'], 400);
+        }
+
+        $viceChairmanExists = CommitteeMember::where('committee_id', $committeeId)
+            ->where('term_id', $termId)
+            ->where('role', 'vice_chairman')
+            ->exists();
+
+        if ($role === 'vice_chairman' && $viceChairmanExists) {
+            return response()->json(['message' => 'A vice chairman already exists for this term.'], 400);
+        }
+
+        $memberCount = CommitteeMember::where('committee_id', $committeeId)
+            ->where('term_id', $termId)
+            ->where('role', 'member')
+            ->count();
+
+        if ($role === 'member' && $memberCount >= 5) {
+            return response()->json(['message' => 'Maximum of 5 members reached.'], 400);
+        }
+
+        // Insert member using IDs
         $member = CommitteeMember::create([
-            'committee_id' => $request->committee_id,
-            'term_id' => $request->term_id,
+            'committee_id' => $committeeId,
+            'term_id' => $termId,
             'member_name' => $request->member_name,
+            'role' => $role,
         ]);
-    
-        // Reload the member with committee and term relationships
-        $member->load(['committee', 'term']);
-    
-        return response()->json([
-            'message' => 'Committee member added successfully',
-            'member' => $member
-        ], 201);
+
+        return response()->json(['message' => 'Member added successfully.', 'member' => $member], 201);
     }
 
     // Delete a committee

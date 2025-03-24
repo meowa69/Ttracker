@@ -13,13 +13,13 @@ return new class extends Migration
     {
         Schema::create('committee_members', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('committee_id'); // Define the column first
-            $table->foreign('committee_id')->references('id')->on('committees')->onDelete('cascade'); // Then reference it
-    
-            $table->foreignId('term_id')->constrained('committee_terms')->onDelete('cascade'); // Link to the term
+            $table->foreignId('committee_id')->constrained('committees')->onDelete('cascade');
+            $table->foreignId('term_id')->constrained('committee_terms')->onDelete('cascade');
             $table->string('member_name');
+            $table->enum('role', ['chairman', 'vice_chairman', 'member']); // Add role column
             $table->timestamps();
         });
+        
     }
 
     /**

@@ -2,6 +2,7 @@ import Sidebar from "../Components/Sidebar";
 import { useState, useEffect, useRef } from "react";
 import Modal from "../Modal/ViewCommitteeModal";
 import AssignMemberModal from "../Modal/AssignMemberModal";
+import axios from "axios";
 
 function CommitteeManage() {
   const [activeTab, setActiveTab] = useState("committees");
@@ -17,24 +18,155 @@ function CommitteeManage() {
   const termsPerPage = 5;
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
+  const [committees, setCommittees] = useState([]); // State for storing committees
+  const [committeeName, setCommitteeName] = useState(""); // State for input field
+  const [terms, setTerms] = useState([]); // Store fetched terms
+  const [newTerm, setNewTerm] = useState(""); // Store new term input
+  const [error, setError] = useState(""); // ✅ Add this line
+  const [loadingTerms, setLoadingTerms] = useState(true);
+  const [alert, setAlert] = useState({ show: false, message: "", progress: 100 });
 
+
+  const showAlert = (message) => {
+    setAlert({ show: true, message, progress: 100 });
+  };
+
+  const closeAlert = () => {
+    setAlert({ show: false, message: "", progress: 0 });
+  };
+
+  useEffect(() => {
+    if (alert.show) {
+      const totalDuration = 3000; // 3 seconds
+      const intervalTime = 30; // Update every 30ms
+      const step = (intervalTime / totalDuration) * 100; // Calculate step size
+
+      const progressInterval = setInterval(() => {
+        setAlert((prev) => {
+          if (prev.progress <= 0) {
+            clearInterval(progressInterval);
+            return { ...prev, show: false, message: "", progress: 0 };
+          }
+          return { ...prev, progress: prev.progress - step };
+        });
+      }, intervalTime);
+
+      return () => clearInterval(progressInterval); // Cleanup on unmount
+    }
+  }, [alert.show]);
+
+  // COMMITTEES
+  useEffect(() => {
+    fetchCommittees();
+  }, []);
+
+  const fetchCommittees = async () => {
+    try {
+      const response = await axios.get("http://localhost:8000/api/committees");
+      setCommittees(response.data); // Update state with fetched committees
+      showAlert("Committee added successfully!");
+    } catch (err) {
+      console.error("Error fetching committees:", err);
+      showAlert("Failed to fetch committees.");
+    }
+  };
+
+  // Function to add a new committee
+  const addCommittee = async () => {
+    if (!committeeName.trim()) {
+      showAlert("Committee name cannot be empty.");
+      return;
+    }
+
+    try {
+      const response = await axios.post("http://localhost:8000/api/committees", {
+        committee_name: committeeName,
+      });
+
+      // Update state with the newly added committee
+      setCommittees([...committees, response.data.committee]);
+      showAlert("Committee added successfully!");
+      setCommitteeName(""); // Clear input field
+      setError("");
+    } catch (err) {
+      showAlert(err.response?.data?.message || "An error occurred.");
+    }
+  };
+
+  // TERMS
+  useEffect(() => {
+    fetchTerms();
+  }, []);
+
+  const fetchTerms = async () => {
+    try {
+      const response = await axios.get("http://localhost:8000/api/terms");
+      setTerms(response.data);
+      console.log("Success! Showing alert...");
+      showAlert("Term added successfully!");
+    } catch (err) {
+      console.error("Error fetching terms:", err);
+    }
+  };
+
+  const addTerm = async () => {
+    if (!newTerm.trim()) {
+      showAlert("Term cannot be empty.");
+      return;
+    }
+  
+    try {
+      const response = await axios.post("http://localhost:8000/api/terms", {
+        term: newTerm,
+      });
+  
+      // Update the term list immediately
+      setTerms([...terms, response.data.term]);
+      setNewTerm(""); // Clear input field
+      showAlert(""); // Clear errors
+    } catch (err) {
+      showAlert(err.response?.data?.message || "An error occurred.");
+    }
+  };
+
+  // Assign Mmebers
+  const assignMember = async (memberName, role) => {
+    if (!selectedCommittee || !selectedTerm) {
+      showAlert("Please select a committee and a term first.");
+      return;
+    }
+  
+    try {
+      const response = await axios.post("http://localhost:8000/api/committee-members", {
+        committee_id: selectedCommittee.id,
+        term_id: selectedTerm.id,
+        member_name: memberName,
+        role: role, // "chairman", "vice chairman", or "member"
+      });
+  
+      showAlert("Committee member added successfully!");
+    } catch (err) {
+      showAlert(err.response?.data?.message || "An error occurred.");
+    }
+  };
+  
 
   // Static committee data (Demo)
-  const committees = [
-    { name: "Smartall", term: "20TH CITY COUNCIL (July 1, 2022 – 2025)", members: 135 },
-    { name: "Malibuh", term: "19TH CITY COUNCIL (July 1, 2019 – 2022)", members: 360 },
-    { name: "Travel Shot", term: "18TH CITY COUNCIL (July 1, 2016 – 2019)", members: 526 },
-    { name: "Rosters", term: "17TH CITY COUNCIL (July 1, 2013 – 2016)", members: 93 },
-    { name: "Top Center", term: "16TH CITY COUNCIL (July 1, 2010 – 2013)", members: 215 },
-    { name: "Somelop", term: "15TH CITY COUNCIL (July 1, 2007 – 2010)", members: 96 },
-    { name: "Borber Care", term: "14TH CITY COUNCIL (July 1, 2004 – 2007)", members: 102 },
-    { name: "Sintrec", term: "13TH CITY COUNCIL (July 1, 2001 – 2004)", members: 85 },
-    { name: "Zion Store", term: "12TH CITY COUNCIL (July 1, 1998 – 2001)", members: 32 },
-    { name: "Booblex", term: "11TH CITY COUNCIL (July 1, 1995 – 1998)", members: 135 },
-    { name: "Venz", term: "10TH CITY COUNCIL (July 1, 1992 – 1995)", members: 32 },
-    { name: "Pentrix", term: "9TH CITY COUNCIL (July 1, 1989 – 1992)", members: 1085 },
-    { name: "Extra Committee", term: "8TH CITY COUNCIL (July 1, 1986 – 1989)", members: 500 },
-  ];
+  // const committees = [
+  //   { name: "Smartall", term: "20TH CITY COUNCIL (July 1, 2022 – 2025)", members: 135 },
+  //   { name: "Malibuh", term: "19TH CITY COUNCIL (July 1, 2019 – 2022)", members: 360 },
+  //   { name: "Travel Shot", term: "18TH CITY COUNCIL (July 1, 2016 – 2019)", members: 526 },
+  //   { name: "Rosters", term: "17TH CITY COUNCIL (July 1, 2013 – 2016)", members: 93 },
+  //   { name: "Top Center", term: "16TH CITY COUNCIL (July 1, 2010 – 2013)", members: 215 },
+  //   { name: "Somelop", term: "15TH CITY COUNCIL (July 1, 2007 – 2010)", members: 96 },
+  //   { name: "Borber Care", term: "14TH CITY COUNCIL (July 1, 2004 – 2007)", members: 102 },
+  //   { name: "Sintrec", term: "13TH CITY COUNCIL (July 1, 2001 – 2004)", members: 85 },
+  //   { name: "Zion Store", term: "12TH CITY COUNCIL (July 1, 1998 – 2001)", members: 32 },
+  //   { name: "Booblex", term: "11TH CITY COUNCIL (July 1, 1995 – 1998)", members: 135 },
+  //   { name: "Venz", term: "10TH CITY COUNCIL (July 1, 1992 – 1995)", members: 32 },
+  //   { name: "Pentrix", term: "9TH CITY COUNCIL (July 1, 1989 – 1992)", members: 1085 },
+  //   { name: "Extra Committee", term: "8TH CITY COUNCIL (July 1, 1986 – 1989)", members: 500 },
+  // ];
 
   // Open modal with selected committee details
   const openModal = (committee) => {
@@ -56,9 +188,11 @@ function CommitteeManage() {
     };
   }, []);
 
-  const filteredCommittees = committees.filter((committee) =>
-    committee.name.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredCommittees = committees.filter(
+    (committee) =>
+      committee?.committee_name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
+  
 
 
   // Pagination for Committees
@@ -83,20 +217,6 @@ function CommitteeManage() {
     return { paginatedTerms, totalTermPages };
   };
 
-  // Generate terms
-  const terms = Array.from({ length: 20 }, (_, i) => {
-    const termNumber = 20 - i;
-    const getOrdinalSuffix = (num) => {
-      if ([11, 12, 13].includes(num)) return "TH";
-      const lastDigit = num % 10;
-      if (lastDigit === 1) return "ST";
-      if (lastDigit === 2) return "ND";
-      if (lastDigit === 3) return "RD";
-      return "TH";
-    };
-    return `${termNumber}${getOrdinalSuffix(termNumber)} CITY COUNCIL`;
-  });
-
   const { paginatedTerms, totalTermPages } = paginateTerms(terms, termPage, termsPerPage);
   
 
@@ -105,9 +225,25 @@ function CommitteeManage() {
       <Sidebar />
       <div className="flex flex-col w-full h-screen overflow-hidden bg-gray-100 p-6">
         {/* Page Header */}
-        <h1 className="font-bold uppercase text-[#494444] text-[35px] mb-4">
-          Manage Committees
-        </h1>
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="font-bold uppercase text-[#494444] text-[35px]">
+            Manage Committees
+          </h1>
+
+          {alert.show && (
+            <div className="absolute top-4 right-4 bg-[#408286] text-white px-4 py-3 rounded shadow-lg flex items-center w-80">
+              <span className="mr-2">✔</span>
+              <span className="flex-grow">{alert.message}</span>
+              <button onClick={closeAlert} className="ml-4 text-white text-xl">
+                &times;
+              </button>
+              <div
+                className="absolute bottom-0 left-0 h-1 bg-white transition-all"
+                style={{ width: `${alert.progress}%` }}
+              ></div>
+            </div>
+          )}
+        </div>
 
         <div className="w-full h-screen bg-white border rounded-lg shadow-lg p-6">
           {/* Tabs */}
@@ -188,8 +324,8 @@ function CommitteeManage() {
                 {paginatedCommittees.map((committee, index) => (
                   <div key={index} className="p-6 border rounded-lg shadow-md bg-white flex flex-col justify-between">
                     <div>
-                      <h2 className="font-bold text-lg text-gray-800">{committee.name}</h2>
-                      <p className="text-gray-500 text-sm mt-2">{committee.term}</p>
+                      <h2 className="font-bold text-lg text-gray-800 uppercase">{committee.committee_name}</h2>
+                      <p className="text-gray-500 text-sm mt-2">{committee.terms}</p>
                       <div className="flex items-center mt-2 text-gray-700 text-sm">
                         👥 {committee.members} Members
                       </div>
@@ -239,7 +375,7 @@ function CommitteeManage() {
               {/* Committee Selection */}
               <div className="relative w-full" ref={dropdownRef}>
                 <div
-                    className="cursor-pointer w-full appearance-none rounded-md border border-gray-300 shadow-sm px-4 py-2 pr-10 bg-white text-sm font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-[#5FA8AD] truncate"
+                    className="uppercase cursor-pointer w-full appearance-none rounded-md border border-gray-300 shadow-sm px-4 py-2 pr-10 bg-white text-sm font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-[#5FA8AD] truncate"
                     onClick={() => setIsDropdownOpen((prev) => !prev)}
                   >
                     {selectedCommitteeForEdit || "Select Committee"}
@@ -255,7 +391,7 @@ function CommitteeManage() {
                   {/* Dropdown Menu */}
                   {isDropdownOpen && (
                     <div className="absolute mt-1 w-full min-h-[250px] bg-white border border-gray-300 rounded-md shadow-lg z-10">
-                      <input
+                      <input  
                         type="text"
                         placeholder="Search..."
                         value={searchTerm}
@@ -266,13 +402,14 @@ function CommitteeManage() {
                         {filteredCommittees.map((committee, index) => (
                           <div
                             key={index}
-                            className="px-4 py-2 hover:bg-gray-100 cursor-pointer font-poppins text-[13px] text-gray-600"
+                            className="px-4 py-2 hover:bg-gray-100 cursor-pointer font-poppins text-[14px] text-gray-600 uppercase"
                             onClick={() => {
-                              setSelectedCommitteeForEdit(committee.name);
+                              setSelectedCommittee(committee);  // Ensure this sets correct data
+                              setSelectedCommitteeForEdit(committee.committee_name);
                               setIsDropdownOpen(false);
                             }}
                           >
-                            {committee.name}
+                            {committee.committee_name}
                           </div>
                         ))}
                       </div>
@@ -284,38 +421,28 @@ function CommitteeManage() {
               {selectedCommitteeForEdit && (
                 <div className="mt-6 border rounded-lg p-6 bg-gray-50 shadow-sm">
                   <h3 className="text-sm font-poppins font-semibold text-gray-700 mb-3">Terms</h3>
-                  
+
                   {/* Paginated Terms Grid */}
                   <div className="grid grid-cols-5 gap-2">
-                    {Array.from({ length: 20 }, (_, i) => {
-                      const termNumber = 1 + i; // Reversing order (20th first, then 19th, etc.)
-
-                      // Function to get ordinal suffix
-                      const getOrdinalSuffix = (num) => {
-                        if ([11, 12, 13].includes(num)) return "TH";
-                        const lastDigit = num % 10;
-                        if (lastDigit === 1) return "ST";
-                        if (lastDigit === 2) return "ND";
-                        if (lastDigit === 3) return "RD";
-                        return "TH";
-                      };
-
-                      const termLabel = `${termNumber}${getOrdinalSuffix(termNumber)} CITY COUNCIL`;
-
-                      return (
-                        <button
-                          key={i}
-                          className={`p-2 rounded-md transition text-sm ${
-                            selectedTerm === termLabel
-                              ? "bg-[#408286] text-white font-bold"
-                              : "hover:bg-gray-200 bg-white border"
-                          }`}
-                          onClick={() => setSelectedTerm(termLabel)}
-                        >
-                          {termLabel}
-                        </button>
-                      );
-                    })}
+                    {terms.length === 0 ? (
+                      <p className="text-gray-500 text-sm italic">Loading terms...</p>
+                    ) : (
+                      terms
+                        .slice((termPage - 1) * 20, termPage * 20) // Show only 20 terms per page
+                        .map((term, index) => (
+                          <button
+                            key={index}
+                            className={`p-2 rounded-md transition text-sm uppercase ${
+                              selectedTerm === term.term
+                                ? "bg-[#408286] text-white font-bold"
+                                : "hover:bg-gray-200 bg-white border"
+                            }`}
+                            onClick={() => setSelectedTerm(term.term)}
+                          >
+                            {term.term}
+                          </button>
+                        ))
+                    )}
                   </div>
 
                   {/* Pagination Controls - Same Style as Committees Tab */}
@@ -329,19 +456,22 @@ function CommitteeManage() {
                     >
                       Previous
                     </button>
-                    <span className="px-4 text-gray-500 font-medium self-center text-sm">Page {termPage}</span>
+                    <span className="px-4 text-gray-500 font-medium self-center text-sm">
+                      Page {termPage} of {Math.ceil(terms.length / 20)}
+                    </span>
                     <button
                       className={`px-4 py-2 rounded-lg text-white text-sm font-poppins ${
-                        termPage === Math.ceil(20 / 5) ? "bg-gray-400 cursor-not-allowed" : "bg-[#408286] hover:bg-[#306060]"
+                        termPage === Math.ceil(terms.length / 20) ? "bg-gray-400 cursor-not-allowed" : "bg-[#408286] hover:bg-[#306060]"
                       }`}
-                      disabled={termPage === Math.ceil(20 / 5)}
-                      onClick={() => setTermPage((prev) => Math.min(prev + 1, Math.ceil(20 / 5)))}
+                      disabled={termPage === Math.ceil(terms.length / 20)}
+                      onClick={() => setTermPage((prev) => Math.min(prev + 1, Math.ceil(terms.length / 20)))}
                     >
                       Next
                     </button>
                   </div>
                 </div>
               )}
+
 
               {/* Committee Members Section */}
               <div className="mt-6 border rounded-lg p-6 relative shadow-sm bg-gray-50">
@@ -393,73 +523,116 @@ function CommitteeManage() {
             isOpen={isAssignModalOpen}
             onClose={() => setIsAssignModalOpen(false)}
             committee={selectedCommittee}
+            term={selectedTerm} // Pass selectedTerm to modal
           />
+
+
 
           {/* addCommittee tab */}
           {activeTab === "addCommittee" && (
             <div className="p-6 bg-white rounded-2xl shadow-lg border border-gray-200 w-full mx-auto">
-              {/* Input & Buttons Section */}
+              {/* Input & Buttons */}
               <div className="flex items-center space-x-3 mb-5">
                 <input
                   type="text"
+                  value={committeeName}
+                  onChange={(e) => setCommitteeName(e.target.value)}
                   placeholder="Enter committee"
                   className="w-full p-3 border border-gray-300 rounded-lg text-gray-700 font-poppins text-sm focus:outline-none focus:ring-1 focus:ring-[#408286]"
                 />
-                <button className="bg-[#408286] text-white px-5 py-3 rounded-lg font-poppins font-medium text-sm transition hover:bg-[#306060]">
+                <button
+                  className="bg-[#408286] text-white px-5 py-3 rounded-lg font-poppins font-medium text-sm transition hover:bg-[#306060]"
+                  onClick={addCommittee}
+                >
                   Add
                 </button>
-                <button className="bg-gray-300 text-gray-700 px-5 py-3 rounded-lg font-poppins font-medium text-sm transition hover:bg-gray-400">
+                <button
+                  className="bg-gray-300 text-gray-700 px-5 py-3 rounded-lg font-poppins font-medium text-sm transition hover:bg-gray-400"
+                  onClick={() => setCommitteeName("")}
+                >
                   Cancel
                 </button>
               </div>
 
-              {/* Committee List Section */}
+              {error && <p className="text-red-500">{error}</p>}
+
+              {/* Committee List - Table Format with Delete Button */}
               <div className="border border-gray-300 p-5 rounded-xl bg-gray-50">
                 <h2 className="text-sm font-semibold font-poppins text-gray-700 mb-3">Committee List</h2>
-                <ul className="text-gray-600 font-poppins">
-                  {/* Dynamic List of Committees */}
-                </ul>
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse border border-gray-300">
+                    <thead className="bg-gray-200 text-gray-700">
+                      <tr>
+                        <th className="p-3 border border-gray-300 text-left">#</th>
+                        <th className="p-3 border border-gray-300 text-left">Committee Name</th>
+                        <th className="p-3 border border-gray-300 text-left">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {committees.map((committee, index) => (
+                        <tr key={committee.id} className="bg-white hover:bg-gray-100">
+                          <td className="p-3 border border-gray-300">{index + 1}</td>
+                          <td className="p-3 border border-gray-300 uppercase">{committee.committee_name}</td>
+                          <td className="p-3 border border-gray-300">
+                            <button
+                              onClick={() => deleteCommittee(committee.id)}
+                              className="bg-[#FF6767] hover:bg-[#f35656] px-4 py-2 rounded-md text-white font-medium flex items-center gap-1 font-poppins text-sm"
+                            >
+                              Delete
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           )}
 
           {/* addTerm tab */}
           {activeTab === "addTerm" && (
-            <div className="p-6 bg-white rounded-2xl shadow-lg border border-gray-200 w-full mx-auto">
-              {/* Input & Buttons Section */}
-              <div className="flex items-center space-x-3 mb-5">
-                <input
-                  type="text"
-                  placeholder="Enter committee"
-                  className="w-full p-3 border border-gray-300 rounded-lg text-gray-700 font-poppins text-sm focus:outline-none focus:ring-1 focus:ring-[#408286]"
-                />
-                <button className="bg-[#408286] text-white px-5 py-3 rounded-lg font-poppins font-medium text-sm transition hover:bg-[#306060]">
-                  Add
-                </button>
-                <button className="bg-gray-300 text-gray-700 px-5 py-3 rounded-lg font-poppins font-medium text-sm transition hover:bg-gray-400">
-                  Cancel
-                </button>
-              </div>
+              <div className="p-6 bg-white rounded-2xl shadow-lg border border-gray-200 w-full mx-auto">
+                {/* Input & Buttons */}
+                <div className="flex items-center space-x-3 mb-5">
+                  <input
+                    type="text"
+                    placeholder="Enter term (e.g., 2024-2026)"
+                    value={newTerm}
+                    onChange={(e) => setNewTerm(e.target.value)}
+                    className="w-full p-3 border border-gray-300 rounded-lg text-gray-700 font-poppins text-sm focus:outline-none focus:ring-1 focus:ring-[#408286]"
+                  />
+                  <button
+                    onClick={addTerm}
+                    className="bg-[#408286] text-white px-5 py-3 rounded-lg font-poppins font-medium text-sm transition hover:bg-[#306060]"
+                  >
+                    Add
+                  </button>
+                  <button
+                    onClick={() => setNewTerm("")}
+                    className="bg-gray-300 text-gray-700 px-5 py-3 rounded-lg font-poppins font-medium text-sm transition hover:bg-gray-400"
+                  >
+                    Cancel
+                  </button>
+                </div>
 
-              {/* Committee List Section */}
-              <div className="border border-gray-300 p-5 rounded-xl bg-gray-50">
-                <h2 className="text-sm font-semibold font-poppins text-gray-700 mb-3">Term List</h2>
-                <ul className="text-gray-600 font-poppins">
-                  {/* Dynamic List of Committees */}
-                </ul>
+                {/* Error message */}
+                {error && <p className="text-red-500 text-sm">{error}</p>}
+
+                {/* Term List - Grid View to Fit on One Page */}
+                <div className="border border-gray-300 p-5 rounded-xl bg-gray-50">
+                  <h2 className="text-sm font-semibold font-poppins text-gray-700 mb-3">Term List</h2>
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    {terms.map((term, index) => (
+                      <div key={index} className="p-3 bg-white rounded-lg shadow-sm border border-gray-200 text-center uppercase">
+                        {term.term}
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
-            </div>
             )}
         </div>
-
-        {/* Modal Component */}
-        {isModalOpen && selectedCommittee && (
-          <Modal
-            isOpen={isModalOpen}
-            onClose={() => setIsModalOpen(false)}
-            committee={selectedCommittee}
-          />
-        )}
       </div>
     </div>
   );
