@@ -52,7 +52,7 @@ const ViewModal = ({ isOpen, onClose, rowData }) => {
                     </svg>
                     Ordinance No.
                     </span>
-                    <span className="w-2/3 text-gray-600">{rowData.ordinanceNo}</span>
+                    <span className="w-2/3 text-gray-600">{rowData.no}</span>
                 </div>
 
                 {/* Divider */}
@@ -75,7 +75,7 @@ const ViewModal = ({ isOpen, onClose, rowData }) => {
                     </svg>
                     Date Approved
                     </span>
-                    <span className="w-2/3 text-gray-600">{rowData.dateApproved}</span>
+                    <span className="w-2/3 text-gray-600">{rowData.date_approved}</span>
                 </div>
 
                 {/* Divider */}

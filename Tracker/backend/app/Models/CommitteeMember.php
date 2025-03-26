@@ -9,7 +9,7 @@ class CommitteeMember extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['committee_id', 'term_id', 'member_name'];
+    protected $fillable = ['committee_id', 'term_id', 'member_name', 'role'];
 
     public function committee()
     {

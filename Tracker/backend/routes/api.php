@@ -15,13 +15,16 @@ Route::delete('/delete-record/{id}', [AuthController::class, 'deleteRecord']);
 
 Route::get('/committees', [AuthController::class, 'getCommittees']);
 Route::post('/committees', [AuthController::class, 'addCommittee']);
-Route::delete('/committees/{id}', [CommitteeController::class, 'deleteCommittee']);
+Route::delete('/committees/{id}', [AuthController::class, 'deleteCommittee']);
 
 Route::get('/terms', [AuthController::class, 'getTerms']);
 Route::post('/terms', [AuthController::class, 'addTerm']);
+Route::delete('/terms/{id}', [AuthController::class, 'deleteTerm']); // New route
 
 Route::get('/committee-members', [AuthController::class, 'getCommitteeMembers']);
+Route::delete('/committee-members', [AuthController::class, 'deleteCommitteeMembers']);
 Route::post('/committee-members', [AuthController::class, 'addCommitteeMember']);
+Route::post('/committee-members/batch', [AuthController::class, 'addCommitteeMembersBatch']);
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', function (Request $request) {
@@ -30,7 +33,4 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::post('/profiles', [AuthController::class, 'updateProfile']);
     Route::post('/add-record', [AuthController::class, 'addRecord']);
-
-    
-
 });

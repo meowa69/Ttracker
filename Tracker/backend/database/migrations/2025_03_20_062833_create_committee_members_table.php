@@ -13,10 +13,10 @@ return new class extends Migration
     {
         Schema::create('committee_members', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('committee_id')->constrained('committees')->onDelete('cascade');
-            $table->foreignId('term_id')->constrained('committee_terms')->onDelete('cascade');
+            $table->foreignId('committee_id')->constrained();
+            $table->foreignId('term_id')->constrained('committee_terms');
             $table->string('member_name');
-            $table->enum('role', ['chairman', 'vice_chairman', 'member']); // Add role column
+            $table->string('role'); 
             $table->timestamps();
         });
         

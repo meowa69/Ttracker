@@ -238,73 +238,205 @@ class AuthController extends Controller
         return response()->json(['message' => 'Term added successfully', 'term' => $term], 201);
     }
 
+    // Delete Term
+    public function deleteTerm($id)
+    {
+        $term = CommitteeTerm::find($id);
+
+        if (!$term) {
+            return response()->json(['message' => 'Term not found'], 404);
+        }
+
+        $term->delete();
+
+        return response()->json(['message' => 'Term deleted successfully'], 200);
+    }
+
 
     // Get all committee members
-    public function getCommitteeMembers()
+    public function getCommitteeMembers(Request $request)
     {
-        $members = CommitteeMember::with('committee', 'term')->get();
+        $committeeId = $request->query('committee_id');
+        $termId = $request->query('term_id');
+    
+        $query = CommitteeMember::with('committee', 'term');
+    
+        if ($committeeId) {
+            $query->where('committee_id', $committeeId);
+        }
+    
+        if ($termId) {
+            $query->where('term_id', $termId);
+        }
+    
+        $members = $query->get();
         return response()->json($members, 200);
     }
 
-    // Add a new committee member
-    public function addCommitteeMember(Request $request)
+    public function deleteCommitteeMembers(Request $request)
     {
         $request->validate([
-            'committee' => 'required|string|exists:committees,committee_name',
+            'committee_id' => 'required|exists:committees,id',
+            'term_id' => 'required|exists:committee_terms,id',
+        ]);
+    
+        CommitteeMember::where('committee_id', $request->committee_id)
+            ->where('term_id', $request->term_id)
+            ->delete();
+    
+        return response()->json(['message' => 'Members deleted successfully'], 200);
+    }
+    
+    // Update addCommitteeMember to use committee_name consistently
+    public function addCommitteeMember(Request $request)
+    {
+        // Validate incoming request data
+        $request->validate([
+            'committee_name' => 'required|string|exists:committees,committee_name',
             'term' => 'required|string|exists:committee_terms,term',
             'member_name' => 'required|string',
             'role' => 'required|in:chairman,vice_chairman,member',
         ]);
-
-        // Fetch the correct IDs
-        $committee = Committee::where('committee_name', $request->committee)->first();
+    
+        // Fetch committee and term based on provided names
+        $committee = Committee::where('committee_name', $request->committee_name)->first();
         $term = CommitteeTerm::where('term', $request->term)->first();
-
+    
+        // Check if committee or term is invalid
         if (!$committee || !$term) {
             return response()->json(['message' => 'Invalid committee or term.'], 400);
         }
-
+    
         $committeeId = $committee->id;
         $termId = $term->id;
         $role = $request->role;
-
-        // Check constraints
+    
+        // Check for existing chairman
         $chairmanExists = CommitteeMember::where('committee_id', $committeeId)
             ->where('term_id', $termId)
             ->where('role', 'chairman')
             ->exists();
-
-        if ($role === 'chairman' && $chairmanExists) {
-            return response()->json(['message' => 'A chairman already exists for this term.'], 400);
-        }
-
+    
+        // Check for existing vice chairman
         $viceChairmanExists = CommitteeMember::where('committee_id', $committeeId)
             ->where('term_id', $termId)
             ->where('role', 'vice_chairman')
             ->exists();
-
-        if ($role === 'vice_chairman' && $viceChairmanExists) {
-            return response()->json(['message' => 'A vice chairman already exists for this term.'], 400);
-        }
-
+    
+        // Count existing regular members
         $memberCount = CommitteeMember::where('committee_id', $committeeId)
             ->where('term_id', $termId)
             ->where('role', 'member')
             ->count();
-
+    
+        // Your snippet goes here - validation rules for roles
+        if ($role === 'chairman' && $chairmanExists) {
+            return response()->json(['message' => 'A chairman already exists for this term.'], 400);
+        }
+        if ($role === 'vice_chairman' && $viceChairmanExists) {
+            return response()->json(['message' => 'A vice chairman already exists for this term.'], 400);
+        }
         if ($role === 'member' && $memberCount >= 5) {
             return response()->json(['message' => 'Maximum of 5 members reached.'], 400);
         }
-
-        // Insert member using IDs
+    
+        // Create the new committee member
         $member = CommitteeMember::create([
             'committee_id' => $committeeId,
             'term_id' => $termId,
             'member_name' => $request->member_name,
             'role' => $role,
         ]);
-
+    
         return response()->json(['message' => 'Member added successfully.', 'member' => $member], 201);
+    }
+
+    // Add multiple committee members in a single request
+    public function addCommitteeMembersBatch(Request $request)
+    {
+        \Log::info("Received batch payload: " . json_encode($request->all()));
+
+        $request->validate([
+            'committee_name' => 'required|string|exists:committees,committee_name',
+            'term' => 'required|string|exists:committee_terms,term',
+            'members' => 'required|array',
+            'members.*.member_name' => 'required|string',
+            'members.*.role' => 'required|in:chairman,vice_chairman,member',
+        ]);
+
+        $committee = Committee::where('committee_name', $request->committee_name)->first();
+        $term = CommitteeTerm::where('term', $request->term)->first();
+
+        if (!$committee || !$term) {
+            \Log::error("Invalid committee or term: committee_name={$request->committee_name}, term={$request->term}");
+            return response()->json(['message' => 'Invalid committee or term.'], 400);
+        }
+
+        $committeeId = $committee->id;
+        $termId = $term->id;
+
+        // Check constraints for all members at once
+        $chairmanCount = 0;
+        $viceChairmanCount = 0;
+        $memberCount = 0;
+
+        foreach ($request->members as $member) {
+            if ($member['role'] === 'chairman') $chairmanCount++;
+            if ($member['role'] === 'vice_chairman') $viceChairmanCount++;
+            if ($member['role'] === 'member') $memberCount++;
+        }
+
+        // Check existing records
+        $existingChairman = CommitteeMember::where('committee_id', $committeeId)
+            ->where('term_id', $termId)
+            ->where('role', 'chairman')
+            ->exists();
+
+        $existingViceChairman = CommitteeMember::where('committee_id', $committeeId)
+            ->where('term_id', $termId)
+            ->where('role', 'vice_chairman')
+            ->exists();
+
+        $existingMemberCount = CommitteeMember::where('committee_id', $committeeId)
+            ->where('term_id', $termId)
+            ->where('role', 'member')
+            ->count();
+
+        // Validate constraints
+        if ($chairmanCount > 1 || ($chairmanCount > 0 && $existingChairman)) {
+            return response()->json(['message' => 'A chairman already exists or multiple chairmen provided.'], 400);
+        }
+        if ($viceChairmanCount > 1 || ($viceChairmanCount > 0 && $existingViceChairman)) {
+            return response()->json(['message' => 'A vice chairman already exists or multiple vice chairmen provided.'], 400);
+        }
+        if ($memberCount + $existingMemberCount > 5) {
+            return response()->json(['message' => 'Maximum of 5 members reached.'], 400);
+        }
+
+        // Insert all members in a single transaction
+        $results = [];
+        DB::beginTransaction();
+        try {
+            foreach ($request->members as $memberData) {
+                $member = new CommitteeMember();
+                $member->committee_id = $committeeId;
+                $member->term_id = $termId;
+                $member->member_name = $memberData['member_name'];
+                $member->role = $memberData['role'];
+                $member->save();
+
+                $results[] = ['member' => $memberData['member_name'], 'success' => true];
+            }
+            DB::commit();
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error("Failed to save members: " . $e->getMessage());
+            return response()->json(['message' => 'Failed to save members.', 'error' => $e->getMessage()], 500);
+        }
+
+        \Log::info("Saved members: " . json_encode($results));
+
+        return response()->json(['success' => true, 'message' => 'Members added successfully.', 'results' => $results], 201);
     }
 
     // Delete a committee

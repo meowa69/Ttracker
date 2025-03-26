@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import Sidebar from "../Components/Sidebar";
+import moment from "moment"; // Ensure moment is imported if used
 
 const History = () => {
   const [selectedCategory, setSelectedCategory] = useState("All");
@@ -15,15 +16,14 @@ const History = () => {
     "Update Document",
     "Request Document",
     "Delete Document",
-    
   ];
 
   // Dummy data for audit logs
   const logs = [
     { id: 1, username: "john_doe", action: "Deleted Resolution Document", timestamp: "2024-03-04 10:30 AM" },
-    { id: 2, username: "jane_smith", action: "Deleted Resolution Document", timestamp: "2024-03-03 08:15 AM"},
-    { id: 3, username: "alice_wong", action: "Deleted Resolution Document", timestamp: "2024-03-02 02:45 PM"},
-    { id: 4, username: "mike_tyson", action: "Deleted Resolution Document", timestamp: "2024-03-01 04:20 PM"},
+    { id: 2, username: "jane_smith", action: "Deleted Resolution Document", timestamp: "2024-03-03 08:15 AM" },
+    { id: 3, username: "alice_wong", action: "Deleted Resolution Document", timestamp: "2024-03-02 02:45 PM" },
+    { id: 4, username: "mike_tyson", action: "Deleted Resolution Document", timestamp: "2024-03-01 04:20 PM" },
   ];
 
   const filteredLogs = useMemo(() => {
@@ -45,23 +45,21 @@ const History = () => {
   }, [logs, searchQuery, filterBy, dateFrom, dateTo, selectedCategory]);
 
   return (
-    <div className="flex bg-gray-100">
+    <div className="flex bg-gray-100 font-poppins">
       <Sidebar />
       <div className="flex flex-col w-full h-screen overflow-y-auto p-6">
-        <h1 className="font-poppins font-bold uppercase text-[#494444] text-[35px] mb-6">History</h1>
-
-       
+        <h1 className="font-bold uppercase text-[#494444] text-[35px] mb-6">History</h1>
 
         {/* Category Tabs */}
-        <div className="flex space-x-6 mb-4 border-b pb-2">
+        <div className="flex border-b mb-4">
           {categories.map((category) => (
             <button
               key={category}
               onClick={() => setSelectedCategory(category)}
-              className={`px-4 py-2 ${
+              className={`p-3 text-sm font-semibold ${
                 selectedCategory === category
-                  ? "text-[#70b8d3] border-[#70b8d3] font-semibold border-b-2"
-                  : "text-gray-700 hover:text-[#70b8d3]"
+                  ? "border-b-2 border-[#408286] text-[#408286]"
+                  : "text-gray-600 hover:text-[#408286]"
               }`}
             >
               {category}
@@ -74,23 +72,23 @@ const History = () => {
           <table className="w-full border-collapse">
             <thead className="bg-[#408286] text-white">
               <tr>
-                <th className="px-4 py-3 text-left">Username</th>
-                <th className="px-4 py-3 text-left">Action</th>
-                <th className="px-4 py-3 text-left">Timestamp</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold uppercase tracking-wide">Username</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold uppercase tracking-wide">Action</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold uppercase tracking-wide">Timestamp</th>
               </tr>
             </thead>
             <tbody>
               {filteredLogs.length > 0 ? (
                 filteredLogs.map((log) => (
                   <tr key={log.id} className="border-b hover:bg-gray-100">
-                    <td className="px-4 py-3">{log.username}</td>
-                    <td className="px-4 py-3">{log.action}</td>
-                    <td className="px-4 py-3">{log.timestamp}</td>
+                    <td className="px-4 py-3 text-gray-700 text-sm">{log.username}</td>
+                    <td className="px-4 py-3 text-gray-700 text-sm">{log.action}</td>
+                    <td className="px-4 py-3 text-gray-700 text-sm">{log.timestamp}</td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan="3" className="text-center py-4 text-gray-500">
+                  <td colSpan="3" className="text-center py-4 text-gray-500 text-sm">
                     No logs match the filters.
                   </td>
                 </tr>
