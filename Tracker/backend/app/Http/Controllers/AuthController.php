@@ -9,6 +9,7 @@ use App\Models\AddRecord;
 use App\Models\Committee;
 use App\Models\CommitteeTerm;
 use App\Models\CommitteeMember;
+use App\Models\EditRecord;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -36,19 +37,51 @@ class AuthController extends Controller
         return response()->json(['message' => 'User created successfully', 'user' => $user], 201);
     }
 
-    // Login User
+    // Fetch all users with pagination
+    public function getUsers(Request $request)
+    {
+        $perPage = 6; // 6 users per page
+        $users = User::select('id', 'name', 'user_name', 'role', 'created_at')
+            ->paginate($perPage);
+
+        return response()->json([
+            'data' => $users->items(),
+            'current_page' => $users->currentPage(),
+            'total_pages' => $users->lastPage(),
+            'total' => $users->total(),
+        ], 200);
+    }
+
+    // Update user role
+    public function updateRole(Request $request, $id)
+    {
+        $request->validate([
+            'role' => 'required|in:admin,sub-admin,user',
+        ]);
+
+        $user = User::findOrFail($id);
+        $user->role = $request->role;
+        $user->save();
+
+        return response()->json(['message' => 'User role updated successfully', 'user' => $user], 200);
+    }
+
+    // Delete user
+    public function deleteUser($id)
+    {
+        $user = User::findOrFail($id);
+        $user->delete();
+        return response()->json(['message' => 'User deleted successfully'], 200);
+    }
+
+    // Login User (unchanged for now, but simplified if status isn’t needed)
     public function login(Request $request)
     {
         try {
             $user = User::where('user_name', $request->user_name)->first();
 
-            if (!$user) {
-                \Log::error('User not found: ' . $request->user_name);
-                return response()->json(['message' => 'Invalid username or password'], 401);
-            }
-
-            if (!Hash::check($request->password, $user->password)) {
-                \Log::error('Invalid password for user: ' . $request->user_name);
+            if (!$user || !Hash::check($request->password, $user->password)) {
+                \Log::error('Invalid credentials for user: ' . $request->user_name);
                 return response()->json(['message' => 'Invalid username or password'], 401);
             }
 
@@ -172,13 +205,84 @@ class AuthController extends Controller
     public function getRecords()
     {
         try {
-            $record = AddRecord::all();
-            return response()->json($record, 200);
+            \Log::info('Fetching all records with edit details');
+            $records = AddRecord::leftJoin('edit_record', 'add_record.id', '=', 'edit_record.record_id')
+                ->select(
+                    'add_record.id',
+                    'add_record.no',
+                    'add_record.document_type',
+                    'add_record.date_approved',
+                    'add_record.title',
+                    'edit_record.committee_sponsor as sponsor',
+                    'edit_record.status',
+                    'edit_record.vice_mayor_forwarded as vm_forwarded',
+                    'edit_record.vice_mayor_received as vm_received',
+                    'edit_record.city_mayor_forwarded as cm_forwarded',
+                    'edit_record.city_mayor_received as cm_received',
+                    'edit_record.transmitted_to',
+                    'edit_record.date_transmitted',
+                    'edit_record.remarks'
+                )
+                ->get();
+
+            \Log::info('Records fetched successfully', ['count' => $records->count()]);
+            return response()->json($records, 200);
         } catch (\Exception $e) {
+            \Log::error('Error fetching records: ' . $e->getMessage(), ['exception' => $e]);
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
 
+    public function updateRecord(Request $request, $id)
+    {
+        try {
+            $validated = $request->validate([
+                'committee_sponsor' => 'nullable|string',
+                'status' => 'nullable|string',
+                'vm_forwarded' => 'nullable|date', // Match frontend payload
+                'vm_received' => 'nullable|date',
+                'cm_forwarded' => 'nullable|date',
+                'cm_received' => 'nullable|date',
+                'transmitted_to' => 'nullable|string',
+                'date_transmitted' => 'nullable|date',
+                'remarks' => 'nullable|string',
+            ]);
+
+            $editRecord = EditRecord::firstOrNew(['record_id' => $id]);
+            
+            $editRecord->committee_sponsor = $validated['committee_sponsor'] ?? $editRecord->committee_sponsor;
+            $editRecord->status = $validated['status'] ?? $editRecord->status;
+            $editRecord->vice_mayor_forwarded = $validated['vm_forwarded'] ?? $editRecord->vice_mayor_forwarded;
+            $editRecord->vice_mayor_received = $validated['vm_received'] ?? $editRecord->vice_mayor_received;
+            $editRecord->city_mayor_forwarded = $validated['cm_forwarded'] ?? $editRecord->city_mayor_forwarded;
+            $editRecord->city_mayor_received = $validated['cm_received'] ?? $editRecord->city_mayor_received;
+            $editRecord->transmitted_to = $validated['transmitted_to'] ?? $editRecord->transmitted_to;
+            $editRecord->date_transmitted = $validated['date_transmitted'] ?? $editRecord->date_transmitted;
+            $editRecord->remarks = array_key_exists('remarks', $validated) ? $validated['remarks'] : $editRecord->remarks;
+            
+            $editRecord->save();
+
+            \Log::info("Saved EditRecord:", $editRecord->toArray());
+
+            $responseData = [
+                'id' => $editRecord->record_id,
+                'sponsor' => $editRecord->committee_sponsor,
+                'status' => $editRecord->status,
+                'vm_forwarded' => $editRecord->vice_mayor_forwarded,
+                'vm_received' => $editRecord->vice_mayor_received,
+                'cm_forwarded' => $editRecord->city_mayor_forwarded,
+                'cm_received' => $editRecord->city_mayor_received,
+                'transmitted_to' => $editRecord->transmitted_to,
+                'date_transmitted' => $editRecord->date_transmitted,
+                'remarks' => $editRecord->remarks,
+            ];
+
+            return response()->json(['message' => 'Record updated successfully', 'data' => $responseData], 200);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+    
     // Get all committees
     public function getCommittees()
     {

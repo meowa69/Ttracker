@@ -6,33 +6,29 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up()
     {
         Schema::create('edit_record', function (Blueprint $table) {
             $table->id();
-            $table->enum('type', ['ordinance', 'resolution']);
-            $table->string('committee_sponsor');
-            $table->string('status');
+            $table->unsignedBigInteger('record_id'); // Explicitly match add_records.id
+            $table->string('committee_sponsor')->nullable();
+            $table->string('status')->nullable();
             $table->date('vice_mayor_forwarded')->nullable();
             $table->date('vice_mayor_received')->nullable();
             $table->date('city_mayor_forwarded')->nullable();
             $table->date('city_mayor_received')->nullable();
-            $table->string('transmitted_to');
-            $table->date('date_transmitted');
+            $table->string('transmitted_to')->nullable();
+            $table->date('date_transmitted')->nullable();
             $table->text('remarks')->nullable();
             $table->timestamps();
+
+            // Add foreign key separately
+            $table->foreign('record_id')->references('id')->on('add_record')->onDelete('cascade');
         });
     }
 
-
-    /**
-     * Reverse the migrations.
-     */
-    public function down(): void
+    public function down()
     {
-        Schema::dropIfExists('edit_records');
+        Schema::dropIfExists('edit_record');
     }
 };

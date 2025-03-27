@@ -79,7 +79,7 @@ function ForgotPassword() {
             </button>
 
             {/* Back to Login Link */}
-            <Link to="/" className="text-white text-sm mt-4 hover:underline">
+            <Link to="/login" className="text-white text-sm mt-4 hover:underline">
               &lt; Back to log in page
             </Link>
           </div>

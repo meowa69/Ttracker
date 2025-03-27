@@ -10,14 +10,14 @@ import AddRecords from "./Routes/AddRecords";
 import Request from "./Routes/Request";
 import History from "./Routes/History";
 import CommitteeManage from "./Routes/CommitteeManage";
-import CreateAccount from "./Routes/CreateAccount";
+import ManageAccount from "./Routes/ManageAccount";
 import Settings from "./Routes/Settings";
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
     <Router>
       <Routes>
-        <Route path="/" element={<Login />} />
+        <Route path="/login" element={<Login />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/change-password" element={<ChangePassword />} />
         <Route path="/dashboard" element={<Dashboard/>} />
@@ -25,7 +25,7 @@ createRoot(document.getElementById("root")).render(
         <Route path="/request" element={<Request/>} />
         <Route path="/history" element={<History/>} />
         <Route path="/committee-management" element={<CommitteeManage/>} />
-        <Route path="/create-account" element={<CreateAccount/>} />
+        <Route path="/manage-account" element={<ManageAccount/>} />
         <Route path="/settings" element={<Settings/>} />
       </Routes>
     </Router>

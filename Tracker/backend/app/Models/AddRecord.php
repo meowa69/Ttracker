@@ -2,16 +2,15 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class AddRecord extends Model
 {
-    use HasFactory;
-
     protected $table = 'add_record';
+    protected $fillable = ['no', 'document_type', 'date_approved', 'title'];
 
-    protected $fillable = [
-        'no', 'document_type', 'date_approved', 'title'
-    ];
+    public function editRecord()
+    {
+        return $this->hasOne(EditRecord::class, 'record_id');
+    }
 }

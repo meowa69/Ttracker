@@ -48,7 +48,7 @@ function ChangePassword() {
         allowOutsideClick: false,
       }).then(() => {
         sessionStorage.removeItem("resetUsername");
-        navigate("/");
+        navigate("/login");
       });
     } catch (err) {
       setError("Failed to update password. Please try again.");
@@ -136,7 +136,7 @@ function ChangePassword() {
               RESET PASSWORD
             </button>
 
-            <Link to="/" className="text-white text-sm mt-4 hover:underline">
+            <Link to="/login" className="text-white text-sm mt-4 hover:underline">
               &lt; Back to log in page
             </Link>
           </div>

@@ -12,11 +12,9 @@ function CommitteeManage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 12;
-  const [selectedCommitteeForEdit, setSelectedCommitteeForEdit] = useState("");
-  const [selectedTerm, setSelectedTerm] = useState(null);
-  const [termPage, setTermPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(1); // For "Committees" tab
+  const [committeePage, setCommitteePage] = useState(1); // For "Add Committee" tab
+  const [termPage, setTermPage] = useState(1); // For "Add Term" tab
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
   const [committees, setCommittees] = useState([]);
@@ -30,9 +28,14 @@ function CommitteeManage() {
     viceChairman: null,
     members: [],
   });
+  const [selectedCommitteeForEdit, setSelectedCommitteeForEdit] = useState("");
+  const [selectedTerm, setSelectedTerm] = useState(null);
 
-  const termsPerPage = activeTab === "editCommittee" ? 20 : 5;
+  const itemsPerPage = 12; // For "Committees" tab (12 cards per page)
+  const committeesPerPage = 6; // For "Add Committee" tab
+  const termsPerPage = activeTab === "editCommittee" ? 20 : 6; // 6 for "Add Term", 20 for "editCommittee"
 
+  // Alert handling
   const showAlert = (message) => {
     setAlert({ show: true, message, progress: 100 });
   };
@@ -61,6 +64,7 @@ function CommitteeManage() {
     }
   }, [alert.show]);
 
+  // Fetch committees
   useEffect(() => {
     fetchCommittees();
   }, []);
@@ -75,6 +79,7 @@ function CommitteeManage() {
     }
   };
 
+  // Add committee
   const addCommittee = async () => {
     if (!committeeName.trim()) {
       showAlert("Committee name cannot be empty.");
@@ -127,6 +132,7 @@ function CommitteeManage() {
     }
   };
 
+  // Fetch terms
   useEffect(() => {
     fetchTerms();
   }, []);
@@ -141,6 +147,7 @@ function CommitteeManage() {
     }
   };
 
+  // Add term
   const addTerm = async () => {
     if (!newTerm.trim()) {
       setError("Term cannot be empty.");
@@ -195,6 +202,7 @@ function CommitteeManage() {
     }
   };
 
+  // Fetch members
   const fetchMembers = async () => {
     if (selectedCommittee && selectedTerm) {
       try {
@@ -244,6 +252,7 @@ function CommitteeManage() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Pagination logic
   const filteredCommittees = committees.filter((committee) =>
     committee?.committee_name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -254,19 +263,29 @@ function CommitteeManage() {
     currentPage * itemsPerPage
   );
 
-  const nextPage = () => setCurrentPage((prev) => Math.min(prev + 1, totalPages));
-  const prevPage = () => setCurrentPage((prev) => Math.max(prev - 1, 1));
-
-  const paginateTerms = (terms, termPage, termsPerPage) => {
-    const totalTermPages = Math.ceil(terms.length / termsPerPage);
-    const paginatedTerms = terms.slice(
-      (termPage - 1) * termsPerPage,
-      termPage * termsPerPage
+  const paginateItems = (items, page, perPage) => {
+    const totalPages = Math.ceil(items.length / perPage);
+    const paginatedItems = items.slice(
+      (page - 1) * perPage,
+      page * perPage
     );
-    return { paginatedTerms, totalTermPages };
+    return { paginatedItems, totalPages };
   };
 
-  const { paginatedTerms, totalTermPages } = paginateTerms(terms, termPage, termsPerPage);
+  const { paginatedItems: paginatedCommitteeList, totalPages: totalCommitteePages } = paginateItems(committees, committeePage, committeesPerPage);
+  const { paginatedItems: paginatedTerms, totalPages: totalTermPages } = paginateItems(terms, termPage, termsPerPage);
+
+  const nextPage = (type) => {
+    if (type === "committees") setCurrentPage((prev) => Math.min(prev + 1, totalPages));
+    if (type === "addCommittee") setCommitteePage((prev) => Math.min(prev + 1, totalCommitteePages));
+    if (type === "addTerm") setTermPage((prev) => Math.min(prev + 1, totalTermPages));
+  };
+
+  const prevPage = (type) => {
+    if (type === "committees") setCurrentPage((prev) => Math.max(prev - 1, 1));
+    if (type === "addCommittee") setCommitteePage((prev) => Math.max(prev - 1, 1));
+    if (type === "addTerm") setTermPage((prev) => Math.max(prev - 1, 1));
+  };
 
   return (
     <div className="flex font-poppins">
@@ -350,26 +369,30 @@ function CommitteeManage() {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                {paginatedCommittees.map((committee, index) => (
-                  <div
-                    key={index}
-                    className="bg-white border border-gray-200 rounded-lg shadow-sm p-6 flex flex-col justify-between transition-all duration-200 hover:shadow-md hover:border-[#408286]"
-                  >
-                    <div>
-                      <h2 className="text-lg font-semibold text-gray-800 uppercase tracking-wide mb-2">
-                        {committee.committee_name}
-                      </h2>
+                {paginatedCommittees.length > 0 ? (
+                  paginatedCommittees.map((committee, index) => (
+                    <div
+                      key={index}
+                      className="bg-white border border-gray-200 rounded-lg shadow-sm p-6 flex flex-col justify-between transition-all duration-200 hover:shadow-md hover:border-[#408286]"
+                    >
+                      <div>
+                        <h2 className="text-lg font-semibold text-gray-800 uppercase tracking-wide mb-2">
+                          {committee.committee_name}
+                        </h2>
+                      </div>
+                      <div className="mt-4">
+                        <button
+                          className="w-full px-4 py-2 bg-[#408286] text-white text-sm font-medium rounded-md hover:bg-[#306060] transition duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-[#408286] focus:ring-offset-2"
+                          onClick={() => openModal(committee)}
+                        >
+                          View Details
+                        </button>
+                      </div>
                     </div>
-                    <div className="mt-4">
-                      <button
-                        className="w-full px-4 py-2 bg-[#408286] text-white text-sm font-medium rounded-md hover:bg-[#306060] transition duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-[#408286] focus:ring-offset-2"
-                        onClick={() => openModal(committee)}
-                      >
-                        View Details
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  ))
+                ) : (
+                  <p className="text-gray-500 text-sm italic col-span-full text-center">No committees available</p>
+                )}
               </div>
 
               <ViewCommitteeModal
@@ -380,27 +403,25 @@ function CommitteeManage() {
                 fetchMembers={fetchMembers}
               />
 
-              {totalPages > 1 && (
-                <div className="flex justify-end items-center mt-6 space-x-4">
-                  <button
-                    className={`px-4 py-2 rounded-md text-white text-sm font-medium ${currentPage === 1 ? "bg-gray-400 cursor-not-allowed" : "bg-[#408286] hover:bg-[#306060]"} transition duration-150 ease-in-out`}
-                    disabled={currentPage === 1}
-                    onClick={prevPage}
-                  >
-                    Previous
-                  </button>
-                  <span className="text-gray-700 font-medium text-sm">
-                    Page {currentPage} of {totalPages}
-                  </span>
-                  <button
-                    className={`px-4 py-2 rounded-md text-white text-sm font-medium ${currentPage === totalPages ? "bg-gray-400 cursor-not-allowed" : "bg-[#408286] hover:bg-[#306060]"} transition duration-150 ease-in-out`}
-                    disabled={currentPage === totalPages}
-                    onClick={nextPage}
-                  >
-                    Next
-                  </button>
-                </div>
-              )}
+              <div className="flex justify-end items-center mt-6 space-x-4 absolute bottom-[60px] right-[50px]">
+                <button
+                  className={`px-4 py-2 rounded-md text-white text-sm font-medium ${currentPage === 1 ? "bg-gray-400 cursor-not-allowed" : "bg-[#408286] hover:bg-[#306060]"} transition duration-150 ease-in-out`}
+                  disabled={currentPage === 1}
+                  onClick={() => prevPage("committees")}
+                >
+                  Previous
+                </button>
+                <span className="text-gray-700 font-medium text-sm">
+                  Page {currentPage} of {totalPages || 1}
+                </span>
+                <button
+                  className={`px-4 py-2 rounded-md text-white text-sm font-medium ${currentPage === totalPages || totalPages === 0 ? "bg-gray-400 cursor-not-allowed" : "bg-[#408286] hover:bg-[#306060]"} transition duration-150 ease-in-out`}
+                  disabled={currentPage === totalPages || totalPages === 0}
+                  onClick={() => nextPage("committees")}
+                >
+                  Next
+                </button>
+              </div>
             </>
           )}
 
@@ -469,7 +490,7 @@ function CommitteeManage() {
                     <button
                       className={`px-4 py-2 rounded-lg text-white text-sm font-poppins ${termPage === 1 ? "bg-gray-400 cursor-not-allowed" : "bg-[#408286] hover:bg-[#306060]"}`}
                       disabled={termPage === 1}
-                      onClick={() => setTermPage((prev) => Math.max(prev - 1, 1))}
+                      onClick={() => prevPage("addTerm")}
                     >
                       Previous
                     </button>
@@ -479,7 +500,7 @@ function CommitteeManage() {
                     <button
                       className={`px-4 py-2 rounded-lg text-white text-sm font-poppins ${termPage === totalTermPages ? "bg-gray-400 cursor-not-allowed" : "bg-[#408286] hover:bg-[#306060]"}`}
                       disabled={termPage === totalTermPages}
-                      onClick={() => setTermPage((prev) => Math.min(prev + 1, totalTermPages))}
+                      onClick={() => nextPage("addTerm")}
                     >
                       Next
                     </button>
@@ -632,8 +653,8 @@ function CommitteeManage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {committees.length > 0 ? (
-                        committees.map((committee, index) => (
+                      {paginatedCommitteeList.length > 0 ? (
+                        paginatedCommitteeList.map((committee, index) => (
                           <tr
                             key={committee.id}
                             className={`${
@@ -641,7 +662,7 @@ function CommitteeManage() {
                             } hover:bg-[#e6f0f0] transition-all duration-200`}
                           >
                             <td className="p-4 text-gray-600 text-sm font-poppins border-b border-gray-200">
-                              {index + 1}
+                              {(committeePage - 1) * committeesPerPage + index + 1}
                             </td>
                             <td className="p-4 text-gray-800 text-sm font-poppins font-medium uppercase border-b border-gray-200">
                               {committee.committee_name}
@@ -668,6 +689,27 @@ function CommitteeManage() {
                     </tbody>
                   </table>
                 </div>
+                {totalCommitteePages > 1 && (
+                  <div className="flex justify-end items-center mt-4">
+                    <button
+                      className={`px-4 py-2 rounded-lg text-white text-sm font-poppins ${committeePage === 1 ? "bg-gray-400 cursor-not-allowed" : "bg-[#408286] hover:bg-[#306060]"}`}
+                      disabled={committeePage === 1}
+                      onClick={() => prevPage("addCommittee")}
+                    >
+                      Previous
+                    </button>
+                    <span className="text-gray-700 font-medium mx-4 text-sm font-poppins">
+                      Page {committeePage} of {totalCommitteePages}
+                    </span>
+                    <button
+                      className={`px-4 py-2 rounded-lg text-white text-sm font-poppins ${committeePage === totalCommitteePages ? "bg-gray-400 cursor-not-allowed" : "bg-[#408286] hover:bg-[#306060]"}`}
+                      disabled={committeePage === totalCommitteePages}
+                      onClick={() => nextPage("addCommittee")}
+                    >
+                      Next
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -765,7 +807,7 @@ function CommitteeManage() {
                     <button
                       className={`px-4 py-2 rounded-lg text-white text-sm font-poppins ${termPage === 1 ? "bg-gray-400 cursor-not-allowed" : "bg-[#408286] hover:bg-[#306060]"}`}
                       disabled={termPage === 1}
-                      onClick={() => setTermPage((prev) => Math.max(prev - 1, 1))}
+                      onClick={() => prevPage("addTerm")}
                     >
                       Previous
                     </button>
@@ -773,9 +815,9 @@ function CommitteeManage() {
                       Page {termPage} of {totalTermPages}
                     </span>
                     <button
-                      className={`px-4 py-2 rounded-lg text-white text-sm font-poppins ${termPage === totalTermPages ? "bg-gray-400 cursor-not-allowed" : "bg-[#306060] hover:bg-[#306060]"}`}
+                      className={`px-4 py-2 rounded-lg text-white text-sm font-poppins ${termPage === totalTermPages ? "bg-gray-400 cursor-not-allowed" : "bg-[#408286] hover:bg-[#306060]"}`}
                       disabled={termPage === totalTermPages}
-                      onClick={() => setTermPage((prev) => Math.min(prev + 1, totalTermPages))}
+                      onClick={() => nextPage("addTerm")}
                     >
                       Next
                     </button>
