@@ -3,13 +3,24 @@ import axios from "axios";
 
 const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowData }) => {
   const [committeesWithTerms, setCommitteesWithTerms] = useState([]);
-  const [localRowData, setLocalRowData] = useState(initialRowData);
-  const [showVmReceivedButton, setShowVmReceivedButton] = useState(false);
-  const [showCmReceivedButton, setShowCmReceivedButton] = useState(false);
-  const [vmDaysRemaining, setVmDaysRemaining] = useState(null);
-  const [cmDaysRemaining, setCmDaysRemaining] = useState(null);
+  const [localRowData, setLocalRowData] = useState({});
+  const [vmTimeRemaining, setVmTimeRemaining] = useState("Not Started");
+  const [cmTimeRemaining, setCmTimeRemaining] = useState("Not Started");
+  const [isVmReceivedEditing, setIsVmReceivedEditing] = useState(false);
+  const [isCmReceivedEditing, setIsCmReceivedEditing] = useState(false);
   const vmReceivedInputRef = useRef(null);
   const cmReceivedInputRef = useRef(null);
+
+  useEffect(() => {
+    if (initialRowData) {
+      setLocalRowData({
+        ...initialRowData,
+        completed: initialRowData.completed ? "true" : "false",
+      });
+    } else {
+      setLocalRowData({});
+    }
+  }, [initialRowData]);
 
   const formatDateForInput = (date) => {
     if (!date) return "";
@@ -24,36 +35,52 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
     return `Date: ${d.toLocaleString("default", { month: "long" })} ${d.getDate()}, ${d.getFullYear()}`;
   };
 
-  const calculateDaysRemaining = (forwardedDate, receivedDate) => {
+  const calculateTimeRemaining = (forwardedDate, receivedDate) => {
     if (!forwardedDate) return "Not Started";
-    if (receivedDate) return "Completed";
+    if (receivedDate && new Date(receivedDate).toString() !== "Invalid Date") return "Completed";
     const forwarded = new Date(forwardedDate);
-    const today = new Date();
-    const diffTime = today - forwarded;
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    const remaining = 10 - diffDays;
-    return remaining >= 0 ? remaining : "Overdue";
+    const now = new Date();
+    const deadline = new Date(forwarded);
+    deadline.setDate(forwarded.getDate() + 10); // 10-day deadline
+    const diffMs = deadline - now;
+    if (diffMs <= 0) return "Overdue";
+    const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((diffMs % (1000 * 60)) / 1000);
+    return `${days.toString().padStart(2, "0")} days ${hours.toString().padStart(2, "0")} hours: ${minutes.toString().padStart(2, "0")} minutes: ${seconds.toString().padStart(2, "0")} seconds`;
   };
 
-  const getTimerColor = (days) => {
-    if (days === "Not Started" || days === "Completed") return "text-gray-500";
-    if (days === "Overdue") return "text-red-600";
+  const getTimerColor = (time) => {
+    if (!time || time === "Not Started") return "text-gray-500";
+    if (time === "Completed") return "text-blue-600";
+    if (time === "Overdue") return "text-red-600";
+    const days = parseInt(time.split(" ")[0], 10);
+    if (isNaN(days)) return "text-gray-500";
     if (days >= 8) return "text-green-600";
     if (days >= 6) return "text-yellow-600";
     return "text-red-600";
   };
 
   useEffect(() => {
-    if (isOpen && initialRowData) {
-      console.log("Initial Row Data on Modal Open:", initialRowData);
-      setLocalRowData(initialRowData);
-      // Show button if forwarded date is set (regardless of received)
-      setShowVmReceivedButton(!!initialRowData.vmForwarded);
-      setShowCmReceivedButton(!!initialRowData.cmForwarded);
-      setVmDaysRemaining(calculateDaysRemaining(initialRowData.vmForwarded, initialRowData.vmReceived));
-      setCmDaysRemaining(calculateDaysRemaining(initialRowData.cmForwarded, initialRowData.cmReceived));
+    if (isOpen) {
+      setVmTimeRemaining(calculateTimeRemaining(localRowData.vmForwarded, localRowData.vmReceived));
+      setCmTimeRemaining(calculateTimeRemaining(localRowData.cmForwarded, localRowData.cmReceived));
+      setIsVmReceivedEditing(false);
+      setIsCmReceivedEditing(false);
     }
-  }, [isOpen, initialRowData]);
+  }, [isOpen, localRowData]);
+
+  useEffect(() => {
+    if (!isOpen || !localRowData) return;
+    const updateTimer = () => {
+      setVmTimeRemaining(calculateTimeRemaining(localRowData.vmForwarded, localRowData.vmReceived));
+      setCmTimeRemaining(calculateTimeRemaining(localRowData.cmForwarded, localRowData.cmReceived));
+    };
+    updateTimer();
+    const intervalId = setInterval(updateTimer, 1000);
+    return () => clearInterval(intervalId);
+  }, [isOpen, localRowData]);
 
   useEffect(() => {
     const fetchCommitteesAndTerms = async () => {
@@ -62,55 +89,30 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
           axios.get("http://localhost:8000/api/committees"),
           axios.get("http://localhost:8000/api/terms"),
         ]);
-
         const committees = committeesResponse.data;
         const terms = termsResponse.data;
-
         const enrichedCommittees = committees.map((committee) => ({
           name: committee.committee_name,
           id: committee.id,
           terms: terms.map((term) => term.term),
         }));
-
         setCommitteesWithTerms(enrichedCommittees);
       } catch (error) {
         console.error("Error fetching committees and terms:", error);
       }
     };
-
     fetchCommitteesAndTerms();
   }, []);
 
-  if (!isOpen || !localRowData) return null;
-
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setLocalRowData((prev) => ({ ...prev, [name]: value || "" }));
-    setRowData((prev) => ({ ...prev, [name]: value || "" }));
-
-    if (name === "vmForwarded") {
-      setShowVmReceivedButton(!!value); // Show button if forwarded date is set
-      setVmDaysRemaining(calculateDaysRemaining(value, localRowData.vmReceived));
-    }
-    if (name === "vmReceived") {
-      setShowVmReceivedButton(true); // Keep button visible even after received is set
-      setVmDaysRemaining(calculateDaysRemaining(localRowData.vmForwarded, value));
-    }
-    if (name === "cmForwarded") {
-      setShowCmReceivedButton(!!value); // Show button if forwarded date is set
-      setCmDaysRemaining(calculateDaysRemaining(value, localRowData.cmReceived));
-    }
-    if (name === "cmReceived") {
-      setShowCmReceivedButton(true); // Keep button visible even after received is set
-      setCmDaysRemaining(calculateDaysRemaining(localRowData.cmForwarded, value));
-    }
+    const newValue = name === "completed" ? value : value;
+    setLocalRowData((prev) => ({ ...prev, [name]: newValue || "" }));
+    setRowData((prev) => ({ ...prev, [name]: newValue || "" }));
   };
 
   const handleVmSetReceivedClick = () => {
-    setShowVmReceivedButton(true); // Keep button visible
-    if (!localRowData.vmReceived) {
-      setLocalRowData((prev) => ({ ...prev, vmReceived: "" }));
-    }
+    setIsVmReceivedEditing(true);
     setTimeout(() => {
       if (vmReceivedInputRef.current) {
         vmReceivedInputRef.current.focus();
@@ -120,10 +122,7 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
   };
 
   const handleCmSetReceivedClick = () => {
-    setShowCmReceivedButton(true); // Keep button visible
-    if (!localRowData.cmReceived) {
-      setLocalRowData((prev) => ({ ...prev, cmReceived: "" }));
-    }
+    setIsCmReceivedEditing(true);
     setTimeout(() => {
       if (cmReceivedInputRef.current) {
         cmReceivedInputRef.current.focus();
@@ -131,6 +130,22 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
       }
     }, 0);
   };
+
+  const handleClose = () => {
+    setIsVmReceivedEditing(false);
+    setIsCmReceivedEditing(false);
+    onClose();
+  };
+
+  useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === "Escape" && isOpen) {
+        handleClose();
+      }
+    };
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [isOpen]);
 
   const handlePrintReferral = () => {
     const referralData = {
@@ -141,7 +156,6 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
       cmForwarded: localRowData.cmForwarded,
       cmReceived: localRowData.cmReceived,
     };
-
     const printWindow = window.open("", "_blank");
     printWindow.document.write(`
       <html>
@@ -152,18 +166,18 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
             h1 { text-align: center; color: #333; }
             .details { margin: 20px 0; }
             .details p { margin: 5px 0; }
-            .label { font-weight: bold; }
+            .meno { font-weight: bold; }
           </style>
         </head>
         <body>
           <h1>Referral Document</h1>
           <div class="details">
-            <p><span class="label">No:</span> ${referralData.no || "N/A"}</p>
-            <p><span class="label">Document Type:</span> ${referralData.document_type || "N/A"}</p>
-            <p><span class="label">Title:</span> ${referralData.title || "N/A"}</p>
-            <p><span class="label">Committee Sponsor:</span> ${referralData.sponsor || "N/A"}</p>
-            <p><span class="label">City Mayor Forwarded:</span> ${referralData.cmForwarded || "N/A"}</p>
-            <p><span class="label">City Mayor Received:</span> ${referralData.cmReceived || "N/A"}</p>
+            <p><span class="meno">No:</span> ${referralData.no || "N/A"}</p>
+            <p><span class="meno">Document Type:</span> ${referralData.document_type || "N/A"}</p>
+            <p><span class="meno">Title:</span> ${referralData.title || "N/A"}</p>
+            <p><span class="meno">Committee Sponsor:</span> ${referralData.sponsor || "N/A"}</p>
+            <p><span class="meno">City Mayor Forwarded:</span> ${referralData.cmForwarded || "N/A"}</p>
+            <p><span class="meno">City Mayor Received:</span> ${referralData.cmReceived || "N/A"}</p>
           </div>
         </body>
       </html>
@@ -187,22 +201,26 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
     localRowData.document_type?.toLowerCase()
   );
   const showCityMayorFields = localRowData.document_type?.toLowerCase() === "ordinance";
+  const hasValidVmReceived =
+    localRowData.vmReceived && new Date(localRowData.vmReceived).toString() !== "Invalid Date";
+  const hasValidCmReceived =
+    localRowData.cmReceived && new Date(localRowData.cmReceived).toString() !== "Invalid Date";
 
   const handleSave = async () => {
     try {
       const payload = {
         committee_sponsor: localRowData.sponsor || null,
-        status: localRowData.status || null,
-        vm_forwarded: localRowData.vmForwarded || null, // Match backend response keys
+        status: localRowData.completed === "true" ? "Completed" : localRowData.status || null, // Set status to "Completed" if completed is true
+        vm_forwarded: localRowData.vmForwarded || null,
         vm_received: localRowData.vmReceived || null,
         cm_forwarded: localRowData.cmForwarded || null,
         cm_received: localRowData.cmReceived || null,
         transmitted_to: localRowData.transmittedTo || null,
         date_transmitted: localRowData.dateTransmitted || null,
         remarks: localRowData.remarks || "",
+        completed: localRowData.completed === "true",
+        completion_date: localRowData.completed === "true" ? localRowData.completion_date || null : null,
       };
-
-      console.log("Saving payload:", payload);
 
       const response = await axios.put(
         `http://localhost:8000/api/update-record/${localRowData.id}`,
@@ -214,11 +232,9 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
         }
       );
 
-      console.log("Server response:", response.data);
-      // Map response keys back to frontend format
       const updatedData = {
         ...localRowData,
-        sponsor: response.data.data.sponsor,
+        sponsor: response.data.data.committee_sponsor,
         status: response.data.data.status,
         vmForwarded: response.data.data.vm_forwarded,
         vmReceived: response.data.data.vm_received,
@@ -227,21 +243,25 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
         transmittedTo: response.data.data.transmitted_to,
         dateTransmitted: response.data.data.date_transmitted,
         remarks: response.data.data.remarks,
+        completed: response.data.data.completed ? "true" : "false",
+        completion_date: response.data.data.completion_date,
       };
       setLocalRowData(updatedData);
+      setRowData(updatedData);
       onSave(updatedData);
       onClose();
     } catch (error) {
       console.error("Error updating record:", error.response?.data || error);
-      alert("Failed to update record");
+      alert("Failed to update record: " + (error.response?.data?.error || error.message));
     }
   };
 
+  if (!isOpen) return null;
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-      <div className="bg-white p-6 rounded-lg w-[1250px] max-h-[95vh] overflow-y-auto">
+      <div className="bg-white p-6 rounded-lg w-[1300px] max-h-[96vh] overflow-y-auto">
         <h2 className="text-lg font-semibold mb-4 font-poppins">Edit Record</h2>
-
         <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
@@ -346,8 +366,8 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
                   />
                   <div className="mt-1 text-xs">
                     <span className="block text-gray-500">{formatDateForDisplay(localRowData.vmForwarded)}</span>
-                    <span className={getTimerColor(vmDaysRemaining)}>
-                      Days Remaining: {vmDaysRemaining}
+                    <span className={getTimerColor(vmTimeRemaining)}>
+                      Time Remaining: {vmTimeRemaining}
                     </span>
                   </div>
                 </div>
@@ -355,10 +375,10 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
                   <label className="block text-gray-600 text-xs font-medium mb-1">Received</label>
                   {isOrdinanceOrResolution && !localRowData.vmForwarded ? (
                     <span className="text-gray-400 text-xs">Set Forwarded Date First</span>
-                  ) : isOrdinanceOrResolution && showVmReceivedButton ? (
+                  ) : isOrdinanceOrResolution && localRowData.vmForwarded && !hasValidVmReceived && !isVmReceivedEditing ? (
                     <button
                       onClick={handleVmSetReceivedClick}
-                      className="w-full px-3 py-2 bg-[#408286] text-white rounded-lg hover:bg-[#306466] focus:outline-none focus:ring-2 focus:ring-[#408286] transition-colors duration-200"
+                      className="w-full text-sm font-poppins px-3 py-2 bg-[#408286] text-white rounded-lg hover:bg-[#306466] focus:outline-none focus:ring-2 focus:ring-[#408286] transition-colors duration-200"
                     >
                       Set Received Date
                     </button>
@@ -375,7 +395,6 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
                       />
                       <div className="mt-1 text-xs">
                         <span className="block text-gray-500">{formatDateForDisplay(localRowData.vmReceived)}</span>
-                        <span className="text-gray-500">Days Remaining: N/A</span>
                       </div>
                     </div>
                   )}
@@ -395,12 +414,17 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
                       value={formatDateForInput(localRowData.cmForwarded)}
                       onChange={handleChange}
                       onFocus={(e) => e.target.showPicker()}
-                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#408286] focus:border-[#408286] cursor-pointer"
+                      disabled={showCityMayorFields && !hasValidVmReceived}
+                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#408286] focus:border-[#408286] ${
+                        showCityMayorFields && !hasValidVmReceived
+                          ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                          : "cursor-pointer"
+                      }`}
                     />
                     <div className="mt-1 text-xs">
                       <span className="block text-gray-500">{formatDateForDisplay(localRowData.cmForwarded)}</span>
-                      <span className={getTimerColor(cmDaysRemaining)}>
-                        Days Remaining: {cmDaysRemaining}
+                      <span className={getTimerColor(cmTimeRemaining)}>
+                        Time Remaining: {cmTimeRemaining}
                       </span>
                     </div>
                   </div>
@@ -408,15 +432,25 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
                     <label className="block text-gray-600 text-xs font-medium mb-1">Received</label>
                     {!localRowData.cmForwarded ? (
                       <span className="text-gray-400 text-xs">Set Forwarded Date First</span>
-                    ) : showCmReceivedButton ? (
-                      <button
-                        onClick={handleCmSetReceivedClick}
-                        className="w-full px-3 py-2 bg-[#408286] text-white rounded-lg hover:bg-[#306466] focus:outline-none focus:ring-2 focus:ring-[#408286] transition-colors duration-200"
-                      >
-                        Set Received Date
-                      </button>
+                    ) : !hasValidCmReceived && !isCmReceivedEditing ? (
+                      <div className="space-y-2">
+                        <button
+                          onClick={handleCmSetReceivedClick}
+                          className="w-full text-sm font-poppins  px-3 py-2 bg-[#408286] text-white rounded-lg hover:bg-[#306466] focus:outline-none focus:ring-2 focus:ring-[#408286] transition-colors duration-200"
+                        >
+                          Set Received Date
+                        </button>
+                        {localRowData.cmForwarded && (
+                          <button
+                            onClick={handlePrintReferral}
+                            className="w-full text-sm font-poppins px-3 py-2 bg-[#408286] text-white rounded-lg hover:bg-[#306466] focus:outline-none focus:ring-2 focus:ring-[#408286] transition-colors duration-200"
+                          >
+                            Print Referral
+                          </button>
+                        )}
+                      </div>
                     ) : (
-                      <div>
+                      <div className="space-y-2">
                         <input
                           ref={cmReceivedInputRef}
                           type="date"
@@ -428,22 +462,19 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
                         />
                         <div className="mt-1 text-xs">
                           <span className="block text-gray-500">{formatDateForDisplay(localRowData.cmReceived)}</span>
-                          <span className="text-gray-500">Days Remaining: N/A</span>
                         </div>
+                        {localRowData.cmForwarded && (
+                          <button
+                            onClick={handlePrintReferral}
+                            className="w-full px-3 py-2 bg-[#408286] text-white rounded-lg hover:bg-[#306466] focus:outline-none focus:ring-2 focus:ring-[#408286] transition-colors duration-200"
+                          >
+                            Print Referral
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>
                 </div>
-                {localRowData.cmForwarded && (
-                  <div className="mt-4">
-                    <button
-                      onClick={handlePrintReferral}
-                      className="w-full px-3 py-2 bg-[#408286] text-white rounded-lg hover:bg-[#306466] focus:outline-none focus:ring-2 focus:ring-[#408286] transition-colors duration-200"
-                    >
-                      Print Referral
-                    </button>
-                  </div>
-                )}
               </div>
             )}
           </div>
@@ -476,26 +507,60 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
               />
               <div className="mt-1 text-xs">
                 <span className="block text-gray-500">{formatDateForDisplay(localRowData.dateTransmitted)}</span>
-                <span className="text-gray-500">Days Remaining: N/A</span>
               </div>
             </div>
           </div>
+          
+          <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="">
+              <div>
+                <label className="block text-gray-700 text-sm font-medium mb-1">Completed</label>
+                <select
+                  name="completed"
+                  value={localRowData.completed}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#408286] focus:border-[#408286] cursor-pointer"
+                >
+                  <option value="false">False</option>
+                  <option value="true">True</option>
+                </select>
+              </div>
 
-          <div>
-            <label className="block text-gray-700 text-sm font-medium mb-1">Remarks</label>
-            <textarea
-              name="remarks"
-              value={localRowData.remarks || ""}
-              onChange={handleChange}
-              className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#408286] focus:border-[#408286] resize-y"
-              rows="4"
-            />
+              <div>
+                <label className="block text-gray-700 text-sm font-medium mb-1">Completion Date</label>
+                <input
+                  type="date"
+                  name="completion_date"
+                  value={formatDateForInput(localRowData.completion_date)}
+                  onChange={handleChange}
+                  onFocus={(e) => e.target.showPicker()}
+                  disabled={localRowData.completed !== "true"}
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#408286] focus:border-[#408286] ${
+                    localRowData.completed !== "true" ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "cursor-pointer"
+                  }`}
+                />
+                <div className="mt-1 text-xs">
+                  <span className="block text-gray-500">{formatDateForDisplay(localRowData.completion_date)}</span>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-gray-700 text-sm font-medium mb-1">Remarks</label>
+              <textarea
+                name="remarks"
+                value={localRowData.remarks || ""}
+                onChange={handleChange}
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#408286] focus:border-[#408286] resize-y"
+                rows="4"
+              />
+            </div>
           </div>
         </div>
 
         <div className="flex justify-end space-x-3 mt-6">
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="inline-flex justify-center py-2 px-6 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-gray-600 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors duration-200"
           >
             Cancel

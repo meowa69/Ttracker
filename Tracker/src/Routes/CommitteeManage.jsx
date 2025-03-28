@@ -298,7 +298,7 @@ function CommitteeManage() {
           {alert.show && (
             <div className="absolute top-4 right-4 bg-[#408286] text-white px-4 py-3 rounded shadow-lg flex items-center w-80">
               <span className="mr-2">✔</span>
-              <span className="flex-grow">{alert.message}</span>
+              <span className="flex-grow font-poppins">{alert.message}</span>
               <button onClick={closeAlert} className="ml-4 text-white text-xl">
                 ×
               </button>

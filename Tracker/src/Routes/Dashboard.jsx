@@ -2,16 +2,14 @@ import Sidebar from "../Components/Sidebar";
 import { useState, useEffect, useRef } from "react";
 import EditModal from "../Modal/EditModal";
 import ViewModal from "../Modal/ViewModal";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, transform } from "framer-motion";
 import Swal from "sweetalert2";
 import axios from "axios";
 
 function Dashboard() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
-
-  const committees = ["Agriculture", "Arbitration", "Barangay Affairs"];
-
+  const committees = [""];
   const [selectedType, setSelectedType] = useState("Document");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
@@ -22,26 +20,38 @@ function Dashboard() {
   const [selectedRow, setSelectedRow] = useState(null);
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-
   const filteredCommittees = committees.filter((committee) =>
     committee.toLowerCase().startsWith(searchTerm.toLowerCase())
   );
-
-  // Filter states
   const [yearRange, setYearRange] = useState("");
   const [committeeType, setCommitteeType] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [completedStatus, setCompletedStatus] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const recordsPerPage = 10;
+  const maxVisiblePages = 5;
+  const [alert, setAlert] = useState({ show: false, message: "", progress: 100 });
 
   const fetchRecords = async () => {
     setLoading(true);
     try {
-      const response = await axios.get("http://127.0.0.1:8000/api/get-record", {
+      const response = await axios.get("http://localhost:8000/api/get-record", {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
       });
-      setRows(response.data);
+      const formattedRows = response.data.map((row) => ({
+        ...row,
+        vmForwarded: row.vm_forwarded || row.vice_mayor_forwarded,
+        vmReceived: row.vm_received || row.vice_mayor_received,
+        cmForwarded: row.cm_forwarded || row.city_mayor_forwarded,
+        cmReceived: row.cm_received || row.city_mayor_received,
+        transmittedTo: row.transmitted_to,
+        dateTransmitted: row.date_transmitted,
+        // Ensure status reflects the completed field if necessary
+        status: row.completed ? "Completed" : row.status,
+      }));
+      setRows(formattedRows);
     } catch (error) {
       console.error("Error fetching records:", error.response?.data || error);
     } finally {
@@ -53,28 +63,41 @@ function Dashboard() {
     fetchRecords();
   }, []);
 
-  // Modal handlers
   const handleEditClick = (index) => {
-    const row = rows[index];
+    const row = paginatedRows[index];
     setSelectedRow(row);
-    setIsEditModalOpen(true);
+    setTimeout(() => {
+      setIsEditModalOpen(true);
+    }, 0);
   };
 
   const handleViewClick = (index) => {
-    setSelectedRow({ ...rows[index], index });
+    const row = paginatedRows[index];
+    setSelectedRow(row);
     setIsViewModalOpen(true);
   };
 
-  const handleSave = (updatedRow) => {
+  const handleSave = async (updatedRow) => {
     setRows((prevRows) =>
       prevRows.map((row) => (row.id === updatedRow.id ? updatedRow : row))
     );
-    setSelectedRow(updatedRow); // Update selectedRow to reflect changes
+    setSelectedRow(updatedRow);
     setIsEditModalOpen(false);
-    fetchRecords(); // Refresh from server to ensure sync
+    await fetchRecords();
+
+    // Show alert only for Ordinance, Resolution, or Motion
+    const documentType = updatedRow.document_type?.toLowerCase();
+    if (["ordinance", "resolution", "motion"].includes(documentType)) {
+      const formattedType = documentType.charAt(0).toUpperCase() + documentType.slice(1);
+      showAlert(`${formattedType} No. ${updatedRow.no} has been updated`);
+    }
   };
 
-  // Close dropdown when clicked outside
+  const handleCloseEditModal = () => {
+    setIsEditModalOpen(false);
+    setSelectedRow(null);
+  };
+
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -88,7 +111,6 @@ function Dashboard() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Handle deletion
   const deleteRow = async (index, id) => {
     Swal.fire({
       title: "Are you sure?",
@@ -101,31 +123,31 @@ function Dashboard() {
     }).then(async (result) => {
       if (result.isConfirmed) {
         try {
-          const response = await axios.delete(`http://127.0.0.1:8000/api/add-record/${id}`, {
+          const response = await axios.delete(`http://localhost:8000/api/delete-record/${id}`, {
             headers: {
               Authorization: `Bearer ${localStorage.getItem("token")}`,
             },
           });
           if (response.status === 200) {
-            setRows((prevRows) => prevRows.filter((_, i) => i !== index));
+            setRows((prevRows) => prevRows.filter((row) => row.id !== id));
             Swal.fire("Deleted!", "The document has been deleted.", "success");
           }
         } catch (error) {
-          console.error("Error deleting record:", error);
-          Swal.fire("Error", "Failed to delete record.", "error");
+          console.error("Error deleting record:", error.response?.data || error);
+          Swal.fire("Error", "Failed to delete record: " + (error.response?.data?.error || error.message), "error");
         }
       }
     });
   };
 
-  // Filter rows based on selected filters
   const filteredRows = rows.filter((row) => {
-    const matchesYearRange = !yearRange || row.date_approved.includes(yearRange);
+    const matchesYearRange = !yearRange || row.date_approved?.includes(yearRange);
     const matchesCommitteeType = !committeeType || row.sponsor === committeeType;
     const matchesStatus = !statusFilter || row.status === statusFilter;
-    const matchesCompletedStatus = completedStatus === "" || (completedStatus === "True" ? row.status === "Completed" : row.status !== "Completed");
+    const matchesCompletedStatus =
+      completedStatus === "" ||
+      (completedStatus === "True" ? row.status === "Completed" : row.status !== "Completed");
     const matchesDocumentType = selectedType === "Document" || row.document_type === selectedType;
-
     return (
       matchesYearRange &&
       matchesCommitteeType &&
@@ -135,15 +157,151 @@ function Dashboard() {
     );
   });
 
+  const indexOfLastRecord = currentPage * recordsPerPage;
+  const indexOfFirstRecord = indexOfLastRecord - recordsPerPage;
+  const paginatedRows = filteredRows.slice(indexOfFirstRecord, indexOfLastRecord);
+  const totalPages = Math.ceil(filteredRows.length / recordsPerPage);
+
+  const handlePageChange = (pageNumber) => {
+    setCurrentPage(pageNumber);
+  };
+
+  const getVisiblePages = () => {
+    const halfRange = Math.floor(maxVisiblePages / 2);
+    let startPage = Math.max(1, currentPage - halfRange);
+    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+    if (endPage - startPage + 1 < maxVisiblePages) {
+      startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
+    const pages = [];
+    for (let i = startPage; i <= endPage; i++) {
+      pages.push(i);
+    }
+    return pages;
+  };
+
+  const visiblePages = getVisiblePages();
+  const showPrevEllipsis = visiblePages[0] > 1;
+  const showNextEllipsis = visiblePages[visiblePages.length - 1] < totalPages;
+
   const handleZoomIn = () => setZoomLevel((prev) => Math.min(prev + 0.1, 1.5));
   const handleZoomOut = () => setZoomLevel((prev) => Math.max(prev - 0.1, 0.5));
+
+  const calculateTimeRemaining = (forwardedDate, receivedDate) => {
+    if (!forwardedDate) return "Not Started";
+    if (receivedDate && new Date(receivedDate).toString() !== "Invalid Date") return "Completed";
+    const forwarded = new Date(forwardedDate);
+    const now = new Date();
+    const deadline = new Date(forwarded);
+    deadline.setDate(forwarded.getDate() + 10);
+    const diffMs = deadline - now;
+    if (diffMs <= 0) return "Overdue";
+    const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    return `${days} DAYS PASSED`;
+  };
+
+  const getBookmarkColor = (time) => {
+    if (time === "Completed") return "fill-blue-600"; // Blue for completed
+    if (time === "Overdue") return "fill-red-600";
+    const days = parseInt(time.split(" ")[0], 10);
+    if (isNaN(days)) return "fill-red-600"; // Default to red if time is invalid
+    if (days >= 8) return "fill-green-600";
+    if (days >= 6) return "fill-yellow-300";
+    return "fill-red-600";
+  };
+
+  const shouldShowBookmark = (row) => {
+    const vmTime = calculateTimeRemaining(row.vmForwarded, row.vmReceived);
+    const cmTime =
+      row.document_type?.toLowerCase() === "ordinance"
+        ? calculateTimeRemaining(row.cmForwarded, row.cmReceived)
+        : "Not Started";
+
+    const vmPending = row.vmForwarded && !row.vmReceived;
+    const cmPending = row.document_type?.toLowerCase() === "ordinance" && row.cmForwarded && !row.cmReceived;
+
+    // A document is considered completed if:
+    // - For non-ordinances: vmTime is "Completed"
+    // - For ordinances: both vmTime and cmTime are "Completed"
+    const isCompleted =
+      row.document_type?.toLowerCase() === "ordinance"
+        ? vmTime === "Completed" && cmTime === "Completed"
+        : vmTime === "Completed";
+
+    // Only show the bookmark if the document is pending or completed, and not "Not Started"
+    const isNotStarted =
+      row.document_type?.toLowerCase() === "ordinance"
+        ? vmTime === "Not Started" && cmTime === "Not Started"
+        : vmTime === "Not Started";
+
+    return (vmPending || cmPending || isCompleted) && !isNotStarted;
+  };
+
+  const showAlert = (message) => {
+    setAlert({ show: true, message, progress: 100 });
+  };
+
+  const closeAlert = () => {
+    setAlert({ show: false, message: "", progress: 0 });
+  };
+
+  useEffect(() => {
+    if (alert.show) {
+      const totalDuration = 3000;
+      const intervalTime = 30;
+      const step = (intervalTime / totalDuration) * 100;
+
+      const progressInterval = setInterval(() => {
+        setAlert((prev) => {
+          if (prev.progress <= 0) {
+            clearInterval(progressInterval);
+            return { ...prev, show: false, message: "", progress: 0 };
+          }
+          return { ...prev, progress: prev.progress - step };
+        });
+      }, intervalTime);
+
+      return () => clearInterval(progressInterval);
+    }
+  }, [alert.show]);
 
   return (
     <div className="flex">
       <Sidebar />
       <div className="flex flex-col w-full h-screen overflow-y-auto p-4">
+        {alert.show && (
+          <div className="absolute top-4 right-4 bg-[#408286] text-white px-4 py-3 rounded shadow-lg flex items-center w-80 z-50">
+            <svg
+              className="mr-2 w-8 h-8 text-white"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M5 13l4 4L19 7"
+              />
+            </svg>
+            <span className="flex-grow font-poppins">{alert.message}</span>
+            <button onClick={closeAlert} className="ml-4 text-white text-xl">
+              ×
+            </button>
+            <div
+              className="absolute bottom-0 left-0 h-1 bg-white transition-all"
+              style={{ width: `${alert.progress}%` }}
+            ></div>
+          </div>
+        )}
+
         <div className="font-poppins font-bold uppercase px-4 mb-8 text-[#494444] text-[35px] flex justify-between">
-          <h1>Dashboard</h1>
+          <div className="flex justify-between items-center w-full">
+            <h1 className="font-bold uppercase text-[#494444] text-[35px]">
+              Dashboard
+            </h1>
+          </div>
           <motion.div
             ref={notificationRef}
             className="bg-[#408286] text-white px-4 py-2 rounded-[100%] flex shadow-md cursor-pointer"
@@ -172,7 +330,6 @@ function Dashboard() {
           </AnimatePresence>
         </div>
 
-        {/* Filters and Search Bar */}
         <div className="px-4 flex justify-between items-center">
           <div className="flex gap-2">
             <div className="relative">
@@ -303,7 +460,7 @@ function Dashboard() {
         </div>
 
         <div className="flex-grow px-4 py-2">
-          <div className="bg-white w-full border rounded-md shadow-lg p-8 min-h-[200px]">
+          <div className="bg-white w-full border rounded-md shadow-lg p-8 min-h-[200px] flex flex-col">
             <div className="flex justify-end mb-2">
               <button
                 onClick={handleZoomIn}
@@ -319,131 +476,227 @@ function Dashboard() {
               </button>
             </div>
 
-            <div className="relative w-full border rounded-lg shadow-lg overflow-hidden">
-              <div
-                className="overflow-auto"
-                style={{
-                  transform: `scale(${zoomLevel})`,
-                  transformOrigin: "top left",
-                  minHeight: filteredRows.length > 0 ? "300px" : "auto",
-                  maxHeight: "690px",
-                  position: "relative",
-                }}
-              >
-                <table className="w-full border-collapse">
-                  <thead className="bg-[#408286] text-white sticky top-0 z-10">
-                    <tr className="text-left text-[14px]">
-                      {selectedType === "Document" && (
-                        <th className="border border-gray-300 px-4 py-4">Document</th>
-                      )}
-                      <th className="border border-gray-300 px-4 py-4">
-                        {selectedType === "Document"
-                          ? "No."
-                          : selectedType === "Ordinance"
-                          ? "Ordinance No."
-                          : selectedType === "Motion"
-                          ? "Motion No."
-                          : "Resolution No."}
-                      </th>
-                      <th className="border border-gray-300 px-4 py-4 text-center">Title</th>
-                      <th className="border border-gray-300 px-4 py-4">Status</th>
-                      <th className="border border-gray-300 px-4 py-4">Remarks</th>
-                      <th className="border border-gray-300 px-4 py-4 text-center">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {loading && (
-                      <tr>
-                        <td colSpan="6" className="text-center py-6">
-                          <div className="flex justify-center items-center">
-                            <div className="w-7 h-7 border-4 border-[#408286] border-t-transparent rounded-full animate-spin"></div>
-                          </div>
-                        </td>
+            <div className="flex flex-col flex-grow">
+              <div className="relative w-full border rounded-lg shadow-lg overflow-hidden flex-grow">
+                <div
+                  className="overflow-auto"
+                  style={{
+                    transform: `scale(${zoomLevel})`,
+                    transformOrigin: "top left",
+                    minHeight: paginatedRows.length > 0 ? "300px" : "auto",
+                    maxHeight: "650px",
+                    position: "relative",
+                  }}
+                >
+                  <table className="w-full border-collapse">
+                    <thead className="bg-[#408286] text-white sticky top-0 z-10">
+                      <tr className="text-left text-[14px]">
+                        {selectedType === "Document" && (
+                          <th className="border border-gray-300 px-4 py-4">Document</th>
+                        )}
+                        <th className="border border-gray-300 px-4 py-4">
+                          {selectedType === "Document"
+                            ? "No."
+                            : selectedType === "Ordinance"
+                            ? "Ordinance No."
+                            : selectedType === "Motion"
+                            ? "Motion No."
+                            : "Resolution No."}
+                        </th>
+                        <th className="border border-gray-300 px-4 py-4 text-center">Title</th>
+                        <th className="border border-gray-300 px-4 py-4">Status</th>
+                        <th className="border border-gray-300 px-4 py-4">Remarks</th>
+                        <th className="border border-gray-300 px-4 py-4 text-center">Actions</th>
                       </tr>
-                    )}
-                    {!loading && filteredRows.length > 0 ? (
-                      filteredRows.map((row, index) => (
-                        <tr
-                          key={row.id}
-                          className="border border-gray-300 hover:bg-gray-100 text-[14px]"
-                        >
-                          {selectedType === "Document" && (
-                            <td className="border border-gray-300 px-4 py-2 font-poppins text-sm text-gray-700">
-                              {row.document_type}
-                            </td>
-                          )}
-                          <td className="border border-gray-300 px-4 py-2 font-poppins text-sm text-gray-700">
-                            {row.no}
-                          </td>
-                          <td className="border border-gray-300 px-4 py-2 w-[41%] text-justify font-poppins text-sm text-gray-700">
-                            {row.title}
-                          </td>
-                          <td className="border border-gray-300 px-4 py-2 font-poppins text-sm text-gray-700">
-                            {row.status || "None"}
-                          </td>
-                          <td className="border border-gray-300 px-4 py-2 font-poppins text-sm text-gray-700">
-                            {row.remarks || "None"}
-                          </td>
-                          <td className="px-2 py-2 w-[27%] border font-poppins text-sm text-gray-700">
-                            <div className="grid grid-cols-2 gap-1 md:flex md:flex-wrap md:justify-start">
-                              <button
-                                onClick={() => handleViewClick(index)}
-                                className="bg-[#37ad6c] hover:bg-[#2d8f59] px-4 py-2 rounded-md text-white font-medium flex items-center gap-1 font-poppins text-sm"
-                              >
-                                <img
-                                  src="src/assets/Images/view.png"
-                                  alt="View"
-                                  className="w-5 h-5 invert self-center"
-                                />
-                                View
-                              </button>
-                              <button
-                                onClick={() => handleEditClick(index)}
-                                className="bg-[#f5bd64] hover:bg-[#e9b158] px-4 py-2 rounded-md text-white font-medium flex items-center gap-1 font-poppins text-sm"
-                              >
-                                <img
-                                  src="src/assets/Images/edit.png"
-                                  alt="Edit"
-                                  className="w-5 h-5 invert self-center"
-                                />
-                                Edit
-                              </button>
-                              <button
-                                className="bg-[#3b7bcf] hover:bg-[#3166ac] px-4 py-2 rounded-md text-white font-medium flex items-center gap-1 font-poppins text-sm"
-                              >
-                                <img
-                                  src="src/assets/Images/print.png"
-                                  alt="Print"
-                                  className="w-5 h-5 invert self-center"
-                                />
-                                Print
-                              </button>
-                              <button
-                                onClick={() => deleteRow(index, row.id)}
-                                className="bg-[#FF6767] hover:bg-[#f35656] px-4 py-2 rounded-md text-white font-medium flex items-center gap-1 font-poppins text-sm"
-                              >
-                                <img
-                                  src="src/assets/Images/delete.png"
-                                  alt="Delete"
-                                  className="w-5 h-5 invert self-center"
-                                />
-                                Delete
-                              </button>
+                    </thead>
+                    <tbody>
+                      {loading && (
+                        <tr>
+                          <td colSpan={selectedType === "Document" ? 6 : 5} className="text-center py-6">
+                            <div className="flex justify-center items-center">
+                              <div className="w-7 h-7 border-4 border-[#408286] border-t-transparent rounded-full animate-spin"></div>
                             </div>
                           </td>
                         </tr>
-                      ))
-                    ) : (
-                      !loading && (
-                        <tr>
-                          <td colSpan="6" className="text-center text-gray-500 py-6 text-md font-poppins">
-                            No data yet
-                          </td>
-                        </tr>
-                      )
-                    )}
-                  </tbody>
-                </table>
+                      )}
+                      {!loading && paginatedRows.length > 0 ? (
+                        paginatedRows.map((row, index) => {
+                          const vmTime = calculateTimeRemaining(row.vmForwarded, row.vmReceived);
+                          const cmTime =
+                            row.document_type?.toLowerCase() === "ordinance"
+                              ? calculateTimeRemaining(row.cmForwarded, row.cmReceived)
+                              : "Not Started";
+                          const relevantTime =
+                            vmTime !== "Not Started" && vmTime !== "Completed"
+                              ? vmTime
+                              : cmTime !== "Not Started" && cmTime !== "Completed"
+                              ? cmTime
+                              : vmTime === "Completed" || cmTime === "Completed"
+                              ? "Completed"
+                              : "Not Started";
+                          const bookmarkColor = getBookmarkColor(relevantTime);
+                          const showBookmark = shouldShowBookmark(row);
+                        
+                          return (
+                            <tr
+                              key={row.id}
+                              className="border border-gray-300 hover:bg-gray-100 text-[14px]"
+                            >
+                              {selectedType === "Document" && (
+                                <td className="border border-gray-300 px-4 py-2 font-poppins text-sm text-gray-700 relative">
+                                  {showBookmark && (
+                                    <motion.div
+                                      className="absolute left-0 top-0 flex items-center w-[180px]"
+                                      initial={{ x: -100 }} // Start slightly off-screen to the left
+                                      whileHover={{ x: 0 }} // Slide to the right on hover
+                                      transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                                    >
+                                      <div className="bg-white border border-gray-400 rounded-lg p-2 text-sm font-poppins text-gray-700">
+                                        {relevantTime.toUpperCase()}
+                                      </div>
+                                      <svg
+                                        className={`w-6 h-12 ${bookmarkColor} transform translate-x-1/4 translate-y-[1px] rotate-[-90deg]`}
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        viewBox="0 0 24 48"
+                                        fill="currentColor"
+                                      >
+                                        <path d="M2 2H22V42L17 36L12 30L2 42V2Z" />
+                                      </svg>
+                                    </motion.div>
+                                  )}
+                                  {row.document_type}
+                                </td>
+                              )}
+                              <td className="border border-gray-300 px-4 py-2 font-poppins text-sm text-gray-700 relative">
+                                {selectedType !== "Document" && showBookmark && (
+                                  <motion.div
+                                    className="absolute left-0 top-0 flex items-center"
+                                    initial={{ x: -100 }} // Start slightly off-screen to the left
+                                    whileHover={{ x: 0 }} // Slide to the right on hover
+                                    transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                                  >
+                                    <div className="bg-white border border-gray-300 px-2 py-1 text-sm font-poppins text-gray-700">
+                                      {relevantTime.toUpperCase()}
+                                    </div>
+                                    <svg
+                                      className={`w-6 h-12 ${bookmarkColor} transform translate-x-1/4 translate-y-[-1px] rotate-[-90deg]`}
+                                      xmlns="http://www.w3.org/2000/svg"
+                                      viewBox="0 0 24 48"
+                                      fill="currentColor"
+                                    >
+                                      <path d="M2 2H22V42L17 36L12 30L2 42V2Z" />
+                                    </svg>
+                                  </motion.div>
+                                )}
+                                {row.no}
+                              </td>
+                              <td className="border border-gray-300 px-4 py-2 w-[40%] text-justify font-poppins text-sm text-gray-700">
+                                {row.title}
+                              </td>
+                              <td className="border border-gray-300 px-4 py-2 w-[10%] text-justify font-poppins text-sm text-gray-700">
+                                {row.status || "None"}
+                              </td>
+                              <td className="border border-gray-300 px-4 py-2 text-justify font-poppins text-sm text-gray-700">
+                                {row.remarks || "None"}
+                              </td>
+                              <td className="px-2 py-2 w-[27%] border font-poppins text-sm text-gray-700">
+                                <div className="grid grid-cols-2 gap-1 md:flex md:flex-wrap md:justify-start">
+                                  <button
+                                    onClick={() => handleViewClick(index)}
+                                    className="bg-[#37ad6c] hover:bg-[#2d8f59] px-4 py-2 rounded-md text-white font-medium flex items-center gap-1 font-poppins text-sm"
+                                  >
+                                    <img
+                                      src="src/assets/Images/view.png"
+                                      alt="View"
+                                      className="w-5 h-5 invert self-center"
+                                    />
+                                    View
+                                  </button>
+                                  <button
+                                    onClick={() => handleEditClick(index)}
+                                    className="bg-[#f5bd64] hover:bg-[#e9b158] px-4 py-2 rounded-md text-white font-medium flex items-center gap-1 font-poppins text-sm"
+                                  >
+                                    <img
+                                      src="src/assets/Images/edit.png"
+                                      alt="Edit"
+                                      className="w-5 h-5 invert self-center"
+                                    />
+                                    Edit
+                                  </button>
+                                  <button
+                                    className="bg-[#3b7bcf] hover:bg-[#3166ac] px-4 py-2 rounded-md text-white font-medium flex items-center gap-1 font-poppins text-sm"
+                                  >
+                                    <img
+                                      src="src/assets/Images/print.png"
+                                      alt="Print"
+                                      className="w-5 h-5 invert self-center"
+                                    />
+                                    Print
+                                  </button>
+                                  <button
+                                    onClick={() => deleteRow(index, row.id)}
+                                    className="bg-[#FF6767] hover:bg-[#f35656] px-4 py-2 rounded-md text-white font-medium flex items-center gap-1 font-poppins text-sm"
+                                  >
+                                    <img
+                                      src="src/assets/Images/delete.png"
+                                      alt="Delete"
+                                      className="w-5 h-5 invert self-center"
+                                    />
+                                    Delete
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      ) : (
+                        !loading && (
+                          <tr>
+                            <td colSpan={selectedType === "Document" ? 6 : 5} className="text-center text-gray-500 py-6 text-md font-poppins">
+                              No data yet
+                            </td>
+                          </tr>
+                        )
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div className="flex justify-center mt-4 items-center">
+                <button
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className="bg-[#408286] hover:bg-[#5FA8AD] text-white font-bold py-2 px-4 rounded-l-md disabled:bg-gray-300"
+                >
+                  Previous
+                </button>
+                {showPrevEllipsis && (
+                  <span className="mx-1 py-2 px-4 text-gray-700">...</span>
+                )}
+                {visiblePages.map((page) => (
+                  <button
+                    key={page}
+                    onClick={() => handlePageChange(page)}
+                    className={`mx-[2px] py-2 px-4 rounded-md ${
+                      currentPage === page
+                        ? "bg-[#5FA8AD] text-white"
+                        : "bg-[#408286] text-white hover:bg-[#5FA8AD]"
+                    }`}
+                  >
+                    {page}
+                  </button>
+                ))}
+                {showNextEllipsis && (
+                  <span className="mx-1 py-2 px-4 text-gray-700">...</span>
+                )}
+                <button
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className="bg-[#408286] hover:bg-[#5FA8AD] text-white font-bold py-2 px-4 rounded-r-md disabled:bg-gray-300"
+                >
+                  Next
+                </button>
               </div>
             </div>
           </div>
@@ -452,7 +705,7 @@ function Dashboard() {
 
       <EditModal
         isOpen={isEditModalOpen}
-        onClose={() => setIsEditModalOpen(false)}
+        onClose={handleCloseEditModal}
         rowData={selectedRow}
         setRowData={setSelectedRow}
         onSave={handleSave}

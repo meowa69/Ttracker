@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::create('edit_record', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('record_id'); // Explicitly match add_records.id
+            $table->unsignedBigInteger('record_id');
             $table->string('committee_sponsor')->nullable();
             $table->string('status')->nullable();
             $table->date('vice_mayor_forwarded')->nullable();
@@ -20,9 +20,10 @@ return new class extends Migration
             $table->string('transmitted_to')->nullable();
             $table->date('date_transmitted')->nullable();
             $table->text('remarks')->nullable();
+            $table->boolean('completed')->default(false);
+            $table->date('completion_date')->nullable();
             $table->timestamps();
 
-            // Add foreign key separately
             $table->foreign('record_id')->references('id')->on('add_record')->onDelete('cascade');
         });
     }

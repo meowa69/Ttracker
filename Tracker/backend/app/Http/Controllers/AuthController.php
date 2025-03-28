@@ -221,7 +221,9 @@ class AuthController extends Controller
                     'edit_record.city_mayor_received as cm_received',
                     'edit_record.transmitted_to',
                     'edit_record.date_transmitted',
-                    'edit_record.remarks'
+                    'edit_record.remarks',
+                    'edit_record.completed',           // Add this
+                    'edit_record.completion_date'      // Add this
                 )
                 ->get();
 
@@ -239,13 +241,15 @@ class AuthController extends Controller
             $validated = $request->validate([
                 'committee_sponsor' => 'nullable|string',
                 'status' => 'nullable|string',
-                'vm_forwarded' => 'nullable|date', // Match frontend payload
+                'vm_forwarded' => 'nullable|date',
                 'vm_received' => 'nullable|date',
                 'cm_forwarded' => 'nullable|date',
                 'cm_received' => 'nullable|date',
                 'transmitted_to' => 'nullable|string',
                 'date_transmitted' => 'nullable|date',
                 'remarks' => 'nullable|string',
+                'completed' => 'nullable|boolean',
+                'completion_date' => 'nullable|date',
             ]);
 
             $editRecord = EditRecord::firstOrNew(['record_id' => $id]);
@@ -259,6 +263,8 @@ class AuthController extends Controller
             $editRecord->transmitted_to = $validated['transmitted_to'] ?? $editRecord->transmitted_to;
             $editRecord->date_transmitted = $validated['date_transmitted'] ?? $editRecord->date_transmitted;
             $editRecord->remarks = array_key_exists('remarks', $validated) ? $validated['remarks'] : $editRecord->remarks;
+            $editRecord->completed = $validated['completed'] ?? $editRecord->completed ?? false; // Add this
+            $editRecord->completion_date = $validated['completion_date'] ?? $editRecord->completion_date; // Add this
             
             $editRecord->save();
 
@@ -275,11 +281,44 @@ class AuthController extends Controller
                 'transmitted_to' => $editRecord->transmitted_to,
                 'date_transmitted' => $editRecord->date_transmitted,
                 'remarks' => $editRecord->remarks,
+                'completed' => $editRecord->completed,           // Add this
+                'completion_date' => $editRecord->completion_date, // Add this
             ];
 
             return response()->json(['message' => 'Record updated successfully', 'data' => $responseData], 200);
         } catch (\Exception $e) {
             return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    // Delete Record
+    public function deleteRecord($id)
+    {
+        try {
+            \Log::info("Attempting to delete record with ID: {$id}");
+
+            // Find the record in add_record table
+            $record = AddRecord::find($id);
+            if (!$record) {
+                \Log::warning("Record not found with ID: {$id}");
+                return response()->json(['error' => 'Record not found'], 404);
+            }
+
+            // Delete related edit_record entry if it exists
+            $editRecord = EditRecord::where('record_id', $id)->first();
+            if ($editRecord) {
+                $editRecord->delete();
+                \Log::info("Deleted related edit_record for record ID: {$id}");
+            }
+
+            // Delete the main record
+            $record->delete();
+            \Log::info("Successfully deleted record with ID: {$id}");
+
+            return response()->json(['message' => 'Record deleted successfully'], 200);
+        } catch (\Exception $e) {
+            \Log::error("Error deleting record with ID: {$id}: " . $e->getMessage());
+            return response()->json(['error' => 'Failed to delete record: ' . $e->getMessage()], 500);
         }
     }
     
