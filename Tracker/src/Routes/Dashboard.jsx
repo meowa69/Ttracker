@@ -190,14 +190,22 @@ function Dashboard() {
   const calculateTimeRemaining = (forwardedDate, receivedDate) => {
     if (!forwardedDate) return "Not Started";
     if (receivedDate && new Date(receivedDate).toString() !== "Invalid Date") return "Completed";
+  
     const forwarded = new Date(forwardedDate);
     const now = new Date();
     const deadline = new Date(forwarded);
-    deadline.setDate(forwarded.getDate() + 10);
+    deadline.setDate(forwarded.getDate() + 10); // 10-day deadline
+  
     const diffMs = deadline - now;
-    if (diffMs <= 0) return "Overdue";
-    const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-    return `${days} DAYS PASSED`;
+    if (diffMs <= 0) {
+      // Calculate days overdue
+      const overdueMs = now - deadline;
+      const overdueDays = Math.floor(overdueMs / (1000 * 60 * 60 * 24));
+      return `Overdue ${overdueDays} days`;
+    }
+  
+    const daysRemaining = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    return `${daysRemaining} days remaining`;
   };
 
   const getBookmarkColor = (time) => {
@@ -377,11 +385,11 @@ function Dashboard() {
                         key={index}
                         className="px-4 py-2 hover:bg-gray-100 cursor-pointer font-poppins text-[13px] text-gray-600"
                         onClick={() => {
-                          setCommitteeType(committee);
+                          setCommitteeType(committee.committee_name);
                           setIsDropdownOpen(false);
                         }}
                       >
-                        {committee}
+                        {committee.committee_name}
                       </div>
                     ))}
                   </div>
@@ -546,16 +554,16 @@ function Dashboard() {
                                 <td className="border border-gray-300 px-4 py-2 font-poppins text-sm text-gray-700 relative">
                                   {showBookmark && (
                                     <motion.div
-                                      className="absolute left-0 top-0 flex items-center w-[180px]"
-                                      initial={{ x: -100 }} // Start slightly off-screen to the left
-                                      whileHover={{ x: 0 }} // Slide to the right on hover
+                                      className="absolute left-0 top-0 flex items-center cursor-pointer"
+                                      initial={{ x: -125 }} // Start further off-screen to ensure it's hidden
+                                      whileHover={{ x: 0 }}
                                       transition={{ type: "spring", stiffness: 300, damping: 20 }}
                                     >
-                                      <div className="bg-white border border-gray-400 rounded-lg p-2 text-sm font-poppins text-gray-700">
+                                      <div className="bg-white to-gray-100 border border-gray-300 rounded-lg p-2 text-sm font-semibold font-poppins text-gray-500 w-[120px] text-center shadow-sm hover:shadow-md transition-shadow duration-200">
                                         {relevantTime.toUpperCase()}
                                       </div>
                                       <svg
-                                        className={`w-6 h-12 ${bookmarkColor} transform translate-x-1/4 translate-y-[1px] rotate-[-90deg]`}
+                                        className={`w-6 h-12 ${bookmarkColor} transform rotate-[-90deg] cursor-pointer`}
                                         xmlns="http://www.w3.org/2000/svg"
                                         viewBox="0 0 24 48"
                                         fill="currentColor"
@@ -570,16 +578,16 @@ function Dashboard() {
                               <td className="border border-gray-300 px-4 py-2 font-poppins text-sm text-gray-700 relative">
                                 {selectedType !== "Document" && showBookmark && (
                                   <motion.div
-                                    className="absolute left-0 top-0 flex items-center"
-                                    initial={{ x: -100 }} // Start slightly off-screen to the left
-                                    whileHover={{ x: 0 }} // Slide to the right on hover
+                                    className="absolute left-0 top-0 flex items-center cursor pointer"
+                                    initial={{ x: -125 }} // Start further off-screen to ensure it's hidden
+                                    whileHover={{ x: 0 }}
                                     transition={{ type: "spring", stiffness: 300, damping: 20 }}
                                   >
-                                    <div className="bg-white border border-gray-300 px-2 py-1 text-sm font-poppins text-gray-700">
+                                    <div className="bg-white to-gray-100 border border-gray-300 rounded-lg p-2 text-sm font-semibold font-poppins text-gray-500 w-[120px] text-center shadow-sm hover:shadow-md transition-shadow duration-200">
                                       {relevantTime.toUpperCase()}
                                     </div>
                                     <svg
-                                      className={`w-6 h-12 ${bookmarkColor} transform translate-x-1/4 translate-y-[-1px] rotate-[-90deg]`}
+                                      className={`w-6 h-12 ${bookmarkColor} transform rotate-[-90deg] cursor-pointer`}
                                       xmlns="http://www.w3.org/2000/svg"
                                       viewBox="0 0 24 48"
                                       fill="currentColor"
