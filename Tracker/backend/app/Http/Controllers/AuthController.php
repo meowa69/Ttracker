@@ -10,6 +10,7 @@ use App\Models\Committee;
 use App\Models\CommitteeTerm;
 use App\Models\CommitteeMember;
 use App\Models\EditRecord;
+use App\Models\TransmittedRecipient;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -207,6 +208,9 @@ class AuthController extends Controller
         try {
             \Log::info('Fetching all records with edit details');
             $records = AddRecord::leftJoin('edit_record', 'add_record.id', '=', 'edit_record.record_id')
+                ->with(['editRecord.transmittedRecipients' => function ($query) {
+                    $query->select('id', 'edit_record_id', 'name', 'designation_office', 'address');
+                }])
                 ->select(
                     'add_record.id',
                     'add_record.no',
@@ -219,11 +223,10 @@ class AuthController extends Controller
                     'edit_record.vice_mayor_received as vm_received',
                     'edit_record.city_mayor_forwarded as cm_forwarded',
                     'edit_record.city_mayor_received as cm_received',
-                    'edit_record.transmitted_to',
                     'edit_record.date_transmitted',
                     'edit_record.remarks',
-                    'edit_record.completed',           // Add this
-                    'edit_record.completion_date'      // Add this
+                    'edit_record.completed',          
+                    'edit_record.completion_date'     
                 )
                 ->get();
 
@@ -235,6 +238,7 @@ class AuthController extends Controller
         }
     }
 
+    // Update Record
     public function updateRecord(Request $request, $id)
     {
         try {
@@ -245,52 +249,56 @@ class AuthController extends Controller
                 'vm_received' => 'nullable|date',
                 'cm_forwarded' => 'nullable|date',
                 'cm_received' => 'nullable|date',
-                'transmitted_to' => 'nullable|string',
                 'date_transmitted' => 'nullable|date',
                 'remarks' => 'nullable|string',
                 'completed' => 'nullable|boolean',
                 'completion_date' => 'nullable|date',
+                'transmitted_recipients' => 'nullable|array',
+                'transmitted_recipients.*.name' => 'required|string',
+                'transmitted_recipients.*.designation' => 'nullable|string', // Match frontend key
+                'transmitted_recipients.*.address' => 'required|string',
             ]);
-
+    
             $editRecord = EditRecord::firstOrNew(['record_id' => $id]);
             
-            $editRecord->committee_sponsor = $validated['committee_sponsor'] ?? $editRecord->committee_sponsor;
-            $editRecord->status = $validated['status'] ?? $editRecord->status;
-            $editRecord->vice_mayor_forwarded = $validated['vm_forwarded'] ?? $editRecord->vice_mayor_forwarded;
-            $editRecord->vice_mayor_received = $validated['vm_received'] ?? $editRecord->vice_mayor_received;
-            $editRecord->city_mayor_forwarded = $validated['cm_forwarded'] ?? $editRecord->city_mayor_forwarded;
-            $editRecord->city_mayor_received = $validated['cm_received'] ?? $editRecord->city_mayor_received;
-            $editRecord->transmitted_to = $validated['transmitted_to'] ?? $editRecord->transmitted_to;
-            $editRecord->date_transmitted = $validated['date_transmitted'] ?? $editRecord->date_transmitted;
-            $editRecord->remarks = array_key_exists('remarks', $validated) ? $validated['remarks'] : $editRecord->remarks;
-            $editRecord->completed = $validated['completed'] ?? $editRecord->completed ?? false; // Add this
-            $editRecord->completion_date = $validated['completion_date'] ?? $editRecord->completion_date; // Add this
-            
+            $editRecord->fill([
+                'committee_sponsor' => $validated['committee_sponsor'] ?? $editRecord->committee_sponsor,
+                'status' => $validated['status'] ?? $editRecord->status,
+                'vice_mayor_forwarded' => $validated['vm_forwarded'] ?? $editRecord->vice_mayor_forwarded,
+                'vice_mayor_received' => $validated['vm_received'] ?? $editRecord->vice_mayor_received,
+                'city_mayor_forwarded' => $validated['cm_forwarded'] ?? $editRecord->city_mayor_forwarded,
+                'city_mayor_received' => $validated['cm_received'] ?? $editRecord->city_mayor_received,
+                'date_transmitted' => $validated['date_transmitted'] ?? $editRecord->date_transmitted,
+                'remarks' => $validated['remarks'] ?? $editRecord->remarks,
+                'completed' => $validated['completed'] ?? $editRecord->completed ?? false,
+                'completion_date' => $validated['completion_date'] ?? $editRecord->completion_date,
+            ]);
+    
             $editRecord->save();
-
-            \Log::info("Saved EditRecord:", $editRecord->toArray());
-
-            $responseData = [
-                'id' => $editRecord->record_id,
-                'sponsor' => $editRecord->committee_sponsor,
-                'status' => $editRecord->status,
-                'vm_forwarded' => $editRecord->vice_mayor_forwarded,
-                'vm_received' => $editRecord->vice_mayor_received,
-                'cm_forwarded' => $editRecord->city_mayor_forwarded,
-                'cm_received' => $editRecord->city_mayor_received,
-                'transmitted_to' => $editRecord->transmitted_to,
-                'date_transmitted' => $editRecord->date_transmitted,
-                'remarks' => $editRecord->remarks,
-                'completed' => $editRecord->completed,           // Add this
-                'completion_date' => $editRecord->completion_date, // Add this
-            ];
-
+    
+            // Handle transmitted recipients
+            if (isset($validated['transmitted_recipients'])) {
+                // Delete existing recipients
+                $editRecord->transmittedRecipients()->delete();
+                // Create new recipients
+                foreach ($validated['transmitted_recipients'] as $recipient) {
+                    $editRecord->transmittedRecipients()->create([
+                        'name' => $recipient['name'],
+                        'designation_office' => $recipient['designation'], // Map 'designation' to 'designation_office'
+                        'address' => $recipient['address'],
+                    ]);
+                }
+            }
+    
+            $responseData = $editRecord->toArray();
+            $responseData['transmitted_recipients'] = $editRecord->transmittedRecipients;
+    
             return response()->json(['message' => 'Record updated successfully', 'data' => $responseData], 200);
         } catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 500);
+            return response()->json(['message' => $e->getMessage()], 500);
         }
     }
-
+    
     // Delete Record
     public function deleteRecord($id)
     {

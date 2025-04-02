@@ -10,6 +10,8 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
   const [isCmReceivedEditing, setIsCmReceivedEditing] = useState(false);
   const vmReceivedInputRef = useRef(null);
   const cmReceivedInputRef = useRef(null);
+  const [newRecipient, setNewRecipient] = useState({ name: "", designation: "", address: "" });
+  const [recipientList, setRecipientList] = useState([]);
 
   useEffect(() => {
     if (initialRowData) {
@@ -17,10 +19,28 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
         ...initialRowData,
         completed: initialRowData.completed ? "true" : "false",
       });
+      setRecipientList(initialRowData.editRecord?.transmittedRecipients || initialRowData.transmitted_recipients || []);
     } else {
       setLocalRowData({});
+      setRecipientList([]);
     }
   }, [initialRowData]);
+
+  const handleRecipientChange = (e) => {
+    const { name, value } = e.target;
+    setNewRecipient((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleAddRecipient = () => {
+    if (newRecipient.name && newRecipient.address) {
+      setRecipientList((prev) => [...prev, { ...newRecipient }]);
+      setNewRecipient({ name: "", designation: "", address: "" });
+    }
+  };
+
+  const handleRemoveRecipient = (index) => {
+    setRecipientList((prev) => prev.filter((_, i) => i !== index));
+  };
 
   const formatDateForInput = (date) => {
     if (!date) return "";
@@ -41,7 +61,7 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
     const forwarded = new Date(forwardedDate);
     const now = new Date();
     const deadline = new Date(forwarded);
-    deadline.setDate(forwarded.getDate() + 10); // 10-day deadline
+    deadline.setDate(forwarded.getDate() + 10);
     const diffMs = deadline - now;
     if (diffMs <= 0) return "Overdue";
     const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
@@ -134,6 +154,8 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
   const handleClose = () => {
     setIsVmReceivedEditing(false);
     setIsCmReceivedEditing(false);
+    setRecipientList([]);
+    setNewRecipient({ name: "", designation: "", address: "" });
     onClose();
   };
 
@@ -194,7 +216,6 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
     "Returned",
     "Completed",
   ];
-  const transmittedOptions = ["Vice Mayor's Office", "City Mayor's Office", "Other"];
   const documentTypes = ["Select type", "Ordinance", "Resolution", "Motion"];
 
   const isOrdinanceOrResolution = ["ordinance", "resolution"].includes(
@@ -210,16 +231,16 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
     try {
       const payload = {
         committee_sponsor: localRowData.sponsor || null,
-        status: localRowData.completed === "true" ? "Completed" : localRowData.status || null, // Set status to "Completed" if completed is true
+        status: localRowData.completed === "true" ? "Completed" : localRowData.status || null,
         vm_forwarded: localRowData.vmForwarded || null,
         vm_received: localRowData.vmReceived || null,
         cm_forwarded: localRowData.cmForwarded || null,
         cm_received: localRowData.cmReceived || null,
-        transmitted_to: localRowData.transmittedTo || null,
         date_transmitted: localRowData.dateTransmitted || null,
         remarks: localRowData.remarks || "",
         completed: localRowData.completed === "true",
         completion_date: localRowData.completed === "true" ? localRowData.completion_date || null : null,
+        transmitted_recipients: recipientList,
       };
 
       const response = await axios.put(
@@ -240,11 +261,11 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
         vmReceived: response.data.data.vm_received,
         cmForwarded: response.data.data.cm_forwarded,
         cmReceived: response.data.data.cm_received,
-        transmittedTo: response.data.data.transmitted_to,
         dateTransmitted: response.data.data.date_transmitted,
         remarks: response.data.data.remarks,
         completed: response.data.data.completed ? "true" : "false",
         completion_date: response.data.data.completion_date,
+        transmitted_recipients: response.data.data.transmitted_recipients,
       };
       setLocalRowData(updatedData);
       setRowData(updatedData);
@@ -252,7 +273,7 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
       onClose();
     } catch (error) {
       console.error("Error updating record:", error.response?.data || error);
-      alert("Failed to update record: " + (error.response?.data?.error || error.message));
+      alert("Failed to update record: " + (error.response?.data?.message || error.message));
     }
   };
 
@@ -436,7 +457,7 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
                       <div className="space-y-2">
                         <button
                           onClick={handleCmSetReceivedClick}
-                          className="w-full text-sm font-poppins  px-3 py-2 bg-[#408286] text-white rounded-lg hover:bg-[#306466] focus:outline-none focus:ring-2 focus:ring-[#408286] transition-colors duration-200"
+                          className="w-full text-sm font-poppins px-3 py-2 bg-[#408286] text-white rounded-lg hover:bg-[#306466] focus:outline-none focus:ring-2 focus:ring-[#408286] transition-colors duration-200"
                         >
                           Set Received Date
                         </button>
@@ -479,38 +500,108 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
             )}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-gray-700 text-sm font-medium mb-1">Transmitted To</label>
-              <select
-                name="transmittedTo"
-                value={localRowData.transmittedTo || ""}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#408286] focus:border-[#408286]"
-              >
-                {transmittedOptions.map((option, index) => (
-                  <option key={index} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-gray-700 text-sm font-medium mb-1">Date Transmitted</label>
-              <input
-                type="date"
-                name="dateTransmitted"
-                value={formatDateForInput(localRowData.dateTransmitted)}
-                onChange={handleChange}
-                onFocus={(e) => e.target.showPicker()}
-                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#408286] focus:border-[#408286] cursor-pointer"
-              />
-              <div className="mt-1 text-xs">
-                <span className="block text-gray-500">{formatDateForDisplay(localRowData.dateTransmitted)}</span>
+          <div className="border p-4 rounded-lg">
+            <label className="block text-gray-700 text-sm font-medium mb-2">Transmitted To</label>
+            <div className="space-y-3">
+              <div className="grid grid-cols-1 gap-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-gray-600 text-xs font-medium mb-1">Name</label>
+                    <input
+                      type="text"
+                      name="name"
+                      value={newRecipient.name}
+                      onChange={handleRecipientChange}
+                      placeholder="Enter recipient name"
+                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#408286] focus:border-[#408286]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-gray-600 text-xs font-medium mb-1">Designation/Office</label>
+                    <input
+                      type="text"
+                      name="designation"
+                      value={newRecipient.designation}
+                      onChange={handleRecipientChange}
+                      placeholder="Enter designation or office"
+                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#408286] focus:border-[#408286]"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-gray-600 text-xs font-medium mb-1">Address</label>
+                  <div className="flex gap-2">
+                    <textarea
+                      name="address"
+                      value={newRecipient.address}
+                      onChange={handleRecipientChange}
+                      placeholder="Enter full address"
+                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#408286] focus:border-[#408286] resize-y"
+                      rows="2"
+                    />
+                    <button
+                      onClick={handleAddRecipient}
+                      className="self-end px-4 py-2 bg-[#408286] text-white rounded-lg hover:bg-[#306466] focus:outline-none focus:ring-2 focus:ring-[#408286]"
+                    >
+                      Add
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Recipient List */}
+              {recipientList.length > 0 && (
+                <div className="mt-4">
+                  <h4 className="text-sm font-medium text-gray-700 mb-2">Added Recipients:</h4>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-left text-gray-700">
+                      <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-2">Name</th>
+                          <th className="px-4 py-2">Designation/Office</th>
+                          <th className="px-4 py-2">Address</th>
+                          <th className="px-4 py-2">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {recipientList.map((recipient, index) => (
+                          <tr key={index} className="bg-white border-b hover:bg-gray-50">
+                            <td className="px-4 py-2">{recipient.name}</td>
+                            <td className="px-4 py-2">{recipient.designation || "N/A"}</td>
+                            <td className="px-4 py-2">{recipient.address}</td>
+                            <td className="px-4 py-2">
+                              <button
+                                onClick={() => handleRemoveRecipient(index)}
+                                className="text-red-600 hover:text-red-800"
+                              >
+                                Remove
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-gray-600 text-xs font-medium mb-1">Date Transmitted</label>
+                <input
+                  type="date"
+                  name="dateTransmitted"
+                  value={formatDateForInput(localRowData.dateTransmitted)}
+                  onChange={handleChange}
+                  onFocus={(e) => e.target.showPicker()}
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#408286] focus:border-[#408286] cursor-pointer"
+                />
+                <div className="mt-1 text-xs">
+                  <span className="block text-gray-500">{formatDateForDisplay(localRowData.dateTransmitted)}</span>
+                </div>
               </div>
             </div>
           </div>
-          
+
           <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="">
               <div>
