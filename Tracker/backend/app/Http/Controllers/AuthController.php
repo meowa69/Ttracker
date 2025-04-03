@@ -253,14 +253,16 @@ class AuthController extends Controller
                 'remarks' => 'nullable|string',
                 'completed' => 'nullable|boolean',
                 'completion_date' => 'nullable|date',
-                'transmitted_recipients' => 'nullable|array',
-                'transmitted_recipients.*.name' => 'required|string',
-                'transmitted_recipients.*.designation' => 'nullable|string', // Match frontend key
-                'transmitted_recipients.*.address' => 'required|string',
+                'new_recipients' => 'nullable|array',
+                'new_recipients.*.name' => 'required|string',
+                'new_recipients.*.designation' => 'nullable|string',
+                'new_recipients.*.address' => 'required|string',
+                'recipients_to_remove' => 'nullable|array',
+                'recipients_to_remove.*' => 'integer|exists:transmitted_recipients,id',
             ]);
-    
+
             $editRecord = EditRecord::firstOrNew(['record_id' => $id]);
-            
+
             $editRecord->fill([
                 'committee_sponsor' => $validated['committee_sponsor'] ?? $editRecord->committee_sponsor,
                 'status' => $validated['status'] ?? $editRecord->status,
@@ -273,28 +275,36 @@ class AuthController extends Controller
                 'completed' => $validated['completed'] ?? $editRecord->completed ?? false,
                 'completion_date' => $validated['completion_date'] ?? $editRecord->completion_date,
             ]);
-    
+
             $editRecord->save();
-    
-            // Handle transmitted recipients
-            if (isset($validated['transmitted_recipients'])) {
-                // Delete existing recipients
-                $editRecord->transmittedRecipients()->delete();
-                // Create new recipients
-                foreach ($validated['transmitted_recipients'] as $recipient) {
-                    $editRecord->transmittedRecipients()->create([
+
+            // Handle new recipients
+            if (isset($validated['new_recipients'])) {
+                foreach ($validated['new_recipients'] as $recipient) {
+                    $newRecipient = $editRecord->transmittedRecipients()->create([
                         'name' => $recipient['name'],
-                        'designation_office' => $recipient['designation'], // Map 'designation' to 'designation_office'
+                        'designation_office' => $recipient['designation'],
                         'address' => $recipient['address'],
                     ]);
+                    \Log::info("Added new recipient:", $newRecipient->toArray());
                 }
             }
-    
-            $responseData = $editRecord->toArray();
-            $responseData['transmitted_recipients'] = $editRecord->transmittedRecipients;
-    
+
+            // Handle recipients to remove
+            if (isset($validated['recipients_to_remove']) && !empty($validated['recipients_to_remove'])) {
+                $editRecord->transmittedRecipients()
+                    ->whereIn('id', $validated['recipients_to_remove'])
+                    ->delete();
+            }
+
+            // Fetch the updated record with its transmitted recipients
+            $updatedRecord = EditRecord::with('transmittedRecipients')->find($editRecord->id);
+            $responseData = $updatedRecord->toArray();
+            \Log::info("Final response data with transmitted recipients:", $responseData);
+
             return response()->json(['message' => 'Record updated successfully', 'data' => $responseData], 200);
         } catch (\Exception $e) {
+            \Log::error('Update error: ' . $e->getMessage());
             return response()->json(['message' => $e->getMessage()], 500);
         }
     }

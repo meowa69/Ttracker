@@ -2,7 +2,7 @@ import Sidebar from "../Components/Sidebar";
 import { useState, useEffect, useRef } from "react";
 import EditModal from "../Modal/EditModal";
 import ViewModal from "../Modal/ViewModal";
-import { motion, AnimatePresence, transform } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import Swal from "sweetalert2";
 import axios from "axios";
 
@@ -46,9 +46,8 @@ function Dashboard() {
         vmReceived: row.vm_received || row.vice_mayor_received,
         cmForwarded: row.cm_forwarded || row.city_mayor_forwarded,
         cmReceived: row.cm_received || row.city_mayor_received,
-        transmittedTo: row.transmitted_to,
+        transmitted_recipients: row.transmitted_recipients || [],
         dateTransmitted: row.date_transmitted,
-        // Ensure status reflects the completed field if necessary
         status: row.completed ? "Completed" : row.status,
       }));
       setRows(formattedRows);
@@ -78,18 +77,24 @@ function Dashboard() {
   };
 
   const handleSave = async (updatedRow) => {
-    setRows((prevRows) =>
-      prevRows.map((row) => (row.id === updatedRow.id ? updatedRow : row))
-    );
-    setSelectedRow(updatedRow);
-    setIsEditModalOpen(false);
-    await fetchRecords();
+    try {
+      // Update rows and selectedRow with the new data
+      setRows((prevRows) =>
+        prevRows.map((row) => (row.id === updatedRow.id ? updatedRow : row))
+      );
+      setSelectedRow(updatedRow); // Ensure selectedRow is updated with transmitted_recipients
+      setIsEditModalOpen(false);
 
-    // Show alert only for Ordinance, Resolution, or Motion
-    const documentType = updatedRow.document_type?.toLowerCase();
-    if (["ordinance", "resolution", "motion"].includes(documentType)) {
-      const formattedType = documentType.charAt(0).toUpperCase() + documentType.slice(1);
-      showAlert(`${formattedType} No. ${updatedRow.no} has been updated`);
+      // Refresh data from backend to ensure consistency
+      await fetchRecords();
+
+      const documentType = updatedRow.document_type?.toLowerCase();
+      if (["ordinance", "resolution", "motion"].includes(documentType)) {
+        const formattedType = documentType.charAt(0).toUpperCase() + documentType.slice(1);
+        showAlert(`${formattedType} No. ${updatedRow.no} has been updated`);
+      }
+    } catch (error) {
+      console.error("Error in handleSave:", error);
     }
   };
 
@@ -190,29 +195,25 @@ function Dashboard() {
   const calculateTimeRemaining = (forwardedDate, receivedDate) => {
     if (!forwardedDate) return "Not Started";
     if (receivedDate && new Date(receivedDate).toString() !== "Invalid Date") return "Completed";
-  
     const forwarded = new Date(forwardedDate);
     const now = new Date();
     const deadline = new Date(forwarded);
-    deadline.setDate(forwarded.getDate() + 10); // 10-day deadline
-  
+    deadline.setDate(forwarded.getDate() + 10);
     const diffMs = deadline - now;
     if (diffMs <= 0) {
-      // Calculate days overdue
       const overdueMs = now - deadline;
       const overdueDays = Math.floor(overdueMs / (1000 * 60 * 60 * 24));
       return `Overdue ${overdueDays} days`;
     }
-  
     const daysRemaining = Math.floor(diffMs / (1000 * 60 * 60 * 24));
     return `${daysRemaining} days remaining`;
   };
 
   const getBookmarkColor = (time) => {
-    if (time === "Completed") return "fill-blue-600"; // Blue for completed
+    if (time === "Completed") return "fill-blue-600";
     if (time === "Overdue") return "fill-red-600";
     const days = parseInt(time.split(" ")[0], 10);
-    if (isNaN(days)) return "fill-red-600"; // Default to red if time is invalid
+    if (isNaN(days)) return "fill-red-600";
     if (days >= 8) return "fill-green-600";
     if (days >= 6) return "fill-yellow-300";
     return "fill-red-600";
@@ -224,24 +225,16 @@ function Dashboard() {
       row.document_type?.toLowerCase() === "ordinance"
         ? calculateTimeRemaining(row.cmForwarded, row.cmReceived)
         : "Not Started";
-
     const vmPending = row.vmForwarded && !row.vmReceived;
     const cmPending = row.document_type?.toLowerCase() === "ordinance" && row.cmForwarded && !row.cmReceived;
-
-    // A document is considered completed if:
-    // - For non-ordinances: vmTime is "Completed"
-    // - For ordinances: both vmTime and cmTime are "Completed"
     const isCompleted =
       row.document_type?.toLowerCase() === "ordinance"
         ? vmTime === "Completed" && cmTime === "Completed"
         : vmTime === "Completed";
-
-    // Only show the bookmark if the document is pending or completed, and not "Not Started"
     const isNotStarted =
       row.document_type?.toLowerCase() === "ordinance"
         ? vmTime === "Not Started" && cmTime === "Not Started"
         : vmTime === "Not Started";
-
     return (vmPending || cmPending || isCompleted) && !isNotStarted;
   };
 
@@ -258,7 +251,6 @@ function Dashboard() {
       const totalDuration = 3000;
       const intervalTime = 30;
       const step = (intervalTime / totalDuration) * 100;
-
       const progressInterval = setInterval(() => {
         setAlert((prev) => {
           if (prev.progress <= 0) {
@@ -268,7 +260,6 @@ function Dashboard() {
           return { ...prev, progress: prev.progress - step };
         });
       }, intervalTime);
-
       return () => clearInterval(progressInterval);
     }
   }, [alert.show]);
@@ -363,7 +354,7 @@ function Dashboard() {
                 className="cursor-pointer w-full appearance-none rounded-md border border-gray-300 shadow-sm px-4 py-2 pr-10 bg-white text-sm font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-[#5FA8AD] truncate"
                 onClick={() => setIsDropdownOpen((prev) => !prev)}
               >
-                {committeeType || "Committee"}
+                {committeeType || "CommitteeLovely"}
               </div>
               <img
                 src="src/assets/Images/down2.png"
@@ -544,7 +535,7 @@ function Dashboard() {
                               : "Not Started";
                           const bookmarkColor = getBookmarkColor(relevantTime);
                           const showBookmark = shouldShowBookmark(row);
-                        
+
                           return (
                             <tr
                               key={row.id}
@@ -555,7 +546,7 @@ function Dashboard() {
                                   {showBookmark && (
                                     <motion.div
                                       className="absolute left-0 top-0 flex items-center cursor-pointer"
-                                      initial={{ x: -125 }} // Start further off-screen to ensure it's hidden
+                                      initial={{ x: -125 }}
                                       whileHover={{ x: 0 }}
                                       transition={{ type: "spring", stiffness: 300, damping: 20 }}
                                     >
@@ -578,8 +569,8 @@ function Dashboard() {
                               <td className="border border-gray-300 px-4 py-2 font-poppins text-sm text-gray-700 relative">
                                 {selectedType !== "Document" && showBookmark && (
                                   <motion.div
-                                    className="absolute left-0 top-0 flex items-center cursor pointer"
-                                    initial={{ x: -125 }} // Start further off-screen to ensure it's hidden
+                                    className="absolute left-0 top-0 flex items-center cursor-pointer"
+                                    initial={{ x: -125 }}
                                     whileHover={{ x: 0 }}
                                     transition={{ type: "spring", stiffness: 300, damping: 20 }}
                                   >

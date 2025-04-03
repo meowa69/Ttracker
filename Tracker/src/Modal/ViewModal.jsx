@@ -14,6 +14,7 @@ const ViewModal = ({ isOpen, onClose, rowData }) => {
   if (!isOpen || !rowData) return null;
 
   console.log("ViewModal rowData:", rowData);
+  console.log("Transmitted Recipients in ViewModal:", rowData.transmitted_recipients);
 
   const isOrdinanceOrResolution = ["ordinance", "resolution", "motion"].includes(
     rowData.document_type?.toLowerCase()
@@ -22,7 +23,7 @@ const ViewModal = ({ isOpen, onClose, rowData }) => {
   const isResolution = rowData.document_type?.toLowerCase() === "resolution";
   const isMotion = rowData.document_type?.toLowerCase() === "motion";
 
-  const displayCompleted = rowData.completed ? "true" : "false";
+  const displayCompleted = rowData.completed ? "True" : "False";
 
   const formatDateForDisplay = (date) => {
     if (!date) return "Not Set";
@@ -43,6 +44,10 @@ const ViewModal = ({ isOpen, onClose, rowData }) => {
         return "No.";
     }
   };
+
+  const transmittedRecipients = Array.isArray(rowData.transmitted_recipients)
+    ? rowData.transmitted_recipients
+    : [];
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
@@ -89,7 +94,7 @@ const ViewModal = ({ isOpen, onClose, rowData }) => {
                 </svg>
                 {getNumberLabel()}
               </span>
-              <span className="w-2/3 text-gray-600">{rowData.no}</span>
+              <span className="w-2/3 text-gray-600">{rowData.no || "N/A"}</span>
             </div>
             <hr className="border-gray-200" />
             <div className="flex items-center">
@@ -123,7 +128,7 @@ const ViewModal = ({ isOpen, onClose, rowData }) => {
                 </svg>
                 Title
               </span>
-              <span className="w-2/3 text-gray-600 text-justify">{rowData.title}</span>
+              <span className="w-2/3 text-gray-600 text-justify">{rowData.title || "N/A"}</span>
             </div>
             <hr className="border-gray-200" />
             <div className="flex items-center">
@@ -138,7 +143,7 @@ const ViewModal = ({ isOpen, onClose, rowData }) => {
                 </svg>
                 Committee Sponsor
               </span>
-              <span className="w-2/3 text-gray-600">{rowData.sponsor}</span>
+              <span className="w-2/3 text-gray-600">{rowData.sponsor || "N/A"}</span>
             </div>
             <hr className="border-gray-200" />
             <div className="flex items-center">
@@ -157,7 +162,7 @@ const ViewModal = ({ isOpen, onClose, rowData }) => {
                 </svg>
                 Status
               </span>
-              <span className="w-2/3 text-gray-600">{rowData.status}</span>
+              <span className="w-2/3 text-gray-600">{rowData.status || "N/A"}</span>
             </div>
             <hr className="border-gray-200" />
             {isOrdinanceOrResolution && (
@@ -209,19 +214,45 @@ const ViewModal = ({ isOpen, onClose, rowData }) => {
               </div>
             )}
             <hr className="border-gray-200" />
-            <div className="flex items-center">
-              <span className="w-1/3 font-semibold text-gray-700 flex items-center">
+            <div className="border p-4 rounded-lg">
+              <h3 className="text-xl font-bold text-[#2C4B5F] flex items-center mb-4">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
-                  className="h-5 w-5 mr-2 text-[#408286]"
+                  className="h-6 w-6 mr-2 text-[#408286]"
                   viewBox="0 0 20 20"
                   fill="currentColor"
                 >
                   <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
                 </svg>
-                Transmitted To:
-              </span>
-              <span className="w-2/3 text-gray-600">{rowData.transmittedTo || "Not Set"}</span>
+                Transmitted To
+              </h3>
+              {transmittedRecipients.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm text-left text-gray-700 border-collapse">
+                    <thead className="text-xs text-gray-700 uppercase bg-gray-100">
+                      <tr>
+                        <th className="px-4 py-3 border-b">Name</th>
+                        <th className="px-4 py-3 border-b">Designation/Office</th>
+                        <th className="px-4 py-3 border-b">Address</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {transmittedRecipients.map((recipient, index) => (
+                        <tr
+                          key={index}
+                          className="bg-white border-b hover:bg-gray-50 transition-colors"
+                        >
+                          <td className="px-4 py-3">{recipient.name || "N/A"}</td>
+                          <td className="px-4 py-3">{recipient.designation || "N/A"}</td>
+                          <td className="px-4 py-3">{recipient.address || "N/A"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="text-gray-600 text-sm">No recipients specified.</p>
+              )}
             </div>
             <hr className="border-gray-200" />
             <div className="flex items-center">
@@ -238,7 +269,7 @@ const ViewModal = ({ isOpen, onClose, rowData }) => {
                     clipRule="evenodd"
                   />
                 </svg>
-                Date Transmitted:
+                Date Transmitted
               </span>
               <span className="w-2/3 text-gray-600">{formatDateForDisplay(rowData.dateTransmitted)}</span>
             </div>
@@ -258,7 +289,7 @@ const ViewModal = ({ isOpen, onClose, rowData }) => {
                       clipRule="evenodd"
                     />
                   </svg>
-                  Completed:
+                  Completed
                 </span>
                 <span className="ml-2 text-gray-600">{displayCompleted}</span>
               </div>
@@ -276,7 +307,7 @@ const ViewModal = ({ isOpen, onClose, rowData }) => {
                       clipRule="evenodd"
                     />
                   </svg>
-                  Date of Completion:
+                  Date of Completion
                 </span>
                 <span className="ml-2 text-gray-600">{formatDateForDisplay(rowData.completion_date)}</span>
               </div>
@@ -298,7 +329,7 @@ const ViewModal = ({ isOpen, onClose, rowData }) => {
                 </svg>
                 Remarks
               </span>
-              <span className="w-2/3 text-gray-600">{rowData.remarks}</span>
+              <span className="w-2/3 text-gray-600">{rowData.remarks || "N/A"}</span>
             </div>
             <hr className="border-gray-200" />
           </div>
@@ -306,7 +337,7 @@ const ViewModal = ({ isOpen, onClose, rowData }) => {
         <div className="flex justify-end mt-6">
           <button
             onClick={onClose}
-            className="px-4 py-2 bg-[#408286] text-white rounded-md hover:bg-[#306a6f] transition"
+            className="inline-flex justify-center py-2 px-6 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-[#408286] hover:bg-[#306466] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#408286] transition-colors duration-200"
           >
             Close
           </button>

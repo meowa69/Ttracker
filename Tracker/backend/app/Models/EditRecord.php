@@ -21,6 +21,6 @@ class EditRecord extends Model
     // Add this relationship
     public function transmittedRecipients()
     {
-        return $this->hasMany(TransmittedRecipient::class, 'edit_record_id');
+        return $this->hasMany(TransmittedRecipient::class, 'edit_record_id', 'id');
     }
 }

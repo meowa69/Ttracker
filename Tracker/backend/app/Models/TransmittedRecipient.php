@@ -17,6 +17,6 @@ class TransmittedRecipient extends Model
 
     public function editRecord()
     {
-        return $this->belongsTo(EditRecord::class, 'edit_record_id');
+        return $this->belongsTo(EditRecord::class, 'edit_record_id', 'id');
     }
 }

@@ -12,19 +12,28 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
   const cmReceivedInputRef = useRef(null);
   const [newRecipient, setNewRecipient] = useState({ name: "", designation: "", address: "" });
   const [recipientList, setRecipientList] = useState([]);
+  const [recipientsToRemove, setRecipientsToRemove] = useState([]);
 
+  // Sync localRowData and recipientList when modal opens
   useEffect(() => {
-    if (initialRowData) {
-      setLocalRowData({
+    if (isOpen && initialRowData) {
+      const updatedRowData = {
         ...initialRowData,
         completed: initialRowData.completed ? "true" : "false",
-      });
-      setRecipientList(initialRowData.editRecord?.transmittedRecipients || initialRowData.transmitted_recipients || []);
-    } else {
-      setLocalRowData({});
-      setRecipientList([]);
+      };
+      setLocalRowData(updatedRowData);
+      const initialRecipients = initialRowData.transmitted_recipients || [];
+      setRecipientList(initialRecipients);
+      setRecipientsToRemove([]);
+      console.log("1. Modal opened - initialRowData:", initialRowData);
+      console.log("2. Initial recipientList set to:", initialRecipients);
     }
-  }, [initialRowData]);
+  }, [isOpen, initialRowData]);
+
+  // Log recipientList changes
+  useEffect(() => {
+    console.log("3. recipientList updated:", recipientList);
+  }, [recipientList]);
 
   const handleRecipientChange = (e) => {
     const { name, value } = e.target;
@@ -33,13 +42,32 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
 
   const handleAddRecipient = () => {
     if (newRecipient.name && newRecipient.address) {
-      setRecipientList((prev) => [...prev, { ...newRecipient }]);
+      const recipientToAdd = { ...newRecipient, id: null };
+      setRecipientList((prev) => {
+        const newList = [...prev, recipientToAdd];
+        console.log("4. After adding recipient - new recipientList:", newList);
+        return newList;
+      });
       setNewRecipient({ name: "", designation: "", address: "" });
+    } else {
+      console.log("Cannot add recipient - missing name or address:", newRecipient);
     }
   };
 
   const handleRemoveRecipient = (index) => {
-    setRecipientList((prev) => prev.filter((_, i) => i !== index));
+    setRecipientList((prev) => {
+      const recipient = prev[index];
+      if (recipient.id) {
+        setRecipientsToRemove((prevRemove) => {
+          const updatedRemove = [...prevRemove, recipient.id];
+          console.log("5. Recipient marked for removal - recipientsToRemove:", updatedRemove);
+          return updatedRemove;
+        });
+      }
+      const newList = prev.filter((_, i) => i !== index);
+      console.log("6. After removing recipient - new recipientList:", newList);
+      return newList;
+    });
   };
 
   const formatDateForInput = (date) => {
@@ -84,8 +112,8 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
 
   useEffect(() => {
     if (isOpen) {
-      setVmTimeRemaining(calculateTimeRemaining(localRowData.vmForwarded, localRowData.vmReceived));
-      setCmTimeRemaining(calculateTimeRemaining(localRowData.cmForwarded, localRowData.cmReceived));
+      setVmTimeRemaining(calculateTimeRemaining(localRowData.vm_forwarded, localRowData.vm_received));
+      setCmTimeRemaining(calculateTimeRemaining(localRowData.cm_forwarded, localRowData.cm_received));
       setIsVmReceivedEditing(false);
       setIsCmReceivedEditing(false);
     }
@@ -94,8 +122,8 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
   useEffect(() => {
     if (!isOpen || !localRowData) return;
     const updateTimer = () => {
-      setVmTimeRemaining(calculateTimeRemaining(localRowData.vmForwarded, localRowData.vmReceived));
-      setCmTimeRemaining(calculateTimeRemaining(localRowData.cmForwarded, localRowData.cmReceived));
+      setVmTimeRemaining(calculateTimeRemaining(localRowData.vm_forwarded, localRowData.vm_received));
+      setCmTimeRemaining(calculateTimeRemaining(localRowData.cm_forwarded, localRowData.cm_received));
     };
     updateTimer();
     const intervalId = setInterval(updateTimer, 1000);
@@ -152,11 +180,18 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
   };
 
   const handleClose = () => {
+    console.log("13. Closing modal - Current recipientList:", recipientList);
     setIsVmReceivedEditing(false);
     setIsCmReceivedEditing(false);
-    setRecipientList([]);
     setNewRecipient({ name: "", designation: "", address: "" });
     onClose();
+  };
+
+  const handleCancel = () => {
+    console.log("14. Cancel - Resetting recipientList to:", initialRowData.transmitted_recipients);
+    setRecipientList(initialRowData.transmitted_recipients || []);
+    setRecipientsToRemove([]);
+    handleClose();
   };
 
   useEffect(() => {
@@ -175,8 +210,8 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
       document_type: localRowData.document_type,
       title: localRowData.title,
       sponsor: localRowData.sponsor,
-      cmForwarded: localRowData.cmForwarded,
-      cmReceived: localRowData.cmReceived,
+      cm_forwarded: localRowData.cm_forwarded,
+      cm_received: localRowData.cm_received,
     };
     const printWindow = window.open("", "_blank");
     printWindow.document.write(`
@@ -198,14 +233,95 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
             <p><span class="meno">Document Type:</span> ${referralData.document_type || "N/A"}</p>
             <p><span class="meno">Title:</span> ${referralData.title || "N/A"}</p>
             <p><span class="meno">Committee Sponsor:</span> ${referralData.sponsor || "N/A"}</p>
-            <p><span class="meno">City Mayor Forwarded:</span> ${referralData.cmForwarded || "N/A"}</p>
-            <p><span class="meno">City Mayor Received:</span> ${referralData.cmReceived || "N/A"}</p>
+            <p><span class="meno">City Mayor Forwarded:</span> ${referralData.cm_forwarded || "N/A"}</p>
+            <p><span class="meno">City Mayor Received:</span> ${referralData.cm_received || "N/A"}</p>
           </div>
         </body>
       </html>
     `);
     printWindow.document.close();
     printWindow.print();
+  };
+
+  const handleSave = async () => {
+    try {
+      const newRecipients = recipientList.filter((r) => !r.id);
+      const payload = {
+        committee_sponsor: localRowData.sponsor || null,
+        status: localRowData.completed === "true" ? "Completed" : localRowData.status || null,
+        vm_forwarded: localRowData.vm_forwarded || null,
+        vm_received: localRowData.vm_received || null,
+        cm_forwarded: localRowData.cm_forwarded || null,
+        cm_received: localRowData.cm_received || null,
+        date_transmitted: localRowData.date_transmitted || null,
+        remarks: localRowData.remarks || "",
+        completed: localRowData.completed === "true",
+        completion_date: localRowData.completed === "true" ? localRowData.completion_date || null : null,
+        new_recipients: newRecipients,
+        recipients_to_remove: recipientsToRemove,
+      };
+  
+      console.log("7. Saving - Payload sent to backend:", payload);
+  
+      const response = await axios.put(
+        `http://localhost:8000/api/update-record/${localRowData.id}`,
+        payload,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+  
+      console.log("8. Backend response:", response.data);
+  
+      // Map backend response to frontend state
+      const updatedRecipients = response.data.data.transmitted_recipients.map((rec) => ({
+        id: rec.id,
+        name: rec.name,
+        designation: rec.designation_office || rec.designation || "",
+        address: rec.address,
+      }));
+  
+      console.log("9. Updated recipients from backend:", updatedRecipients);
+  
+      const updatedData = {
+        ...localRowData,
+        sponsor: response.data.data.committee_sponsor,
+        status: response.data.data.status,
+        vm_forwarded: response.data.data.vice_mayor_forwarded,
+        vm_received: response.data.data.vice_mayor_received,
+        cm_forwarded: response.data.data.city_mayor_forwarded,
+        cm_received: response.data.data.city_mayor_received,
+        date_transmitted: response.data.data.date_transmitted,
+        remarks: response.data.data.remarks,
+        completed: response.data.data.completed ? "true" : "false",
+        completion_date: response.data.data.completion_date,
+        transmitted_recipients: updatedRecipients, // Ensure this is updated
+      };
+  
+      // Update all states with the backend response
+      setLocalRowData(updatedData);
+      setRecipientList(updatedRecipients);
+      setRecipientsToRemove([]);
+  
+      // Update parent state
+      setRowData((prev) => ({
+        ...prev,
+        ...updatedData,
+        transmitted_recipients: updatedRecipients, // Explicitly update transmitted_recipients
+      }));
+  
+      console.log("10. Post-save - localRowData set to:", updatedData);
+      console.log("11. Post-save - recipientList set to:", updatedRecipients);
+      console.log("12. Post-save - updatedData sent to parent via setRowData:", updatedData);
+  
+      onSave(updatedData); // Notify parent of the save
+      handleClose(); // Close modal after successful save
+    } catch (error) {
+      console.error("Save error:", error.response?.data || error);
+      alert("Failed to update record: " + (error.response?.data?.message || error.message));
+    }
   };
 
   const statuses = [
@@ -223,59 +339,9 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
   );
   const showCityMayorFields = localRowData.document_type?.toLowerCase() === "ordinance";
   const hasValidVmReceived =
-    localRowData.vmReceived && new Date(localRowData.vmReceived).toString() !== "Invalid Date";
+    localRowData.vm_received && new Date(localRowData.vm_received).toString() !== "Invalid Date";
   const hasValidCmReceived =
-    localRowData.cmReceived && new Date(localRowData.cmReceived).toString() !== "Invalid Date";
-
-  const handleSave = async () => {
-    try {
-      const payload = {
-        committee_sponsor: localRowData.sponsor || null,
-        status: localRowData.completed === "true" ? "Completed" : localRowData.status || null,
-        vm_forwarded: localRowData.vmForwarded || null,
-        vm_received: localRowData.vmReceived || null,
-        cm_forwarded: localRowData.cmForwarded || null,
-        cm_received: localRowData.cmReceived || null,
-        date_transmitted: localRowData.dateTransmitted || null,
-        remarks: localRowData.remarks || "",
-        completed: localRowData.completed === "true",
-        completion_date: localRowData.completed === "true" ? localRowData.completion_date || null : null,
-        transmitted_recipients: recipientList,
-      };
-
-      const response = await axios.put(
-        `http://localhost:8000/api/update-record/${localRowData.id}`,
-        payload,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-        }
-      );
-
-      const updatedData = {
-        ...localRowData,
-        sponsor: response.data.data.committee_sponsor,
-        status: response.data.data.status,
-        vmForwarded: response.data.data.vm_forwarded,
-        vmReceived: response.data.data.vm_received,
-        cmForwarded: response.data.data.cm_forwarded,
-        cmReceived: response.data.data.cm_received,
-        dateTransmitted: response.data.data.date_transmitted,
-        remarks: response.data.data.remarks,
-        completed: response.data.data.completed ? "true" : "false",
-        completion_date: response.data.data.completion_date,
-        transmitted_recipients: response.data.data.transmitted_recipients,
-      };
-      setLocalRowData(updatedData);
-      setRowData(updatedData);
-      onSave(updatedData);
-      onClose();
-    } catch (error) {
-      console.error("Error updating record:", error.response?.data || error);
-      alert("Failed to update record: " + (error.response?.data?.message || error.message));
-    }
-  };
+    localRowData.cm_received && new Date(localRowData.cm_received).toString() !== "Invalid Date";
 
   if (!isOpen) return null;
 
@@ -379,14 +445,14 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
                   <label className="block text-gray-600 text-xs font-medium mb-1">Forwarded</label>
                   <input
                     type="date"
-                    name="vmForwarded"
-                    value={formatDateForInput(localRowData.vmForwarded)}
+                    name="vm_forwarded"
+                    value={formatDateForInput(localRowData.vm_forwarded)}
                     onChange={handleChange}
                     onFocus={(e) => e.target.showPicker()}
                     className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#408286] focus:border-[#408286] cursor-pointer"
                   />
                   <div className="mt-1 text-xs">
-                    <span className="block text-gray-500">{formatDateForDisplay(localRowData.vmForwarded)}</span>
+                    <span className="block text-gray-500">{formatDateForDisplay(localRowData.vm_forwarded)}</span>
                     <span className={getTimerColor(vmTimeRemaining)}>
                       Time Remaining: {vmTimeRemaining}
                     </span>
@@ -394,9 +460,9 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
                 </div>
                 <div>
                   <label className="block text-gray-600 text-xs font-medium mb-1">Received</label>
-                  {isOrdinanceOrResolution && !localRowData.vmForwarded ? (
+                  {isOrdinanceOrResolution && !localRowData.vm_forwarded ? (
                     <span className="text-gray-400 text-xs">Set Forwarded Date First</span>
-                  ) : isOrdinanceOrResolution && localRowData.vmForwarded && !hasValidVmReceived && !isVmReceivedEditing ? (
+                  ) : isOrdinanceOrResolution && localRowData.vm_forwarded && !hasValidVmReceived && !isVmReceivedEditing ? (
                     <button
                       onClick={handleVmSetReceivedClick}
                       className="w-full text-sm font-poppins px-3 py-2 bg-[#408286] text-white rounded-lg hover:bg-[#306466] focus:outline-none focus:ring-2 focus:ring-[#408286] transition-colors duration-200"
@@ -408,14 +474,14 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
                       <input
                         ref={vmReceivedInputRef}
                         type="date"
-                        name="vmReceived"
-                        value={formatDateForInput(localRowData.vmReceived)}
+                        name="vm_received"
+                        value={formatDateForInput(localRowData.vm_received)}
                         onChange={handleChange}
                         onFocus={(e) => e.target.showPicker()}
                         className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#408286] focus:border-[#408286] cursor-pointer"
                       />
                       <div className="mt-1 text-xs">
-                        <span className="block text-gray-500">{formatDateForDisplay(localRowData.vmReceived)}</span>
+                        <span className="block text-gray-500">{formatDateForDisplay(localRowData.vm_received)}</span>
                       </div>
                     </div>
                   )}
@@ -431,8 +497,8 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
                     <label className="block text-gray-600 text-xs font-medium mb-1">Forwarded</label>
                     <input
                       type="date"
-                      name="cmForwarded"
-                      value={formatDateForInput(localRowData.cmForwarded)}
+                      name="cm_forwarded"
+                      value={formatDateForInput(localRowData.cm_forwarded)}
                       onChange={handleChange}
                       onFocus={(e) => e.target.showPicker()}
                       disabled={showCityMayorFields && !hasValidVmReceived}
@@ -443,7 +509,7 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
                       }`}
                     />
                     <div className="mt-1 text-xs">
-                      <span className="block text-gray-500">{formatDateForDisplay(localRowData.cmForwarded)}</span>
+                      <span className="block text-gray-500">{formatDateForDisplay(localRowData.cm_forwarded)}</span>
                       <span className={getTimerColor(cmTimeRemaining)}>
                         Time Remaining: {cmTimeRemaining}
                       </span>
@@ -451,7 +517,7 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
                   </div>
                   <div>
                     <label className="block text-gray-600 text-xs font-medium mb-1">Received</label>
-                    {!localRowData.cmForwarded ? (
+                    {!localRowData.cm_forwarded ? (
                       <span className="text-gray-400 text-xs">Set Forwarded Date First</span>
                     ) : !hasValidCmReceived && !isCmReceivedEditing ? (
                       <div className="space-y-2">
@@ -461,7 +527,7 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
                         >
                           Set Received Date
                         </button>
-                        {localRowData.cmForwarded && (
+                        { locallyRowData.cm_forwarded && (
                           <button
                             onClick={handlePrintReferral}
                             className="w-full text-sm font-poppins px-3 py-2 bg-[#408286] text-white rounded-lg hover:bg-[#306466] focus:outline-none focus:ring-2 focus:ring-[#408286] transition-colors duration-200"
@@ -475,16 +541,16 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
                         <input
                           ref={cmReceivedInputRef}
                           type="date"
-                          name="cmReceived"
-                          value={formatDateForInput(localRowData.cmReceived)}
+                          name="cm_received"
+                          value={formatDateForInput(localRowData.cm_received)}
                           onChange={handleChange}
                           onFocus={(e) => e.target.showPicker()}
                           className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#408286] focus:border-[#408286] cursor-pointer"
                         />
                         <div className="mt-1 text-xs">
-                          <span className="block text-gray-500">{formatDateForDisplay(localRowData.cmReceived)}</span>
+                          <span className="block text-gray-500">{formatDateForDisplay(localRowData.cm_received)}</span>
                         </div>
-                        {localRowData.cmForwarded && (
+                        {localRowData.cm_forwarded && (
                           <button
                             onClick={handlePrintReferral}
                             className="w-full px-3 py-2 bg-[#408286] text-white rounded-lg hover:bg-[#306466] focus:outline-none focus:ring-2 focus:ring-[#408286] transition-colors duration-200"
@@ -537,11 +603,11 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
                       onChange={handleRecipientChange}
                       placeholder="Enter full address"
                       className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#408286] focus:border-[#408286] resize-y"
-                      rows="2"
+                      rows="1"
                     />
                     <button
                       onClick={handleAddRecipient}
-                      className="self-end px-4 py-2 bg-[#408286] text-white rounded-lg hover:bg-[#306466] focus:outline-none focus:ring-2 focus:ring-[#408286]"
+                      className="justify-center py-2 px-6 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-[#408286] hover:bg-[#306466] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#408286] transition-colors duration-200"
                     >
                       Add
                     </button>
@@ -549,23 +615,22 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
                 </div>
               </div>
 
-              {/* Recipient List */}
-              {recipientList.length > 0 && (
-                <div className="mt-4">
-                  <h4 className="text-sm font-medium text-gray-700 mb-2">Added Recipients:</h4>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm text-left text-gray-700">
-                      <thead className="text-xs text-gray-700 uppercase bg-gray-50">
-                        <tr>
-                          <th className="px-4 py-2">Name</th>
-                          <th className="px-4 py-2">Designation/Office</th>
-                          <th className="px-4 py-2">Address</th>
-                          <th className="px-4 py-2">Action</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {recipientList.map((recipient, index) => (
-                          <tr key={index} className="bg-white border-b hover:bg-gray-50">
+              <div className="mt-4">
+                <h4 className="text-sm font-medium text-gray-700 mb-2">Added Recipients:</h4>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm text-left text-gray-700">
+                    <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+                      <tr>
+                        <th className="px-4 py-2">Name</th>
+                        <th className="px-4 py-2">Designation/Office</th>
+                        <th className="px-4 py-2">Address</th>
+                        <th className="px-4 py-2">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {recipientList.length > 0 ? (
+                        recipientList.map((recipient, index) => (
+                          <tr key={recipient.id || `temp-${index}`} className="bg-white border-b hover:bg-gray-50">
                             <td className="px-4 py-2">{recipient.name}</td>
                             <td className="px-4 py-2">{recipient.designation || "N/A"}</td>
                             <td className="px-4 py-2">{recipient.address}</td>
@@ -578,32 +643,38 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
                               </button>
                             </td>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan={4} className="px-4 py-2 text-center text-gray-500">
+                            No recipients added yet.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
                 </div>
-              )}
+              </div>
 
               <div>
                 <label className="block text-gray-600 text-xs font-medium mb-1">Date Transmitted</label>
                 <input
                   type="date"
-                  name="dateTransmitted"
-                  value={formatDateForInput(localRowData.dateTransmitted)}
+                  name="date_transmitted"
+                  value={formatDateForInput(localRowData.date_transmitted)}
                   onChange={handleChange}
                   onFocus={(e) => e.target.showPicker()}
                   className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#408286] focus:border-[#408286] cursor-pointer"
                 />
                 <div className="mt-1 text-xs">
-                  <span className="block text-gray-500">{formatDateForDisplay(localRowData.dateTransmitted)}</span>
+                  <span className="block text-gray-500">{formatDateForDisplay(localRowData.date_transmitted)}</span>
                 </div>
               </div>
             </div>
           </div>
 
           <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="">
+            <div>
               <div>
                 <label className="block text-gray-700 text-sm font-medium mb-1">Completed</label>
                 <select
@@ -651,7 +722,7 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
 
         <div className="flex justify-end space-x-3 mt-6">
           <button
-            onClick={handleClose}
+            onClick={handleCancel}
             className="inline-flex justify-center py-2 px-6 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-gray-600 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors duration-200"
           >
             Cancel
