@@ -21,7 +21,8 @@ export const getFilteredMenus = (role) => {
         return menus.filter(menu => 
             menu.title !== "Manage Record" && 
             menu.title !== "Manage Committees" && 
-            menu.title !== "Create Account"
+            menu.title !== "Manage Account"
+            
         );
     }
 

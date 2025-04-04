@@ -54,18 +54,28 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
     }
   };
 
+  const handleRecipientKeyDown = (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault(); // Prevent default behavior (e.g., newline in textarea)
+      handleAddRecipient();
+    }
+  };
+
   const handleRemoveRecipient = (index) => {
     setRecipientList((prev) => {
       const recipient = prev[index];
       if (recipient.id) {
         setRecipientsToRemove((prevRemove) => {
-          const updatedRemove = [...prevRemove, recipient.id];
+          const updatedRemove = prevRemove.includes(recipient.id)
+            ? prevRemove
+            : [...prevRemove, recipient.id];
           console.log("5. Recipient marked for removal - recipientsToRemove:", updatedRemove);
           return updatedRemove;
         });
+        return prev;
       }
       const newList = prev.filter((_, i) => i !== index);
-      console.log("6. After removing recipient - new recipientList:", newList);
+      console.log("6. After removing unsaved recipient - new recipientList:", newList);
       return newList;
     });
   };
@@ -260,9 +270,9 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
         new_recipients: newRecipients,
         recipients_to_remove: recipientsToRemove,
       };
-  
+
       console.log("7. Saving - Payload sent to backend:", payload);
-  
+
       const response = await axios.put(
         `http://localhost:8000/api/update-record/${localRowData.id}`,
         payload,
@@ -272,19 +282,18 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
           },
         }
       );
-  
+
       console.log("8. Backend response:", response.data);
-  
-      // Map backend response to frontend state
+
       const updatedRecipients = response.data.data.transmitted_recipients.map((rec) => ({
         id: rec.id,
         name: rec.name,
         designation: rec.designation_office || rec.designation || "",
         address: rec.address,
       }));
-  
+
       console.log("9. Updated recipients from backend:", updatedRecipients);
-  
+
       const updatedData = {
         ...localRowData,
         sponsor: response.data.data.committee_sponsor,
@@ -297,27 +306,25 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
         remarks: response.data.data.remarks,
         completed: response.data.data.completed ? "true" : "false",
         completion_date: response.data.data.completion_date,
-        transmitted_recipients: updatedRecipients, // Ensure this is updated
+        transmitted_recipients: updatedRecipients,
       };
-  
-      // Update all states with the backend response
+
       setLocalRowData(updatedData);
       setRecipientList(updatedRecipients);
       setRecipientsToRemove([]);
-  
-      // Update parent state
+
       setRowData((prev) => ({
         ...prev,
         ...updatedData,
-        transmitted_recipients: updatedRecipients, // Explicitly update transmitted_recipients
+        transmitted_recipients: updatedRecipients,
       }));
-  
+
       console.log("10. Post-save - localRowData set to:", updatedData);
       console.log("11. Post-save - recipientList set to:", updatedRecipients);
       console.log("12. Post-save - updatedData sent to parent via setRowData:", updatedData);
-  
-      onSave(updatedData); // Notify parent of the save
-      handleClose(); // Close modal after successful save
+
+      onSave(updatedData);
+      handleClose();
     } catch (error) {
       console.error("Save error:", error.response?.data || error);
       alert("Failed to update record: " + (error.response?.data?.message || error.message));
@@ -527,7 +534,7 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
                         >
                           Set Received Date
                         </button>
-                        { locallyRowData.cm_forwarded && (
+                        {localRowData.cm_forwarded && (
                           <button
                             onClick={handlePrintReferral}
                             className="w-full text-sm font-poppins px-3 py-2 bg-[#408286] text-white rounded-lg hover:bg-[#306466] focus:outline-none focus:ring-2 focus:ring-[#408286] transition-colors duration-200"
@@ -566,11 +573,12 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
             )}
           </div>
 
-          <div className="border p-4 rounded-lg">
-            <label className="block text-gray-700 text-sm font-medium mb-2">Transmitted To</label>
-            <div className="space-y-3">
-              <div className="grid grid-cols-1 gap-4">
-                <div className="grid grid-cols-2 gap-4">
+          <div className="border border-gray-200 p-6 rounded-lg shadow-sm bg-white">
+            <label className="block text-gray-800 text-sm font-semibold mb-4">Transmitted To</label>
+            <div className="space-y-6">
+              {/* Input Section */}
+              <div className="grid grid-cols-1 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
                     <label className="block text-gray-600 text-xs font-medium mb-1">Name</label>
                     <input
@@ -579,7 +587,7 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
                       value={newRecipient.name}
                       onChange={handleRecipientChange}
                       placeholder="Enter recipient name"
-                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#408286] focus:border-[#408286]"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-[#408286] focus:border-[#408286] text-sm text-gray-900 placeholder-gray-400 transition-all duration-200"
                     />
                   </div>
                   <div>
@@ -590,81 +598,87 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
                       value={newRecipient.designation}
                       onChange={handleRecipientChange}
                       placeholder="Enter designation or office"
-                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#408286] focus:border-[#408286]"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-[#408286] focus:border-[#408286] text-sm text-gray-900 placeholder-gray-400 transition-all duration-200"
                     />
                   </div>
-                </div>
-                <div>
-                  <label className="block text-gray-600 text-xs font-medium mb-1">Address</label>
-                  <div className="flex gap-2">
-                    <textarea
-                      name="address"
-                      value={newRecipient.address}
-                      onChange={handleRecipientChange}
-                      placeholder="Enter full address"
-                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#408286] focus:border-[#408286] resize-y"
-                      rows="1"
-                    />
-                    <button
-                      onClick={handleAddRecipient}
-                      className="justify-center py-2 px-6 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-[#408286] hover:bg-[#306466] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#408286] transition-colors duration-200"
-                    >
-                      Add
-                    </button>
+                  <div className="flex flex-col">
+                    <label className="block text-gray-600 text-xs font-medium mb-1 ">Address</label>
+                    <div className="flex gap-3">
+                      <textarea
+                        name="address"
+                        value={newRecipient.address}
+                        onChange={handleRecipientChange}
+                        onKeyDown={handleRecipientKeyDown}
+                        placeholder="Enter full address"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-[#408286] focus:border-[#408286] text-sm text-gray-900 placeholder-gray-400 resize-y transition-all duration-200"
+                        rows="1"
+                      />
+                      <button
+                        onClick={handleAddRecipient}
+                        className="px-6 py-2 bg-[#408286] text-white text-sm font-medium rounded-md shadow-sm hover:bg-[#306466] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#408286] transition-all duration-200 whitespace-nowrap"
+                      >
+                        Add Recipient
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
 
-              <div className="mt-4">
-                <h4 className="text-sm font-medium text-gray-700 mb-2">Added Recipients:</h4>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm text-left text-gray-700">
-                    <thead className="text-xs text-gray-700 uppercase bg-gray-50">
-                      <tr>
-                        <th className="px-4 py-2">Name</th>
-                        <th className="px-4 py-2">Designation/Office</th>
-                        <th className="px-4 py-2">Address</th>
-                        <th className="px-4 py-2">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {recipientList.length > 0 ? (
-                        recipientList.map((recipient, index) => (
-                          <tr key={recipient.id || `temp-${index}`} className="bg-white border-b hover:bg-gray-50">
-                            <td className="px-4 py-2">{recipient.name}</td>
-                            <td className="px-4 py-2">{recipient.designation || "N/A"}</td>
-                            <td className="px-4 py-2">{recipient.address}</td>
-                            <td className="px-4 py-2">
+              {/* Added Recipients Table (Conditionally Rendered) */}
+              {recipientList.length > 0 && (
+                <div className="mt-6">
+                  <h4 className="text-sm font-semibold text-gray-800 mb-3">Added Recipients</h4>
+                  <div className="overflow-x-auto border border-gray-200 rounded-md shadow-sm">
+                    <table className="w-full text-sm text-left text-gray-700">
+                      <thead className="text-xs font-semibold text-gray-600 uppercase bg-gray-100 border-b border-gray-200">
+                        <tr>
+                          <th className="px-6 py-3">Name</th>
+                          <th className="px-6 py-3">Designation/Office</th>
+                          <th className="px-6 py-3">Address</th>
+                          <th className="px-6 py-3">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {recipientList.map((recipient, index) => (
+                          <tr
+                            key={recipient.id || `temp-${index}`}
+                            className={`border-b border-gray-200 hover:bg-gray-50 transition-colors duration-100 ${
+                              recipientsToRemove.includes(recipient.id) ? "opacity-60 line-through text-gray-500" : ""
+                            }`}
+                          >
+                            <td className="px-6 py-3">{recipient.name}</td>
+                            <td className="px-6 py-3">{recipient.designation || "N/A"}</td>
+                            <td className="px-6 py-3">{recipient.address}</td>
+                            <td className="px-6 py-3">
                               <button
                                 onClick={() => handleRemoveRecipient(index)}
-                                className="text-red-600 hover:text-red-800"
+                                className={`text-sm font-medium transition-colors duration-200 ${
+                                  recipientsToRemove.includes(recipient.id)
+                                    ? "text-blue-600 hover:text-blue-800"
+                                    : "text-red-600 hover:text-red-800"
+                                }`}
                               >
-                                Remove
+                                {recipientsToRemove.includes(recipient.id) ? "Undo" : "Remove"}
                               </button>
                             </td>
                           </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td colSpan={4} className="px-4 py-2 text-center text-gray-500">
-                            No recipients added yet.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-              </div>
+              )}
 
+              {/* Date Transmitted */}
               <div>
-                <label className="block text-gray-600 text-xs font-medium mb-1">Date Transmitted</label>
+                <label className="block text-gray-700 text-xs font-medium mb-1">Date Transmitted</label>
                 <input
                   type="date"
                   name="date_transmitted"
                   value={formatDateForInput(localRowData.date_transmitted)}
                   onChange={handleChange}
                   onFocus={(e) => e.target.showPicker()}
-                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#408286] focus:border-[#408286] cursor-pointer"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-[#408286] focus:border-[#408286] text-sm text-gray-900 cursor-pointer transition-all duration-200"
                 />
                 <div className="mt-1 text-xs">
                   <span className="block text-gray-500">{formatDateForDisplay(localRowData.date_transmitted)}</span>
@@ -713,7 +727,7 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
                 name="remarks"
                 value={localRowData.remarks || ""}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#408286] focus:border-[#408286] resize-y"
+                className="w-full text-sm font-poppins text-gray-700 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#408286] focus:border-[#408286] resize-y"
                 rows="4"
               />
             </div>

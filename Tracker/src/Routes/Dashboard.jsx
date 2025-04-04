@@ -2,7 +2,7 @@ import Sidebar from "../Components/Sidebar";
 import { useState, useEffect, useRef } from "react";
 import EditModal from "../Modal/EditModal";
 import ViewModal from "../Modal/ViewModal";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useAnimation } from "framer-motion";
 import Swal from "sweetalert2";
 import axios from "axios";
 
@@ -31,6 +31,30 @@ function Dashboard() {
   const recordsPerPage = 10;
   const maxVisiblePages = 5;
   const [alert, setAlert] = useState({ show: false, message: "", progress: 100 });
+  const [notifications, setNotifications] = useState([]);
+  const bellControls = useAnimation();
+
+  const [allNotifications, setAllNotifications] = useState(() => {
+  // Initialize from localStorage to persist across refreshes
+  const storedNotifications = localStorage.getItem("allNotifications");
+  return storedNotifications ? JSON.parse(storedNotifications) : [];
+});
+
+  // Initialize states from localStorage
+  const [hasViewedNotifications, setHasViewedNotifications] = useState(() => {
+    const storedValue = localStorage.getItem("hasViewedNotifications");
+    return storedValue ? JSON.parse(storedValue) : false;
+  });
+  const [viewedNotificationStatuses, setViewedNotificationStatuses] = useState(() => {
+    const storedStatuses = localStorage.getItem("viewedNotificationStatuses");
+    return storedStatuses ? JSON.parse(storedStatuses) : {};
+  });
+
+  // Update localStorage whenever states change
+  useEffect(() => {
+    localStorage.setItem("hasViewedNotifications", JSON.stringify(hasViewedNotifications));
+    localStorage.setItem("viewedNotificationStatuses", JSON.stringify(viewedNotificationStatuses));
+  }, [hasViewedNotifications, viewedNotificationStatuses]);
 
   const fetchRecords = async () => {
     setLoading(true);
@@ -46,11 +70,13 @@ function Dashboard() {
         vmReceived: row.vm_received || row.vice_mayor_received,
         cmForwarded: row.cm_forwarded || row.city_mayor_forwarded,
         cmReceived: row.cm_received || row.city_mayor_received,
-        transmitted_recipients: row.transmitted_recipients || [],
+        transmitted_recipients: row.editRecord?.transmittedRecipients || row.transmitted_recipients || [],
         dateTransmitted: row.date_transmitted,
         status: row.completed ? "Completed" : row.status,
       }));
       setRows(formattedRows);
+      setSelectedRow((prev) => (prev ? formattedRows.find((row) => row.id === prev.id) || prev : prev));
+      updateNotifications(formattedRows);
     } catch (error) {
       console.error("Error fetching records:", error.response?.data || error);
     } finally {
@@ -78,21 +104,26 @@ function Dashboard() {
 
   const handleSave = async (updatedRow) => {
     try {
-      // Update rows and selectedRow with the new data
       setRows((prevRows) =>
         prevRows.map((row) => (row.id === updatedRow.id ? updatedRow : row))
       );
-      setSelectedRow(updatedRow); // Ensure selectedRow is updated with transmitted_recipients
+      setSelectedRow(updatedRow);
       setIsEditModalOpen(false);
 
-      // Refresh data from backend to ensure consistency
       await fetchRecords();
+
+      setRows((prevRows) =>
+        prevRows.map((row) =>
+          row.id === updatedRow.id ? { ...row, transmitted_recipients: updatedRow.transmitted_recipients } : row
+        )
+      );
 
       const documentType = updatedRow.document_type?.toLowerCase();
       if (["ordinance", "resolution", "motion"].includes(documentType)) {
         const formattedType = documentType.charAt(0).toUpperCase() + documentType.slice(1);
         showAlert(`${formattedType} No. ${updatedRow.no} has been updated`);
       }
+      updateNotifications(rows);
     } catch (error) {
       console.error("Error in handleSave:", error);
     }
@@ -105,10 +136,11 @@ function Dashboard() {
 
   useEffect(() => {
     const handleClickOutside = (event) => {
+      const isOutsideNotification = notificationRef.current && !notificationRef.current.contains(event.target);
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setIsDropdownOpen(false);
       }
-      if (notificationRef.current && !notificationRef.current.contains(event.target)) {
+      if (isOutsideNotification) {
         setIsOpen(false);
       }
     };
@@ -136,6 +168,7 @@ function Dashboard() {
           if (response.status === 200) {
             setRows((prevRows) => prevRows.filter((row) => row.id !== id));
             Swal.fire("Deleted!", "The document has been deleted.", "success");
+            updateNotifications(rows);
           }
         } catch (error) {
           console.error("Error deleting record:", error.response?.data || error);
@@ -211,9 +244,9 @@ function Dashboard() {
 
   const getBookmarkColor = (time) => {
     if (time === "Completed") return "fill-blue-600";
-    if (time === "Overdue") return "fill-red-600";
+    if (time.includes("Overdue")) return "fill-red-600";
     const days = parseInt(time.split(" ")[0], 10);
-    if (isNaN(days)) return "fill-red-600";
+    if (isNaN(days)) return "fill-gray-600";
     if (days >= 8) return "fill-green-600";
     if (days >= 6) return "fill-yellow-300";
     return "fill-red-600";
@@ -236,6 +269,126 @@ function Dashboard() {
         ? vmTime === "Not Started" && cmTime === "Not Started"
         : vmTime === "Not Started";
     return (vmPending || cmPending || isCompleted) && !isNotStarted;
+  };
+
+  const getStatusColor = (time) => {
+    if (time === "Completed") return "bg-blue-600 text-blue-600";
+    if (time.includes("Overdue")) return "bg-red-600 text-red-600";
+    const days = parseInt(time.split(" ")[0], 10);
+    if (isNaN(days)) return "bg-gray-600 text-gray-600";
+    if (days >= 8) return "bg-green-600 text-green-600";
+    if (days >= 6) return "bg-yellow-300 text-yellow-300";
+    return "bg-red-600 text-red-600";
+  };
+
+  useEffect(() => {
+    localStorage.setItem("allNotifications", JSON.stringify(allNotifications));
+  }, [allNotifications]);
+
+  const updateNotifications = (data) => {
+    // Original notification list (current state)
+    const currentNotificationList = data
+      .filter((row) => ["Ordinance", "Resolution", "Motion"].includes(row.document_type))
+      .map((row) => {
+        const vmTime = calculateTimeRemaining(row.vmForwarded, row.vmReceived);
+        const cmTime =
+          row.document_type.toLowerCase() === "ordinance"
+            ? calculateTimeRemaining(row.cmForwarded, row.cmReceived)
+            : "Not Started";
+        const vmPending = row.vmForwarded && !row.vmReceived;
+        const cmPending = row.document_type.toLowerCase() === "ordinance" && row.cmForwarded && !row.cmReceived;
+        const isCompleted = row.status === "Completed";
+        const isOverdue = vmTime.includes("Overdue") || cmTime.includes("Overdue");
+  
+        if (vmPending || cmPending || isCompleted || isOverdue) {
+          const relevantTime =
+            vmTime !== "Not Started" && vmTime !== "Completed"
+              ? vmTime
+              : cmTime !== "Not Started" && cmTime !== "Completed"
+              ? cmTime
+              : vmTime === "Completed" || cmTime === "Completed"
+              ? "Completed"
+              : "Not Started";
+          const statusColor = getStatusColor(relevantTime);
+  
+          return {
+            id: row.id,
+            documentNo: row.no,
+            documentType: row.document_type,
+            vmStatus: vmTime,
+            cmStatus: cmTime,
+            status: isCompleted ? "Completed" : isOverdue ? "Overdue" : "Pending",
+            statusColor: statusColor,
+            updatedAt: row.updatedAt || new Date().toISOString(),
+          };
+        }
+        return null;
+      })
+      .filter((notification) => notification !== null)
+      .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
+      .slice(0, 9);
+  
+    // Set the current notifications (original behavior)
+    setNotifications(currentNotificationList);
+  
+    // Add new notifications to history without updating existing ones
+    setAllNotifications((prevAllNotifications) => {
+      const newNotifications = currentNotificationList.filter((newNotif) => {
+        // Only add if it's a new status change
+        const latestForThisId = prevAllNotifications.find(n => n.id === newNotif.id);
+        if (!latestForThisId) return true;
+        return (
+          latestForThisId.vmStatus !== newNotif.vmStatus || 
+          latestForThisId.cmStatus !== newNotif.cmStatus
+        );
+      });
+      
+      const combinedNotifications = [...newNotifications, ...prevAllNotifications];
+      // Limit to 50 items for history
+      return combinedNotifications.slice(0, 50);
+    });
+  
+    // Original change detection logic
+    const currentStatuses = {};
+    currentNotificationList.forEach((notif) => {
+      currentStatuses[notif.id] = { vmStatus: notif.vmStatus, cmStatus: notif.cmStatus };
+    });
+  
+    let hasChanges = false;
+    for (const id in currentStatuses) {
+      if (!viewedNotificationStatuses[id]) {
+        hasChanges = true;
+        break;
+      }
+      const viewed = viewedNotificationStatuses[id];
+      const current = currentStatuses[id];
+      if (viewed.vmStatus !== current.vmStatus || viewed.cmStatus !== current.cmStatus) {
+        hasChanges = true;
+        break;
+      }
+    }
+  
+    if (hasChanges) {
+      setHasViewedNotifications(false);
+    }
+  
+    if (currentNotificationList.length > 0) {
+      bellControls.start({
+        rotate: [0, 15, -15, 15, -15, 0],
+        transition: { duration: 0.6, repeat: 1 }
+      });
+    }
+  };
+
+  const handleNotificationOpen = () => {
+    setIsOpen(true);
+    setHasViewedNotifications(true);
+    // Update viewed statuses only for new notifications
+    const newStatuses = { ...viewedNotificationStatuses };
+    notifications.forEach((notif) => {
+      newStatuses[notif.id] = { vmStatus: notif.vmStatus, cmStatus: notif.cmStatus };
+    });
+    setViewedNotificationStatuses(newStatuses);
   };
 
   const showAlert = (message) => {
@@ -263,6 +416,17 @@ function Dashboard() {
       return () => clearInterval(progressInterval);
     }
   }, [alert.show]);
+
+  const formatTimestamp = (timestamp) => {
+    const date = new Date(timestamp);
+    return date.toLocaleString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+  };
 
   return (
     <div className="flex">
@@ -297,34 +461,82 @@ function Dashboard() {
 
         <div className="font-poppins font-bold uppercase px-4 mb-8 text-[#494444] text-[35px] flex justify-between">
           <div className="flex justify-between items-center w-full">
-            <h1 className="font-bold uppercase text-[#494444] text-[35px]">
-              Dashboard
-            </h1>
+            <h1 className="font-bold uppercase text-[#494444] text-[35px]">Dashboard</h1>
           </div>
           <motion.div
             ref={notificationRef}
-            className="bg-[#408286] text-white px-4 py-2 rounded-[100%] flex shadow-md cursor-pointer"
+            className="bg-[#408286] text-white px-4 py-2 rounded-full flex shadow-md cursor-pointer"
+            animate={bellControls}
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
-            onClick={() => setIsOpen(!isOpen)}
+            onClick={handleNotificationOpen}
           >
-            <img
-              src="src/assets/Images/notif.png"
-              alt="notification"
-              className="w-5 h-5 self-center invert shadow-lg"
-            />
+            <div className="relative flex items-center">
+              <img
+                src="src/assets/Images/notif.png"
+                alt="notification"
+                className="w-5 h-5 self-center invert shadow-lg"
+              />
+              {notifications.length > 0 && !hasViewedNotifications && (
+                <span className="absolute -top-0 -right-2 bg-red-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                  {notifications.length > 100 ? "99+" : notifications.length}
+                </span>
+              )}
+            </div>
           </motion.div>
           <AnimatePresence>
             {isOpen && (
               <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.2 }}
-                className="absolute right-[50px] top-[65px] mt-2 w-48 bg-white text-black shadow-lg rounded-md p-3 z-10"
-              >
-                <p className="text-sm">No new notifications</p>
-              </motion.div>
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+              className="absolute right-8 top-16 mt-2 w-96 bg-white text-gray-800 shadow-xl rounded-lg z-10 max-h-[800px] overflow-y-auto border border-gray-200"
+            >
+              <div className="p-4 border-b border-gray-200 bg-gray-50">
+                <h3 className="text-lg font-semibold text-gray-900">Notification History</h3>
+                <p className="text-sm text-gray-500">{allNotifications.length} updates</p>
+              </div>
+              {allNotifications.length > 0 ? (
+                <div className="divide-y divide-gray-200">
+                  {allNotifications.map((notif, index) => {
+                    const statusColor = notif.statusColor;
+            
+                    return (
+                      <div
+                        key={`${notif.id}-${index}`} // Unique key for each notification
+                        className="p-4 hover:bg-gray-50 transition-colors duration-150"
+                      >
+                        <div className="flex items-start space-x-3">
+                          <div className={`w-2 h-2 rounded-full mt-2 ${statusColor.split(" ")[0]}`}></div>
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-gray-900">
+                              {notif.documentType} No. {notif.documentNo}
+                            </p>
+                            <p className="text-xs text-gray-600 mt-1">
+                              Vice Mayor: <span className="font-medium">{notif.vmStatus}</span>
+                            </p>
+                            {notif.documentType.toLowerCase() === "ordinance" && (
+                              <p className="text-xs text-gray-600 mt-1">
+                                City Mayor: <span className="font-medium">{notif.cmStatus}</span>
+                              </p>
+                            )}
+                            <p className={`text-xs mt-1 ${statusColor.split(" ")[1]}`}>
+                              Status: {notif.status}
+                            </p>
+                            <p className="text-xs text-gray-400 mt-1">{formatTimestamp(notif.updatedAt)}</p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="p-4 text-center">
+                  <p className="text-sm text-gray-500">No notification history</p>
+                </div>
+              )}
+            </motion.div>
             )}
           </AnimatePresence>
         </div>
@@ -354,7 +566,7 @@ function Dashboard() {
                 className="cursor-pointer w-full appearance-none rounded-md border border-gray-300 shadow-sm px-4 py-2 pr-10 bg-white text-sm font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-[#5FA8AD] truncate"
                 onClick={() => setIsDropdownOpen((prev) => !prev)}
               >
-                {committeeType || "CommitteeLovely"}
+                {committeeType || "Committee"}
               </div>
               <img
                 src="src/assets/Images/down2.png"
@@ -704,10 +916,10 @@ function Dashboard() {
 
       <EditModal
         isOpen={isEditModalOpen}
-        onClose={handleCloseEditModal}
+        onClose={() => setIsEditModalOpen(false)}
         rowData={selectedRow}
-        setRowData={setSelectedRow}
         onSave={handleSave}
+        setRowData={setSelectedRow} 
       />
       <ViewModal
         isOpen={isViewModalOpen}
