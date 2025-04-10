@@ -5,6 +5,7 @@ import ViewModal from "../Modal/ViewModal";
 import { motion, AnimatePresence, useAnimation } from "framer-motion";
 import Swal from "sweetalert2";
 import axios from "axios";
+import { TransmittalSheet, getTransmittalData } from "../Components/TransmittalSheet";
 
 function Dashboard() {
   const [rows, setRows] = useState([]);
@@ -33,13 +34,11 @@ function Dashboard() {
   const [alert, setAlert] = useState({ show: false, message: "", progress: 100 });
   const [notifications, setNotifications] = useState([]);
   const bellControls = useAnimation();
-
   const [allNotifications, setAllNotifications] = useState(() => {
   // Initialize from localStorage to persist across refreshes
   const storedNotifications = localStorage.getItem("allNotifications");
   return storedNotifications ? JSON.parse(storedNotifications) : [];
 });
-
   // Initialize states from localStorage
   const [hasViewedNotifications, setHasViewedNotifications] = useState(() => {
     const storedValue = localStorage.getItem("hasViewedNotifications");
@@ -49,6 +48,8 @@ function Dashboard() {
     const storedStatuses = localStorage.getItem("viewedNotificationStatuses");
     return storedStatuses ? JSON.parse(storedStatuses) : {};
   });
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [previewData, setPreviewData] = useState(null);
 
   // Update localStorage whenever states change
   useEffect(() => {
@@ -426,6 +427,18 @@ function Dashboard() {
       month: "short",
       year: "numeric",
     });
+  };
+
+  const handlePrintClick = (index) => {
+    const row = paginatedRows[index];
+    const transmittalData = getTransmittalData(row);
+    setPreviewData(transmittalData);
+    setIsPreviewOpen(true);
+  };
+
+  const handleClosePreview = () => {
+    setIsPreviewOpen(false);
+    setPreviewData(null);
   };
 
   return (
@@ -835,6 +848,7 @@ function Dashboard() {
                                     Edit
                                   </button>
                                   <button
+                                    onClick={() => handlePrintClick(index)}
                                     className="bg-[#3b7bcf] hover:bg-[#3166ac] px-4 py-2 rounded-md text-white font-medium flex items-center gap-1 font-poppins text-sm"
                                   >
                                     <img
@@ -926,6 +940,16 @@ function Dashboard() {
         onClose={() => setIsViewModalOpen(false)}
         rowData={selectedRow}
       />
+      <div>
+        {isPreviewOpen && previewData && (
+          <TransmittalSheet
+            documentData={previewData}
+            onPrint={() => console.log("Printing...")}
+            onClose={handleClosePreview}
+          />
+        )}
+      </div>
+      
     </div>
   );
 }

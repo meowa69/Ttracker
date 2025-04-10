@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { HiMenuAlt3 } from "react-icons/hi";
 import { useNavigate, Link } from "react-router-dom";
 import axios from "axios";
-import { getFilteredMenus } from "../Components/menuUtils";
+import { getFilteredMenus } from "../utils/menuUtils"; 
 
 const Sidebar = () => {
     const navigate = useNavigate();
