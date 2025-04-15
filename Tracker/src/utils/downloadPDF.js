@@ -36,22 +36,51 @@ export const downloadPDF = (documentData, signatoryDetails, currentDate, session
       color = [55, 65, 81],
       boldPhrases = [],
       superscript = null,
+      customLineHeight = size * 0.4, // Allow custom line height for specific cases
     } = options;
   
     doc.setFontSize(size);
     doc.setTextColor(...color);
   
     // If no bold phrases or superscript, or entire text is bold
-    if (boldPhrases.length === 0 && !superscript && bold) {
+    if (boldPhrases.length === 0 && !superscript) {
       doc.setFont('times', bold ? 'bold' : italic ? 'italic' : 'normal');
       const lines = doc.splitTextToSize(String(text), maxWidth - indent);
-      doc.text(lines, x + indent, y, { align });
-      return lines.length * (size * 0.35);
+      const lineHeight = customLineHeight; // Use custom line height if provided
+
+      if (align === 'justify' && lines.length > 0) {
+        lines.forEach((line, index) => {
+          const lineY = y + index * lineHeight;
+          const isLastLine = index === lines.length - 1;
+          const words = line.trim().split(' ').filter(word => word);
+          
+          if (isLastLine && words.length <= 2) {
+            doc.text(line, x + indent, lineY, { align: 'left' });
+          } else if (words.length > 1) {
+            const totalTextWidth = words.reduce((sum, word) => sum + doc.getTextWidth(word), 0);
+            const totalSpaces = words.length - 1;
+            const spaceWidth = (maxWidth - indent - totalTextWidth) / totalSpaces;
+            let currentX = x + indent;
+
+            words.forEach((word, i) => {
+              doc.text(word, currentX, lineY);
+              if (i < words.length - 1) {
+                currentX += doc.getTextWidth(word) + spaceWidth;
+              }
+            });
+          } else {
+            doc.text(line, x + indent, lineY);
+          }
+        });
+      } else {
+        doc.text(lines, x + indent, y, { align });
+      }
+      return lines.length * lineHeight;
     }
   
     // Handle text with bold phrases and/or superscript
     const lines = doc.splitTextToSize(String(text), maxWidth - indent);
-    const lineHeight = size * 0.35;
+    const lineHeight = customLineHeight || (size * 0.4);
     let totalHeight = 0;
   
     lines.forEach((line, lineIndex) => {
@@ -80,10 +109,8 @@ export const downloadPDF = (documentData, signatoryDetails, currentDate, session
           const suffix = sessionDate.suffix;
           const fullDateStr = dayStr + suffix;
   
-          // Look for fullDateStr anywhere in the remainingText (not just start)
           const dateIndex = remainingText.indexOf(fullDateStr);
           if (dateIndex !== -1) {
-            // Print text before the date normally
             if (dateIndex > 0) {
               const beforeDate = remainingText.substring(0, dateIndex);
               doc.setFont('times', 'normal');
@@ -92,13 +119,13 @@ export const downloadPDF = (documentData, signatoryDetails, currentDate, session
               remainingText = remainingText.substring(dateIndex);
             }
   
-            // Print the day normally
-            doc.setFont('times', boldPhrases.includes(datePhrase) ? 'bold' : 'normal');
+            // Always bold the full date string (day + suffix)
+            doc.setFont('times', 'bold');
             doc.text(dayStr, currentX, y + lineIndex * lineHeight);
             currentX += doc.getTextWidth(dayStr);
   
-            // Print the suffix as superscript
             doc.setFontSize(size * 0.6);
+            doc.setFont('times', 'bold'); // Ensure suffix is bold
             doc.text(suffix, currentX, y + lineIndex * lineHeight - size * 0.15);
             currentX += doc.getTextWidth(suffix);
             doc.setFontSize(size);
@@ -108,7 +135,6 @@ export const downloadPDF = (documentData, signatoryDetails, currentDate, session
           }
         }
   
-        // If no bold or superscript, print normally
         if (!foundBold && !foundSuperscript) {
           const nextSpace = remainingText.indexOf(' ') === -1 ? remainingText.length : remainingText.indexOf(' ');
           const nextText = remainingText.substring(0, nextSpace + 1);
@@ -219,13 +245,13 @@ export const downloadPDF = (documentData, signatoryDetails, currentDate, session
 
   const textYStart = yPosition + textYOffset;
   let textY = textYStart;
-  addText('Republic of the Philippines', { x: textX + 10.5, y: textY + 4, size: 11, align: 'center', maxWidth: textAreaWidth });
+  addText('Republic of the Philippines', { x: textX + 31, y: textY + 4, size: 11, align: 'center', maxWidth: textAreaWidth });
   textY += lineSpacing;
-  addText('CITY OF CAGAYAN DE ORO', { x: textX + 6, y: textY + 5, size: 12, align: 'center', maxWidth: textAreaWidth });
+  addText('CITY OF CAGAYAN DE ORO', { x: textX + 33, y: textY + 5, size: 12, align: 'center', maxWidth: textAreaWidth });
   textY += lineSpacing;
   addText('OFFICE OF THE CITY COUNCIL', { x: textX + 33, y: textY + 6, size: 13, bold: true, align: 'center', maxWidth: textAreaWidth });
   textY += lineSpacing;
-  addText('www.cdecitycouncil.com', { x: textX + 20, y: textY + 6.5, size: 8, align: 'center', color: [107, 114, 128], maxWidth: textAreaWidth });
+  addText('www.cdecitycouncil.com', { x: textX + 31.5, y: textY + 6.5, size: 8, align: 'center', color: [107, 114, 128], maxWidth: textAreaWidth });
 
   yPosition += headerHeight + -12;
 
@@ -252,70 +278,159 @@ export const downloadPDF = (documentData, signatoryDetails, currentDate, session
   addText('Sirs/Mesdames:', { size: 12 });
   yPosition += 10;
 
-  const bodyText = `            Enclosed is a copy of ${documentData.document_type || "N/A"} No. ${documentData.no || "N/A"}, current series, passed by the City Council of this City, during its Regular Session on the ${String(sessionDate.day)}${sessionDate.suffix} day of ${sessionDate.month} ${sessionDate.year}, to wit:`;
+  const bodyText = `Enclosed is a copy of ${documentData.document_type || "N/A"} No. ${documentData.no || "N/A"}, current series, passed by the City Council of this City, during its Regular Session on the ${String(sessionDate.day)}${sessionDate.suffix} day of ${sessionDate.month} ${sessionDate.year}, to wit:`;
   const documentPhrase = `${documentData.document_type || "N/A"} No. ${documentData.no || "N/A"}`;
   const datePhrase = `${String(sessionDate.day)}${sessionDate.suffix} day of ${sessionDate.month} ${sessionDate.year}`;
   const monthPhrase = `day of ${sessionDate.month}`;
   const yearPhrase = `${sessionDate.year}`;
+  const fullDateStr = `${String(sessionDate.day)}${sessionDate.suffix}`; // For bolding day + suffix
 
-  yPosition += addText(bodyText, { 
+  // Split the body text at "City"
+  const splitIndex = bodyText.indexOf('City') + 'City'.length;
+  const indentedText = bodyText.substring(0, splitIndex); // "Enclosed is a copy of ... City"
+  const remainingText = bodyText.substring(splitIndex); // ", during its Regular Session ..."
+
+  // Render the indented part
+  const indentedHeight = addText(indentedText, { 
     size: 12, 
     maxWidth: contentWidth,
-    boldPhrases: [documentPhrase, datePhrase, monthPhrase, yearPhrase],
+    boldPhrases: [documentPhrase], // Only the document phrase might be in this part
+    indent: 10 // 10mm indent
+  });
+
+  // Adjust yPosition after the indented part
+  yPosition += indentedHeight;
+
+  // Render the remaining part without indent
+  yPosition += addText(remainingText, { 
+    size: 12, 
+    maxWidth: contentWidth,
+    boldPhrases: [datePhrase, monthPhrase, yearPhrase, fullDateStr],
     superscript: true,
+    indent: 0 // No indent for the remaining text
   });
   
   // Title Box
   yPosition += 5;
   const title = documentData.title || 'N/A';
   doc.setDrawColor(55, 65, 81);
-  doc.setLineWidth(0.5);
-  const boxWidth = contentWidth * 0.9;
+  doc.setLineWidth(0.1); // Set border thickness to 0.3mm for a lighter border
+  const boxWidth = contentWidth * 0.85;
   const boxX = marginLeft + (contentWidth - boxWidth) / 2;
-  const boxHeight = 30;
-  doc.rect(boxX, yPosition - 2, boxWidth, boxHeight, 'S');
-  addText(title.toUpperCase(), { 
-    x: boxX, 
-    y: yPosition + 2, 
+
+  // Calculate text dimensions
+  const titleText = title.toUpperCase();
+  doc.setFontSize(12);
+  doc.setFont('times', 'bold');
+  const textLines = doc.splitTextToSize(titleText, boxWidth - 8); // 4mm padding on each side
+  const titleLineHeight = 12 * 0.5; // Line height for title (6mm per line)
+  const textHeight = textLines.length * titleLineHeight;
+  const paddingTopBottom = 3; // 3mm padding for top and bottom
+  const boxHeight = textHeight + paddingTopBottom * 2; // Dynamically adjust box height
+
+  // Draw the box
+  doc.rect(boxX, yPosition, boxWidth, boxHeight, 'S');
+
+  // Calculate starting Y position to vertically center the text in the box
+  const textBlockHeight = textLines.length * titleLineHeight;
+  const yStart = yPosition + paddingTopBottom + (boxHeight - textBlockHeight) / 2;
+
+  // Add title text, ensuring it stays within the box
+  addText(titleText, { 
+    x: boxX + 4, // 4mm left padding
+    y: yStart, // Vertically centered
     size: 12, 
     bold: true, 
-    align: 'center', 
-    maxWidth: boxWidth 
+    align: 'justify', // Justified text
+    maxWidth: boxWidth - 8, // 4mm padding on each side
+    customLineHeight: titleLineHeight // Use specified line height for title
   });
   yPosition += boxHeight + 5;
 
   // Additional Text
+  yPosition += 5;
   yPosition += addText('for your information.', { size: 12 });
   yPosition += 5;
-  yPosition += addText('Thank you very much.', { size: 12 });
+  yPosition += addText('Thank you very much.', { size: 12, indent: 10 });
   yPosition += 6;
 
   // Signature Section
-  addText('Very truly yours,', { size: 15, align: 'center' });
-  yPosition += 8;
-  addText(signatoryDetails.name.toUpperCase(), { size: 15, bold: true, align: 'center' });
-  yPosition += 3;
-  addText(signatoryDetails.title1, { size: 15, align: 'center' });
-  yPosition += 3;
-  addText(signatoryDetails.title2, { size: 15, align: 'center' });
-  yPosition += 3;
-  addText(signatoryDetails.authority, { size: 15, align: 'center' });
-  yPosition += 3;
-  addText(signatoryDetails.authorityTitle, { size: 15, align: 'center' });
-  yPosition += 8;
+  const signatureX = pageWidth - marginRight - 40; // Align text to end at right margin
+  addText('Very truly yours,', { size: 12, x: signatureX, align: 'center' });
+  yPosition += 15;
+  addText(signatoryDetails.name.toUpperCase(), { size: 11, bold: true, x: signatureX, align: 'center' });
+  yPosition += 4;
+  addText(signatoryDetails.title1, { size: 10, x: signatureX, align: 'center' });
+  yPosition += 4;
+  addText(signatoryDetails.title2, { size: 10, x: signatureX, align: 'center' });
+  yPosition += 4;
+  addText(signatoryDetails.title3 || '', { size: 10, x: signatureX, align: 'center' });
+  yPosition += 4;
+  addText(signatoryDetails.authority, { size: 10, x: signatureX, align: 'center' });
+  yPosition += 4;
+  addText(signatoryDetails.authorityTitle, { size: 10, x: signatureX, align: 'center' });
+  yPosition += 15; // Increased spacing after signature section
 
   // Recipients Table
-  addText('Office                          Receiver Name    Signature    Date', { size: 15, bold: true });
-  yPosition += 4;
+  // Define column widths (in mm) to match the image proportions
+  const colWidths = {
+    office: 45, // Wider for office names
+    receiverName: 35,
+    signature: 30,
+    date: 25,
+  };
+
+  // Calculate column positions for headers and underlines
+  const headerXPositions = {
+    office: marginLeft + 10,
+    receiverName: marginLeft + colWidths.office + 23,
+    signature: marginLeft + colWidths.office + colWidths.receiverName + 23,
+    date: marginLeft + colWidths.office + colWidths.receiverName + colWidths.signature + 19.25, // Adjusted offset
+  };
+
+  // Table Header
+  doc.setFontSize(10);
+  doc.setFont('times', 'normal');
+  // Align "Office" header to the left
+  doc.text('Office', headerXPositions.office, yPosition, { align: 'left' });
+  doc.text('Receiver Name', headerXPositions.receiverName + colWidths.receiverName / 2, yPosition, { align: 'center' });
+  doc.text('Signature', headerXPositions.signature + colWidths.signature / 2, yPosition, { align: 'center' });
+  doc.text('Date', headerXPositions.date + colWidths.date / 2, yPosition, { align: 'center' });
+  yPosition += 10; // Space after header (no underlines)
+
   if (documentData.transmitted_recipients && documentData.transmitted_recipients.length > 0) {
     documentData.transmitted_recipients.forEach((recipient) => {
       const designation = recipient.designation || 'N/A';
-      const rowText = `${designation.padEnd(30)} __________    __________    __________`;
-      yPosition += addText(rowText, { size: 12 });
-      yPosition += 2;
+      const truncatedDesignation = doc.splitTextToSize(designation, colWidths.office - 5)[0];
+
+      doc.setFontSize(10);
+      doc.text(truncatedDesignation, headerXPositions.office, yPosition, { align: 'left' });
+      yPosition += 1; 
+
+      doc.setLineWidth(0.1);
+      doc.setDrawColor(0, 0, 0);
+
+      const receiverNameLineWidth = (colWidths.receiverName - 10) * 1.5; // 10% wider
+      const receiverNameX1 = headerXPositions.receiverName + (colWidths.receiverName - receiverNameLineWidth) / 2;
+      const receiverNameX2 = receiverNameX1 + receiverNameLineWidth;
+      doc.line(receiverNameX1, yPosition, receiverNameX2, yPosition);
+
+      // Signature underline
+      const signatureLineWidth = colWidths.signature - 10; // Fixed length
+      const signatureX1 = headerXPositions.signature + (colWidths.signature - signatureLineWidth) / 2;
+      const signatureX2 = signatureX1 + signatureLineWidth;
+      doc.line(signatureX1, yPosition, signatureX2, yPosition);
+
+      // Date underline (match Signature length for consistency)
+      const dateLineWidth = signatureLineWidth; // Same as Signature
+      const dateX1 = headerXPositions.date + (colWidths.date - dateLineWidth) / 2;
+      const dateX2 = dateX1 + dateLineWidth;
+      doc.line(dateX1, yPosition, dateX2, yPosition);
+
+      yPosition += 5; // Space between rows
     });
   } else {
-    yPosition += addText('No recipients added.', { size: 15, align: 'center' });
+    yPosition += addText('No recipients added.', { size: 10, align: 'center', x: pageWidth / 2 });
   }
 
   // Footer
