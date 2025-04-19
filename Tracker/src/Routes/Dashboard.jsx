@@ -684,7 +684,7 @@ function Dashboard() {
         </div>
 
         <div className="flex-grow px-4 py-2">
-          <div className="bg-white w-full border rounded-md shadow-lg p-8 min-h-[200px] flex flex-col">
+          <div className="bg-white w-full border rounded-md shadow-lg p-4 min-h-[100px] flex flex-col">
             <div className="flex justify-end mb-2">
               <button
                 onClick={handleZoomIn}

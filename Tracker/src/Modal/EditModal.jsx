@@ -364,13 +364,11 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
 
           <div>
             <label className="block text-gray-700 text-sm font-medium mb-1">Title</label>
-            <textarea
-              name="title"
-              value={localRowData.title || ""}
-              readOnly
-              className="w-full px-3 py-2 border rounded-lg bg-gray-100 text-gray-600 cursor-not-allowed focus:outline-none resize-none font-semibold"
-              rows="3"
-            />
+            <div
+              className="w-full px-3 py-2 border rounded-lg bg-gray-100 text-gray-600 font-semibold whitespace-pre-wrap cursor-not-allowed focus:outline-none resize-none"
+            >
+              {localRowData.title || ""}
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

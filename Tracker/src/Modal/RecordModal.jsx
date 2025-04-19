@@ -105,13 +105,13 @@ function RecordModal({ formData = {}, onClose, onConfirm }) {
                 <div className="mt-6 flex justify-end space-x-2">
                     <button
                         onClick={onClose}
-                        className="px-6 py-2 bg-gray-600 hover:bg-gray-700 text-white font-poppins text-sm rounded-md transition duration-200"
+                        className="bg-gray-600 hover:bg-gray-700 text-sm text-white font-poppins font-semibold py-2 px-4 rounded-md transition duration-300"
                     >
                         Close
                     </button>
                     <button
                         onClick={handleConfirm}
-                        className="px-6 py-2 bg-[#408286] hover:bg-[#357a74] text-white font-poppins text-sm rounded-md transition duration-200"
+                        className="bg-[#408286] hover:bg-[#357a74] text-sm font-poppins text-white font-semibold py-2 px-4 rounded-md transition duration-300"
                     >
                         Confirm
                     </button>
