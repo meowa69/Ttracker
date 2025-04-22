@@ -508,13 +508,13 @@ export const TransmittalSheet = ({ documentData, onPrint, onClose }) => {
           <div className='space-x-2'>
             <button
               onClick={handlePrint}
-              className="px-5 py-2 bg-[#408286] text-white rounded-lg hover:bg-[#306466] focus:outline-none focus:ring-2 focus:ring-[#408286] transition-all"
+              className="px-5 py-2 bg-[#408286] text-white rounded-lg hover:bg-[#306466] focus:outline-none focus:ring-2 focus:ring-[#408286] transition-all shadow-md font-poppins text-sm"
             >
               Print
             </button>
             <button
               onClick={onClose}
-              className="px-5 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-400 transition-all"
+              className="px-5 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-400 transition-all shadow-md font-poppins text-sm"
             >
               Close
             </button>

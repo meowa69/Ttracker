@@ -11,9 +11,12 @@ use App\Models\CommitteeTerm;
 use App\Models\CommitteeMember;
 use App\Models\EditRecord;
 use App\Models\TransmittedRecipient;
+use App\Models\DeletionRequest;
+use App\Models\History;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
 
 
 class AuthController extends Controller
@@ -174,33 +177,56 @@ class AuthController extends Controller
         ]);
     }
 
-    // Add Record
-    public function addRecord(Request $request)
+    // Helper function to log actions to histories table
+    private function logHistory($username, $document_type, $document_no, $action)
     {
-        
         try {
-
-            \Log::info('Incoming Request:', $request->all());
-
-            $validated = $request->validate([
-                'no' => 'required|string|unique:add_record,no', // Table name should match DB
-                'document_type' => 'required|string',
-                'date_approved' => 'required|date',
-                'title' => 'required|string',
+            $username = $username ?? 'unknown';
+            $history = History::create([
+                'username' => $username,
+                'document_type' => $document_type,
+                'document_no' => $document_no,
+                'action' => $action,
             ]);
-            
-            $record = new AddRecord();
-            $record->no = $validated['no'];                 
-            $record->document_type = $validated['document_type'];
-            $record->date_approved = $validated['date_approved'];
-            $record->title = $validated['title'];
-            $record->save();
-            
-            return response()->json(['message' => 'Record added successfully'], 201);
+            \Log::info("Logged history: username={$username}, document_type={$document_type}, document_no={$document_no}, action={$action}");
         } catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 500);
+            \Log::error("Failed to log history: " . $e->getMessage());
         }
     }
+
+   // Add Record
+   public function addRecord(Request $request)
+   {
+       try {
+           \Log::info('Incoming Request:', $request->all());
+
+           $validated = $request->validate([
+               'no' => 'required|string|unique:add_record,no',
+               'document_type' => 'required|string',
+               'date_approved' => 'required|date',
+               'title' => 'required|string',
+           ]);
+           
+           $record = new AddRecord();
+           $record->no = $validated['no'];
+           $record->document_type = $validated['document_type'];
+           $record->date_approved = $validated['date_approved'];
+           $record->title = $validated['title'];
+           $record->save();
+           
+           // Log the action
+           $this->logHistory(
+               Auth::user()->user_name,
+               $validated['document_type'],
+               $validated['no'],
+               'Add Document'
+           );
+
+           return response()->json(['message' => 'Record added successfully'], 201);
+       } catch (\Exception $e) {
+           return response()->json(['error' => $e->getMessage()], 500);
+       }
+   }
 
     // Get Records
     public function getRecords()
@@ -238,76 +264,87 @@ class AuthController extends Controller
         }
     }
 
-    // Update Record
-    public function updateRecord(Request $request, $id)
-    {
-        try {
-            $validated = $request->validate([
-                'committee_sponsor' => 'nullable|string',
-                'status' => 'nullable|string',
-                'vm_forwarded' => 'nullable|date',
-                'vm_received' => 'nullable|date',
-                'cm_forwarded' => 'nullable|date',
-                'cm_received' => 'nullable|date',
-                'date_transmitted' => 'nullable|date',
-                'remarks' => 'nullable|string',
-                'completed' => 'nullable|boolean',
-                'completion_date' => 'nullable|date',
-                'new_recipients' => 'nullable|array',
-                'new_recipients.*.name' => 'required|string',
-                'new_recipients.*.designation' => 'nullable|string',
-                'new_recipients.*.address' => 'required|string',
-                'recipients_to_remove' => 'nullable|array',
-                'recipients_to_remove.*' => 'integer|exists:transmitted_recipients,id',
-            ]);
+   // Update Record
+   public function updateRecord(Request $request, $id)
+   {
+       try {
+           $validated = $request->validate([
+               'committee_sponsor' => 'nullable|string',
+               'status' => 'nullable|string',
+               'vm_forwarded' => 'nullable|date',
+               'vm_received' => 'nullable|date',
+               'cm_forwarded' => 'nullable|date',
+               'cm_received' => 'nullable|date',
+               'date_transmitted' => 'nullable|date',
+               'remarks' => 'nullable|string',
+               'completed' => 'nullable|boolean',
+               'completion_date' => 'nullable|date',
+               'new_recipients' => 'nullable|array',
+               'new_recipients.*.name' => 'required|string',
+               'new_recipients.*.designation' => 'nullable|string',
+               'new_recipients.*.address' => 'required|string',
+               'recipients_to_remove' => 'nullable|array',
+               'recipients_to_remove.*' => 'integer|exists:transmitted_recipients,id',
+           ]);
 
-            $editRecord = EditRecord::firstOrNew(['record_id' => $id]);
+           $editRecord = EditRecord::firstOrNew(['record_id' => $id]);
 
-            $editRecord->fill([
-                'committee_sponsor' => $validated['committee_sponsor'] ?? $editRecord->committee_sponsor,
-                'status' => $validated['status'] ?? $editRecord->status,
-                'vice_mayor_forwarded' => $validated['vm_forwarded'] ?? $editRecord->vice_mayor_forwarded,
-                'vice_mayor_received' => $validated['vm_received'] ?? $editRecord->vice_mayor_received,
-                'city_mayor_forwarded' => $validated['cm_forwarded'] ?? $editRecord->city_mayor_forwarded,
-                'city_mayor_received' => $validated['cm_received'] ?? $editRecord->city_mayor_received,
-                'date_transmitted' => $validated['date_transmitted'] ?? $editRecord->date_transmitted,
-                'remarks' => $validated['remarks'] ?? $editRecord->remarks,
-                'completed' => $validated['completed'] ?? $editRecord->completed ?? false,
-                'completion_date' => $validated['completion_date'] ?? $editRecord->completion_date,
-            ]);
+           $editRecord->fill([
+               'committee_sponsor' => $validated['committee_sponsor'] ?? $editRecord->committee_sponsor,
+               'status' => $validated['status'] ?? $editRecord->status,
+               'vice_mayor_forwarded' => $validated['vm_forwarded'] ?? $editRecord->vice_mayor_forwarded,
+               'vice_mayor_received' => $validated['vm_received'] ?? $editRecord->vice_mayor_received,
+               'city_mayor_forwarded' => $validated['cm_forwarded'] ?? $editRecord->city_mayor_forwarded,
+               'city_mayor_received' => $validated['cm_received'] ?? $editRecord->city_mayor_received,
+               'date_transmitted' => $validated['date_transmitted'] ?? $editRecord->date_transmitted,
+               'remarks' => $validated['remarks'] ?? $editRecord->remarks,
+               'completed' => $validated['completed'] ?? $editRecord->completed ?? false,
+               'completion_date' => $validated['completion_date'] ?? $editRecord->completion_date,
+           ]);
 
-            $editRecord->save();
+           $editRecord->save();
 
-            // Handle new recipients
-            if (isset($validated['new_recipients'])) {
-                foreach ($validated['new_recipients'] as $recipient) {
-                    $newRecipient = $editRecord->transmittedRecipients()->create([
-                        'name' => $recipient['name'],
-                        'designation_office' => $recipient['designation'],
-                        'address' => $recipient['address'],
-                    ]);
-                    \Log::info("Added new recipient:", $newRecipient->toArray());
-                }
-            }
+           // Handle new recipients
+           if (isset($validated['new_recipients'])) {
+               foreach ($validated['new_recipients'] as $recipient) {
+                   $newRecipient = $editRecord->transmittedRecipients()->create([
+                       'name' => $recipient['name'],
+                       'designation_office' => $recipient['designation'],
+                       'address' => $recipient['address'],
+                   ]);
+                   \Log::info("Added new recipient:", $newRecipient->toArray());
+               }
+           }
 
-            // Handle recipients to remove
-            if (isset($validated['recipients_to_remove']) && !empty($validated['recipients_to_remove'])) {
-                $editRecord->transmittedRecipients()
-                    ->whereIn('id', $validated['recipients_to_remove'])
-                    ->delete();
-            }
+           // Handle recipients to remove
+           if (isset($validated['recipients_to_remove']) && !empty($validated['recipients_to_remove'])) {
+               $editRecord->transmittedRecipients()
+                   ->whereIn('id', $validated['recipients_to_remove'])
+                   ->delete();
+           }
 
-            // Fetch the updated record with its transmitted recipients
-            $updatedRecord = EditRecord::with('transmittedRecipients')->find($editRecord->id);
-            $responseData = $updatedRecord->toArray();
-            \Log::info("Final response data with transmitted recipients:", $responseData);
+           // Fetch the original record to get document_type and no
+           $record = AddRecord::findOrFail($id);
 
-            return response()->json(['message' => 'Record updated successfully', 'data' => $responseData], 200);
-        } catch (\Exception $e) {
-            \Log::error('Update error: ' . $e->getMessage());
-            return response()->json(['message' => $e->getMessage()], 500);
-        }
-    }
+           // Log the action
+           $this->logHistory(
+               Auth::user()->user_name,
+               $record->document_type,
+               $record->no,
+               'Update Document'
+           );
+
+           // Fetch the updated record with its transmitted recipients
+           $updatedRecord = EditRecord::with('transmittedRecipients')->find($editRecord->id);
+           $responseData = $updatedRecord->toArray();
+           \Log::info("Final response data with transmitted recipients:", $responseData);
+
+           return response()->json(['message' => 'Record updated successfully', 'data' => $responseData], 200);
+       } catch (\Exception $e) {
+           \Log::error('Update error: ' . $e->getMessage());
+           return response()->json(['message' => $e->getMessage()], 500);
+       }
+   }
     
     // Delete Record
     public function deleteRecord($id)
@@ -321,6 +358,14 @@ class AuthController extends Controller
                 \Log::warning("Record not found with ID: {$id}");
                 return response()->json(['error' => 'Record not found'], 404);
             }
+
+            // Log the action before deletion
+            $this->logHistory(
+                Auth::user()->user_name,
+                $record->document_type,
+                $record->no,
+                'Delete Document'
+            );
 
             // Delete related edit_record entry if it exists
             $editRecord = EditRecord::where('record_id', $id)->first();
@@ -340,6 +385,155 @@ class AuthController extends Controller
         }
     }
     
+    // Submit Deletion Request
+    public function submitDeletionRequest(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                'record_id' => 'required|exists:add_record,id',
+                'user_name' => 'required|string',
+                'document_type' => 'required|string',
+                'number' => 'required|string',
+                'title' => 'required|string',
+                'reason' => 'required|string',
+            ]);
+
+            $deletionRequest = DeletionRequest::create([
+                'record_id' => $validated['record_id'],
+                'user_name' => $validated['user_name'],
+                'document_type' => $validated['document_type'],
+                'number' => $validated['number'],
+                'title' => $validated['title'],
+                'reason' => $validated['reason'],
+                'status' => 'Pending',
+            ]);
+
+            // Log the action
+            $this->logHistory(
+                $validated['user_name'],
+                $validated['document_type'],
+                $validated['number'],
+                'Request Delete Document'
+            );
+
+            \Log::info('Deletion request submitted:', $deletionRequest->toArray());
+
+            return response()->json(['message' => 'Deletion request submitted successfully', 'data' => $deletionRequest], 201);
+        } catch (\Exception $e) {
+            \Log::error('Error submitting deletion request: ' . $e->getMessage());
+            return response()->json(['message' => 'Failed to submit deletion request: ' . $e->getMessage()], 500);
+        }
+    }
+    
+
+    // Get all deletion requests
+    public function getDeletionRequests()
+    {
+        try {
+            $requests = DeletionRequest::with('record')->get();
+            return response()->json($requests, 200);
+        } catch (\Exception $e) {
+            \Log::error('Error fetching deletion requests: ' . $e->getMessage());
+            return response()->json(['message' => 'Failed to fetch deletion requests: ' . $e->getMessage()], 500);
+        }
+    }
+
+    // Handle deletion request (approve/reject)
+    public function handleDeletionRequest(Request $request, $id)
+    {
+        try {
+            $request->validate([
+                'status' => 'required|in:Approved,Rejected',
+            ]);
+
+            $deletionRequest = DeletionRequest::findOrFail($id);
+
+            if ($request->status === 'Approved') {
+                // Delete the associated record
+                $record = AddRecord::find($deletionRequest->record_id);
+                if ($record) {
+                    // Delete related edit_record entry
+                    EditRecord::where('record_id', $record->id)->delete();
+                    $record->delete();
+                    \Log::info("Record deleted for deletion request ID: {$id}");
+                }
+                $deletionRequest->status = 'Approved';
+            } else {
+                $deletionRequest->status = 'Rejected';
+            }
+
+            $deletionRequest->save();
+
+            \Log::info("Deletion request {$id} updated to status: {$request->status}");
+
+            return response()->json(['message' => "Deletion request {$request->status} successfully"], 200);
+        } catch (\Exception $e) {
+            \Log::error('Error handling deletion request: ' . $e->getMessage());
+            return response()->json(['message' => 'Failed to handle deletion request: ' . $e->getMessage()], 500);
+        }
+    }
+
+    // Get History Logs
+    public function getHistory(Request $request)
+    {
+        try {
+            $perPage = $request->query('per_page', 20);
+            $page = $request->query('page', 1);
+            $category = $request->query('category', 'All');
+            $search = $request->query('search', '');
+            $filterBy = $request->query('filter_by', 'all');
+            $dateFrom = $request->query('date_from', '');
+            $dateTo = $request->query('date_to', '');
+
+            $query = History::query();
+
+            // Apply category filter
+            if ($category !== 'All') {
+                $query->where('action', $category);
+            }
+
+            // Apply search filter
+            if ($search && $filterBy !== 'all') {
+                $query->where($filterBy, 'like', '%' . $search . '%');
+            }
+
+            // Apply date range filter
+            if ($dateFrom) {
+                $query->whereDate('created_at', '>=', $dateFrom);
+            }
+            if ($dateTo) {
+                $query->whereDate('created_at', '<=', $dateTo);
+            }
+
+            // Paginate results
+            $logs = $query->select('id', 'username', 'document_type', 'document_no', 'action', 'created_at')
+                ->orderBy('created_at', 'desc')
+                ->paginate($perPage, ['*'], 'page', $page);
+
+            // Transform created_at to timestamp with explicit timezone
+            $transformedLogs = $logs->getCollection()->map(function ($log) {
+                return [
+                    'id' => $log->id,
+                    'username' => $log->username,
+                    'document_type' => $log->document_type,
+                    'document_no' => $log->document_no,
+                    'action' => $log->action,
+                    'timestamp' => $log->created_at->setTimezone('Asia/Manila')->format('Y-m-d h:i A'),
+                ];
+            });
+
+            return response()->json([
+                'data' => $transformedLogs,
+                'current_page' => $logs->currentPage(),
+                'total_pages' => $logs->lastPage(),
+                'total' => $logs->total(),
+            ], 200);
+        } catch (\Exception $e) {
+            \Log::error('Error fetching history logs: ' . $e->getMessage());
+            return response()->json(['message' => 'Failed to fetch history logs: ' . $e->getMessage()], 500);
+        }
+    }
+
     // Get all committees
     public function getCommittees()
     {

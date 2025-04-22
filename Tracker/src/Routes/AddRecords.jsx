@@ -156,14 +156,14 @@ function AddRecords({ onRecordAdded }) {
 
                         {/* Submit Button */}
                         <div className="text-left flex gap-2">
-                            <button type="submit" className="bg-[#408286] hover:bg-[#357a74] text-sm font-poppins text-white font-semibold py-2 px-4 rounded-md transition duration-300">
+                            <button type="submit" className="bg-[#408286] hover:bg-[#357a74] text-sm font-poppins text-white font-semibold py-2 px-4 rounded-md transition duration-300 shadow-md">
                                 Add Record
                             </button>
 
                             <button
                                 type="button"
                                 onClick={() => setFormData({ no: "", document_type: "Select type", date_approved: "", title: "" })}
-                                className="bg-gray-600 hover:bg-gray-700 text-sm text-white font-poppins font-semibold py-2 px-4 rounded-md transition duration-300"
+                                className="bg-gray-600 hover:bg-gray-700 text-sm text-white font-poppins font-semibold py-2 px-4 rounded-md transition duration-300 shadow-md"
                             >
                                 Clear
                             </button>

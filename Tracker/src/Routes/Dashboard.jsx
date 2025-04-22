@@ -35,11 +35,9 @@ function Dashboard() {
   const [notifications, setNotifications] = useState([]);
   const bellControls = useAnimation();
   const [allNotifications, setAllNotifications] = useState(() => {
-  // Initialize from localStorage to persist across refreshes
-  const storedNotifications = localStorage.getItem("allNotifications");
-  return storedNotifications ? JSON.parse(storedNotifications) : [];
-});
-  // Initialize states from localStorage
+    const storedNotifications = localStorage.getItem("allNotifications");
+    return storedNotifications ? JSON.parse(storedNotifications) : [];
+  });
   const [hasViewedNotifications, setHasViewedNotifications] = useState(() => {
     const storedValue = localStorage.getItem("hasViewedNotifications");
     return storedValue ? JSON.parse(storedValue) : false;
@@ -51,7 +49,23 @@ function Dashboard() {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [previewData, setPreviewData] = useState(null);
 
-  // Update localStorage whenever states change
+  // Get user role safely
+  const userRole = (() => {
+    const userDataRaw = localStorage.getItem("userData");
+    if (!userDataRaw || userDataRaw === "undefined") {
+      console.warn("userData in localStorage is missing or invalid:", userDataRaw);
+      return "";
+    }
+    try {
+      const userData = JSON.parse(userDataRaw);
+      return userData?.role || "";
+    } catch (error) {
+      console.error("Failed to parse userData from localStorage:", error);
+      return "";
+    }
+  })();
+
+  // Update localStorage for notifications
   useEffect(() => {
     localStorage.setItem("hasViewedNotifications", JSON.stringify(hasViewedNotifications));
     localStorage.setItem("viewedNotificationStatuses", JSON.stringify(viewedNotificationStatuses));
@@ -90,11 +104,13 @@ function Dashboard() {
   }, []);
 
   const handleEditClick = (index) => {
+    if (loading || !paginatedRows[index]) {
+      console.warn("Cannot open EditModal: Data is loading or row is invalid");
+      return;
+    }
     const row = paginatedRows[index];
     setSelectedRow(row);
-    setTimeout(() => {
-      setIsEditModalOpen(true);
-    }, 0);
+    setIsEditModalOpen(true);
   };
 
   const handleViewClick = (index) => {
@@ -155,8 +171,8 @@ function Dashboard() {
       text: "Do you really want to delete this document?",
       icon: "warning",
       showCancelButton: true,
-      confirmButtonColor: "#d33",
-      cancelButtonColor: "#3085d6",
+      confirmButtonColor: "#408286",
+      cancelButtonColor: "#6b7280",
       confirmButtonText: "Yes, delete it!",
     }).then(async (result) => {
       if (result.isConfirmed) {
@@ -287,7 +303,6 @@ function Dashboard() {
   }, [allNotifications]);
 
   const updateNotifications = (data) => {
-    // Original notification list (current state)
     const currentNotificationList = data
       .filter((row) => ["Ordinance", "Resolution", "Motion"].includes(row.document_type))
       .map((row) => {
@@ -300,7 +315,7 @@ function Dashboard() {
         const cmPending = row.document_type.toLowerCase() === "ordinance" && row.cmForwarded && !row.cmReceived;
         const isCompleted = row.status === "Completed";
         const isOverdue = vmTime.includes("Overdue") || cmTime.includes("Overdue");
-  
+
         if (vmPending || cmPending || isCompleted || isOverdue) {
           const relevantTime =
             vmTime !== "Not Started" && vmTime !== "Completed"
@@ -311,7 +326,7 @@ function Dashboard() {
               ? "Completed"
               : "Not Started";
           const statusColor = getStatusColor(relevantTime);
-  
+
           return {
             id: row.id,
             documentNo: row.no,
@@ -328,14 +343,11 @@ function Dashboard() {
       .filter((notification) => notification !== null)
       .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
       .slice(0, 9);
-  
-    // Set the current notifications (original behavior)
+
     setNotifications(currentNotificationList);
-  
-    // Add new notifications to history without updating existing ones
+
     setAllNotifications((prevAllNotifications) => {
       const newNotifications = currentNotificationList.filter((newNotif) => {
-        // Only add if it's a new status change
         const latestForThisId = prevAllNotifications.find(n => n.id === newNotif.id);
         if (!latestForThisId) return true;
         return (
@@ -345,16 +357,14 @@ function Dashboard() {
       });
       
       const combinedNotifications = [...newNotifications, ...prevAllNotifications];
-      // Limit to 50 items for history
       return combinedNotifications.slice(0, 50);
     });
-  
-    // Original change detection logic
+
     const currentStatuses = {};
     currentNotificationList.forEach((notif) => {
       currentStatuses[notif.id] = { vmStatus: notif.vmStatus, cmStatus: notif.cmStatus };
     });
-  
+
     let hasChanges = false;
     for (const id in currentStatuses) {
       if (!viewedNotificationStatuses[id]) {
@@ -368,11 +378,11 @@ function Dashboard() {
         break;
       }
     }
-  
+
     if (hasChanges) {
       setHasViewedNotifications(false);
     }
-  
+
     if (currentNotificationList.length > 0) {
       bellControls.start({
         rotate: [0, 15, -15, 15, -15, 0],
@@ -384,7 +394,6 @@ function Dashboard() {
   const handleNotificationOpen = () => {
     setIsOpen(true);
     setHasViewedNotifications(true);
-    // Update viewed statuses only for new notifications
     const newStatuses = { ...viewedNotificationStatuses };
     notifications.forEach((notif) => {
       newStatuses[notif.id] = { vmStatus: notif.vmStatus, cmStatus: notif.cmStatus };
@@ -472,7 +481,7 @@ function Dashboard() {
           </div>
         )}
 
-        <div className="font-poppins font-bold uppercase px-4 mb-8 text-[#494444] text-[35px] flex justify-between">
+        <div className="font-poppins font-bold uppercase px-4 mb-5 text-[#494444] text-[35px] flex justify-between">
           <div className="flex justify-between items-center w-full">
             <h1 className="font-bold uppercase text-[#494444] text-[35px]">Dashboard</h1>
           </div>
@@ -500,56 +509,55 @@ function Dashboard() {
           <AnimatePresence>
             {isOpen && (
               <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.2 }}
-              className="absolute right-8 top-16 mt-2 w-96 bg-white text-gray-800 shadow-xl rounded-lg z-10 max-h-[800px] overflow-y-auto border border-gray-200"
-            >
-              <div className="p-4 border-b border-gray-200 bg-gray-50">
-                <h3 className="text-lg font-semibold text-gray-900">Notification History</h3>
-                <p className="text-sm text-gray-500">{allNotifications.length} updates</p>
-              </div>
-              {allNotifications.length > 0 ? (
-                <div className="divide-y divide-gray-200">
-                  {allNotifications.map((notif, index) => {
-                    const statusColor = notif.statusColor;
-            
-                    return (
-                      <div
-                        key={`${notif.id}-${index}`} // Unique key for each notification
-                        className="p-4 hover:bg-gray-50 transition-colors duration-150"
-                      >
-                        <div className="flex items-start space-x-3">
-                          <div className={`w-2 h-2 rounded-full mt-2 ${statusColor.split(" ")[0]}`}></div>
-                          <div className="flex-1">
-                            <p className="text-sm font-medium text-gray-900">
-                              {notif.documentType} No. {notif.documentNo}
-                            </p>
-                            <p className="text-xs text-gray-600 mt-1">
-                              Vice Mayor: <span className="font-medium">{notif.vmStatus}</span>
-                            </p>
-                            {notif.documentType.toLowerCase() === "ordinance" && (
-                              <p className="text-xs text-gray-600 mt-1">
-                                City Mayor: <span className="font-medium">{notif.cmStatus}</span>
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+                className="absolute right-8 top-16 mt-2 w-96 bg-white text-gray-800 shadow-xl rounded-lg z-10 max-h-[800px] overflow-y-auto border border-gray-200"
+              >
+                <div className="p-4 border-b border-gray-200 bg-gray-50">
+                  <h3 className="text-lg font-semibold text-gray-900">Notification History</h3>
+                  <p className="text-sm text-gray-500">{allNotifications.length} updates</p>
+                </div>
+                {allNotifications.length > 0 ? (
+                  <div className="divide-y divide-gray-200">
+                    {allNotifications.map((notif, index) => {
+                      const statusColor = notif.statusColor;
+                      return (
+                        <div
+                          key={`${notif.id}-${index}`}
+                          className="p-4 hover:bg-gray-50 transition-colors duration-150"
+                        >
+                          <div className="flex items-start space-x-3">
+                            <div className={`w-2 h-2 rounded-full mt-2 ${statusColor.split(" ")[0]}`}></div>
+                            <div className="flex-1">
+                              <p className="text-sm font-medium text-gray-900">
+                                {notif.documentType} No. {notif.documentNo}
                               </p>
-                            )}
-                            <p className={`text-xs mt-1 ${statusColor.split(" ")[1]}`}>
-                              Status: {notif.status}
-                            </p>
-                            <p className="text-xs text-gray-400 mt-1">{formatTimestamp(notif.updatedAt)}</p>
+                              <p className="text-xs text-gray-600 mt-1">
+                                Vice Mayor: <span className="font-medium">{notif.vmStatus}</span>
+                              </p>
+                              {notif.documentType.toLowerCase() === "ordinance" && (
+                                <p className="text-xs text-gray-600 mt-1">
+                                  City Mayor: <span className="font-medium">{notif.cmStatus}</span>
+                                </p>
+                              )}
+                              <p className={`text-xs mt-1 ${statusColor.split(" ")[1]}`}>
+                                Status: {notif.status}
+                              </p>
+                              <p className="text-xs text-gray-400 mt-1">{formatTimestamp(notif.updatedAt)}</p>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="p-4 text-center">
-                  <p className="text-sm text-gray-500">No notification history</p>
-                </div>
-              )}
-            </motion.div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="p-4 text-center">
+                    <p className="text-sm text-gray-500">No notification history</p>
+                  </div>
+                )}
+              </motion.div>
             )}
           </AnimatePresence>
         </div>
@@ -823,11 +831,11 @@ function Dashboard() {
                               <td className="border border-gray-300 px-4 py-2 text-justify font-poppins text-sm text-gray-700">
                                 {row.remarks || "None"}
                               </td>
-                              <td className="px-2 py-2 w-[27%] border font-poppins text-sm text-gray-700">
-                                <div className="grid grid-cols-2 gap-1 md:flex md:flex-wrap md:justify-start">
+                              <td className={userRole === "user" ? "px-2 py-2 w-[20%] min-w-[200px] border font-poppins text-sm text-gray-700" : "px-2 py-2 w-[27%] min-w-[200px] border font-poppins text-sm text-gray-700"}>
+                                <div className={userRole === "user" ? "flex justify-center gap-2" : "md:flex md:flex-wrap md:justify-start gap-2"}>
                                   <button
                                     onClick={() => handleViewClick(index)}
-                                    className="bg-[#37ad6c] hover:bg-[#2d8f59] px-4 py-2 rounded-md text-white font-medium flex items-center gap-1 font-poppins text-sm"
+                                    className="bg-[#37ad6c] hover:bg-[#2d8f59] px-4 py-2 rounded-md text-white font-medium flex items-center gap-1 font-poppins text-sm shadow-md"
                                   >
                                     <img
                                       src="src/assets/Images/view.png"
@@ -838,7 +846,7 @@ function Dashboard() {
                                   </button>
                                   <button
                                     onClick={() => handleEditClick(index)}
-                                    className="bg-[#f5bd64] hover:bg-[#e9b158] px-4 py-2 rounded-md text-white font-medium flex items-center gap-1 font-poppins text-sm"
+                                    className="bg-[#f5bd64] hover:bg-[#e9b158] px-4 py-2 rounded-md text-white font-medium flex items-center gap-1 font-poppins text-sm shadow-md"
                                   >
                                     <img
                                       src="src/assets/Images/edit.png"
@@ -849,7 +857,7 @@ function Dashboard() {
                                   </button>
                                   <button
                                     onClick={() => handlePrintClick(index)}
-                                    className="bg-[#3b7bcf] hover:bg-[#3166ac] px-4 py-2 rounded-md text-white font-medium flex items-center gap-1 font-poppins text-sm"
+                                    className="bg-[#3b7bcf] hover:bg-[#3166ac] px-4 py-2 rounded-md text-white font-medium flex items-center gap-1 font-poppins text-sm shadow-md"
                                   >
                                     <img
                                       src="src/assets/Images/print.png"
@@ -858,17 +866,19 @@ function Dashboard() {
                                     />
                                     Print
                                   </button>
-                                  <button
-                                    onClick={() => deleteRow(index, row.id)}
-                                    className="bg-[#FF6767] hover:bg-[#f35656] px-4 py-2 rounded-md text-white font-medium flex items-center gap-1 font-poppins text-sm"
-                                  >
-                                    <img
-                                      src="src/assets/Images/delete.png"
-                                      alt="Delete"
-                                      className="w-5 h-5 invert self-center"
-                                    />
-                                    Delete
-                                  </button>
+                                  {userRole !== "user" && (
+                                    <button
+                                      onClick={() => deleteRow(index, row.id)}
+                                      className="bg-[#FF6767] hover:bg-[#f35656] px-4 py-2 rounded-md text-white font-medium flex items-center gap-1 font-poppins text-sm shadow-md"
+                                    >
+                                      <img
+                                        src="src/assets/Images/delete.png"
+                                        alt="Delete"
+                                        className="w-5 h-5 invert self-center"
+                                      />
+                                      Delete
+                                    </button>
+                                  )}
                                 </div>
                               </td>
                             </tr>
@@ -892,7 +902,7 @@ function Dashboard() {
                 <button
                   onClick={() => handlePageChange(currentPage - 1)}
                   disabled={currentPage === 1}
-                  className="bg-[#408286] hover:bg-[#5FA8AD] text-white font-bold py-2 px-4 rounded-l-md disabled:bg-gray-300"
+                  className="bg-[#408286] hover:bg-[#5FA8AD] text-white font-bold py-2 px-4 rounded-l-md shadow-md disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors duration-200"
                 >
                   Previous
                 </button>
@@ -918,7 +928,7 @@ function Dashboard() {
                 <button
                   onClick={() => handlePageChange(currentPage + 1)}
                   disabled={currentPage === totalPages}
-                  className="bg-[#408286] hover:bg-[#5FA8AD] text-white font-bold py-2 px-4 rounded-r-md disabled:bg-gray-300"
+                  className="bg-[#408286] hover:bg-[#5FA8AD] text-white font-bold py-2 px-4 rounded-r-md shadow-md disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors duration-200"
                 >
                   Next
                 </button>
@@ -949,7 +959,6 @@ function Dashboard() {
           />
         )}
       </div>
-      
     </div>
   );
 }

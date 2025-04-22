@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { printReferral, getReferralData } from "../Components/PrintReferral";
+import DeletionRequestModal from "../Modal/DeleteRequestModal"; // Import the DeletionRequestModal
 
 const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowData }) => {
   const [committeesWithTerms, setCommitteesWithTerms] = useState([]);
@@ -14,7 +15,23 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
   const [newRecipient, setNewRecipient] = useState({ name: "", designation: "", address: "" });
   const [recipientList, setRecipientList] = useState([]);
   const [recipientsToRemove, setRecipientsToRemove] = useState([]);
+  const [isDeletionModalOpen, setIsDeletionModalOpen] = useState(false); // State for DeletionRequestModal
 
+  const userRole = (() => {
+    const userDataRaw = localStorage.getItem("userData");
+    if (!userDataRaw || userDataRaw === "undefined") {
+      console.warn("userData in localStorage is missing or invalid:", userDataRaw);
+      return "";
+    }
+    try {
+      const userData = JSON.parse(userDataRaw);
+      return userData?.role || "";
+    } catch (error) {
+      console.error("Failed to parse userData from localStorage:", error);
+      return "";
+    }
+  })();
+  
   // Sync localRowData and recipientList when modal opens
   useEffect(() => {
     if (isOpen && initialRowData) {
@@ -57,7 +74,7 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
 
   const handleRecipientKeyDown = (e) => {
     if (e.key === "Enter") {
-      e.preventDefault(); // Prevent default behavior (e.g., newline in textarea)
+      e.preventDefault();
       handleAddRecipient();
     }
   };
@@ -195,6 +212,7 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
     setIsVmReceivedEditing(false);
     setIsCmReceivedEditing(false);
     setNewRecipient({ name: "", designation: "", address: "" });
+    setIsDeletionModalOpen(false); // Close DeletionRequestModal if open
     onClose();
   };
 
@@ -296,6 +314,18 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
       console.error("Save error:", error.response?.data || error);
       alert("Failed to update record: " + (error.response?.data?.message || error.message));
     }
+  };
+
+  // Handler for opening the DeletionRequestModal
+  const handleRequestDeletion = () => {
+    setIsDeletionModalOpen(true);
+  };
+
+  // Handler for submission of deletion request
+  const handleDeletionSubmit = () => {
+    setIsDeletionModalOpen(false);
+    // Optionally close the EditModal or refresh data
+    handleClose();
   };
 
   const statuses = [
@@ -541,7 +571,6 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
           <div className="border border-gray-200 p-6 rounded-lg shadow-sm bg-white">
             <label className="block text-gray-800 text-sm font-semibold mb-4">Transmitted To</label>
             <div className="space-y-6">
-              {/* Input Section */}
               <div className="grid grid-cols-1 gap-6">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
@@ -567,7 +596,7 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
                     />
                   </div>
                   <div className="flex flex-col">
-                    <label className="block text-gray-600 text-xs font-medium mb-1 ">Address</label>
+                    <label className="block text-gray-600 text-xs font-medium mb-1">Address</label>
                     <div className="flex gap-3">
                       <textarea
                         name="address"
@@ -580,7 +609,7 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
                       />
                       <button
                         onClick={handleAddRecipient}
-                        className="px-6 py-2 bg-[#408286] text-white text-sm font-medium rounded-md shadow-sm hover:bg-[#306466] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#408286] transition-all duration-200 whitespace-nowrap"
+                        className="px-6 py-2 bg-[#408286] text-white text-sm font-medium rounded-md shadow-md hover:bg-[#306466] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#408286] transition-all duration-200 whitespace-nowrap"
                       >
                         Add Recipient
                       </button>
@@ -589,7 +618,6 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
                 </div>
               </div>
 
-              {/* Added Recipients Table (Conditionally Rendered) */}
               {recipientList.length > 0 && (
                 <div className="mt-6">
                   <h4 className="text-sm font-semibold text-gray-800 mb-3">Added Recipients</h4>
@@ -634,7 +662,6 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
                 </div>
               )}
 
-              {/* Date Transmitted */}
               <div>
                 <label className="block text-gray-700 text-xs font-medium mb-1">Date Transmitted</label>
                 <input
@@ -699,20 +726,58 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
           </div>
         </div>
 
-        <div className="flex justify-end space-x-3 mt-6">
-          <button
-            onClick={handleCancel}
-            className="inline-flex justify-center py-2 px-6 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-gray-600 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors duration-200"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSave}
-            className="inline-flex justify-center py-2 px-6 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-[#408286] hover:bg-[#306466] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#408286] transition-colors duration-200"
-          >
-            Save
-          </button>
+        <div className="mt-6">
+          {userRole === "admin" || userRole === "sub-admin" ? (
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={handleCancel}
+                className="inline-flex justify-center py-2 px-6 border border-transparent shadow-md text-sm font-medium rounded-md text-white bg-gray-600 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors duration-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSave}
+                className="inline-flex justify-center py-2 px-6 border border-transparent shadow-md text-sm font-medium rounded-md text-white bg-[#408286] hover:bg-[#306466] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#408286] transition-colors duration-200"
+              >
+                Save
+              </button>
+            </div>
+          ) : (
+            <div className="flex justify-between space-x-3">
+              {userRole === "user" && (
+                <button
+                  onClick={handleRequestDeletion}
+                  className="inline-flex justify-center py-2 px-6 border border-transparent shadow-md text-sm font-medium rounded-md text-white bg-[#FF6767] hover:bg-[#f35656] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-200"
+                >
+                  Request for Deletion
+                </button>
+              )}
+              <div className="flex space-x-3">
+                <button
+                  onClick={handleCancel}
+                  className="inline-flex justify-center py-2 px-6 border border-transparent shadow-md text-sm font-medium rounded-md text-white bg-gray-600 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors duration-200"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSave}
+                  className="inline-flex justify-center py-2 px-6 border border-transparent shadow-md text-sm font-medium rounded-md text-white bg-[#408286] hover:bg-[#306466] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#408286] transition-colors duration-200"
+                >
+                  Save
+                </button>
+              </div>
+            </div>
+          )}
         </div>
+
+
+        {/* Render DeletionRequestModal as a child */}
+        <DeletionRequestModal
+          isOpen={isDeletionModalOpen}
+          onClose={() => setIsDeletionModalOpen(false)}
+          recordData={localRowData}
+          onSubmit={handleDeletionSubmit}
+        />
       </div>
     </div>
   );

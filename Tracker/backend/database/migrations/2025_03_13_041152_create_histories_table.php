@@ -11,13 +11,15 @@ return new class extends Migration
      */
     public function up()
     {
-        Schema::create('history', function (Blueprint $table) {
+        Schema::create('histories', function (Blueprint $table) {
             $table->id();
-            $table->text('activity');
+            $table->string('username');
+            $table->string('document_type');
+            $table->string('document_no');
+            $table->string('action');
             $table->timestamps();
         });
     }
-
 
     /**
      * Reverse the migrations.

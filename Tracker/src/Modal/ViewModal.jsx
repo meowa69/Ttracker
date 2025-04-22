@@ -51,7 +51,7 @@ const ViewModal = ({ isOpen, onClose, rowData }) => {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-      <div className="bg-white rounded-lg p-8 w-[80%] h-[90%] shadow-2xl overflow-hidden">
+      <div className="bg-white rounded-lg p-8 w-[80%] h-[92%] shadow-2xl overflow-hidden">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-[#494444] text-2xl font-bold uppercase font-poppins">
             View Details
@@ -337,7 +337,7 @@ const ViewModal = ({ isOpen, onClose, rowData }) => {
         <div className="flex justify-end mt-6">
           <button
             onClick={onClose}
-            className="inline-flex justify-center py-2 px-6 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-[#408286] hover:bg-[#306466] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#408286] transition-colors duration-200"
+            className="inline-flex justify-center py-2 px-6 border border-transparent shadow-md text-sm font-medium rounded-md text-white bg-[#408286] hover:bg-[#306466] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#408286] transition-colors duration-200"
           >
             Close
           </button>

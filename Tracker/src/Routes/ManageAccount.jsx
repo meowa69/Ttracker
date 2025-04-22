@@ -110,7 +110,7 @@ function CreateAccount() {
       icon: "warning",
       showCancelButton: true,
       confirmButtonColor: "#408286",
-      cancelButtonColor: "#d1d5db",
+      cancelButtonColor: "#6b7280",
       confirmButtonText: "Yes, update it!",
       cancelButtonText: "No, cancel",
     }).then(async (result) => {
@@ -139,7 +139,7 @@ function CreateAccount() {
       icon: "warning",
       showCancelButton: true,
       confirmButtonColor: "#408286",
-      cancelButtonColor: "#d1d5db",
+      cancelButtonColor: "#6b7280",
       confirmButtonText: "Yes, delete it!",
       cancelButtonText: "No, cancel",
     }).then(async (result) => {
@@ -253,7 +253,7 @@ function CreateAccount() {
               <div className="flex justify-between items-center">
                 <button
                   type="submit"
-                  className="px-6 py-2 bg-[#408286] text-sm text-white font-medium rounded-md shadow-sm hover:bg-[#357a74] focus:outline-none focus:ring-2 focus:ring-[#408286] focus:ring-offset-2 transition duration-150"
+                  className="px-6 py-2 bg-[#408286] text-sm text-white font-medium rounded-md shadow-md hover:bg-[#357a74] focus:outline-none focus:ring-2 focus:ring-[#408286] focus:ring-offset-2 transition duration-150"
                 >
                   Create Account
                 </button>
@@ -261,7 +261,7 @@ function CreateAccount() {
                   <button
                     type="button"
                     onClick={generatePassword}
-                    className="px-6 py-2 bg-[#408286] text-sm text-white font-medium rounded-md shadow-sm hover:bg-[#357a74] focus:outline-none focus:ring-2 focus:ring-[#408286] focus:ring-offset-2 transition duration-150"
+                    className="px-6 py-2 bg-[#408286] text-sm text-white font-medium rounded-md shadow-md hover:bg-[#357a74] focus:outline-none focus:ring-2 focus:ring-[#408286] focus:ring-offset-2 transition duration-150"
                   >
                     Generate Password
                   </button>
@@ -274,7 +274,7 @@ function CreateAccount() {
                       setPassword("");
                       closeAlert();
                     }}
-                    className="px-6 py-2 bg-gray-600 text-sm text-white font-medium rounded-md shadow-sm hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition duration-150"
+                    className="px-6 py-2 bg-gray-600 text-sm text-white font-medium rounded-md shadow-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition duration-150"
                   >
                     Clear
                   </button>
@@ -330,7 +330,7 @@ function CreateAccount() {
                             </select>
                             <button
                               onClick={() => handleDeleteUser(user.id)}
-                              className="bg-[#FF6767] hover:bg-[#f35656] px-4 py-2 rounded-md text-white font-medium flex items-center gap-1 font-poppins text-sm"
+                              className="bg-[#FF6767] hover:bg-[#f35656] shadow-md px-4 py-2 rounded-md text-white font-medium flex items-center gap-1 font-poppins text-sm"
                             >
                               Delete
                             </button>
@@ -342,7 +342,7 @@ function CreateAccount() {
                 </div>
                 <div className="flex justify-end items-center mt-6 space-x-4">
                   <button
-                    className={`px-4 py-2 rounded-md text-white text-sm font-medium ${
+                    className={`px-4 py-2 rounded-md text-white text-sm font-medium shadow-md ${
                       currentPage === 1 ? "bg-gray-400 cursor-not-allowed" : "bg-[#408286] hover:bg-[#306060]"
                     } transition duration-150 ease-in-out`}
                     disabled={currentPage === 1}
@@ -354,7 +354,7 @@ function CreateAccount() {
                     Page {currentPage} of {totalPages || 1}
                   </span>
                   <button
-                    className={`px-4 py-2 rounded-md text-white text-sm font-medium ${
+                    className={`px-4 py-2 rounded-md text-white text-sm font-medium shadow-md ${
                       currentPage === totalPages || totalPages === 0
                         ? "bg-gray-400 cursor-not-allowed"
                         : "bg-[#408286] hover:bg-[#306060]"

@@ -310,7 +310,7 @@ function CommitteeManage() {
           )}
         </div>
 
-        <div className="w-full h-[calc(100vh-120px)] bg-white border rounded-lg shadow-lg p-6 overflow-auto">
+        <div className="w-full h-[calc(100vh-12px)] bg-white border rounded-lg shadow-lg p-4 ">
           <div className="flex border-b mb-4">
             <button
               className={`p-3 text-sm font-semibold ${activeTab === "committees" ? "border-b-2 border-[#408286] text-[#408286]" : "text-gray-600"}`}
@@ -382,7 +382,7 @@ function CommitteeManage() {
                       </div>
                       <div className="mt-4">
                         <button
-                          className="w-full px-4 py-2 bg-[#408286] text-white text-sm font-medium rounded-md hover:bg-[#306060] transition duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-[#408286] focus:ring-offset-2"
+                          className="w-full px-4 py-2 bg-[#408286] shadow-sm text-white text-sm font-medium rounded-md hover:bg-[#306060] transition duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-[#408286] focus:ring-offset-2"
                           onClick={() => openModal(committee)}
                         >
                           View Details
@@ -405,7 +405,7 @@ function CommitteeManage() {
 
               <div className="flex justify-end items-center mt-6 space-x-4 absolute bottom-[60px] right-[50px]">
                 <button
-                  className={`px-4 py-2 rounded-md text-white text-sm font-medium ${currentPage === 1 ? "bg-gray-400 cursor-not-allowed" : "bg-[#408286] hover:bg-[#306060]"} transition duration-150 ease-in-out`}
+                  className={`px-4 py-2 rounded-md text-white text-sm font-medium shadow-md ${currentPage === 1 ? "bg-gray-400 cursor-not-allowed" : "bg-[#408286] hover:bg-[#306060]"} transition duration-150 ease-in-out`}
                   disabled={currentPage === 1}
                   onClick={() => prevPage("committees")}
                 >
@@ -415,7 +415,7 @@ function CommitteeManage() {
                   Page {currentPage} of {totalPages || 1}
                 </span>
                 <button
-                  className={`px-4 py-2 rounded-md text-white text-sm font-medium ${currentPage === totalPages || totalPages === 0 ? "bg-gray-400 cursor-not-allowed" : "bg-[#408286] hover:bg-[#306060]"} transition duration-150 ease-in-out`}
+                  className={`px-4 py-2 rounded-md text-white text-sm font-medium shadow-md ${currentPage === totalPages || totalPages === 0 ? "bg-gray-400 cursor-not-allowed" : "bg-[#408286] hover:bg-[#306060]"} transition duration-150 ease-in-out`}
                   disabled={currentPage === totalPages || totalPages === 0}
                   onClick={() => nextPage("committees")}
                 >
@@ -488,7 +488,7 @@ function CommitteeManage() {
                   </div>
                   <div className="flex justify-end mt-4">
                     <button
-                      className={`px-4 py-2 rounded-lg text-white text-sm font-poppins ${termPage === 1 ? "bg-gray-400 cursor-not-allowed" : "bg-[#408286] hover:bg-[#306060]"}`}
+                      className={`px-4 py-2 rounded-lg text-white text-sm font-poppins shadow-md ${termPage === 1 ? "bg-gray-400 cursor-not-allowed" : "bg-[#408286] hover:bg-[#306060]"}`}
                       disabled={termPage === 1}
                       onClick={() => prevPage("addTerm")}
                     >
@@ -498,7 +498,7 @@ function CommitteeManage() {
                       Page {termPage} of {totalTermPages}
                     </span>
                     <button
-                      className={`px-4 py-2 rounded-lg text-white text-sm font-poppins ${termPage === totalTermPages ? "bg-gray-400 cursor-not-allowed" : "bg-[#408286] hover:bg-[#306060]"}`}
+                      className={`px-4 py-2 rounded-lg text-white text-sm font-poppins shadow-md ${termPage === totalTermPages ? "bg-gray-400 cursor-not-allowed" : "bg-[#408286] hover:bg-[#306060]"}`}
                       disabled={termPage === totalTermPages}
                       onClick={() => nextPage("addTerm")}
                     >
@@ -613,14 +613,14 @@ function CommitteeManage() {
                   className="w-full p-3 border border-gray-200 rounded-lg text-gray-700 font-poppins text-sm focus:outline-none focus:ring-2 focus:ring-[#408286] transition-all duration-200 placeholder-gray-400"
                 />
                 <button
-                  className="bg-[#408286] text-white px-6 py-3 rounded-lg font-poppins font-medium text-sm transition-all duration-200 hover:bg-[#306060] focus:outline-none focus:ring-2 focus:ring-[#408286] focus:ring-offset-2"
+                  className="bg-[#408286] shadow-sm text-white px-6 py-3 rounded-lg font-poppins font-medium text-sm transition-all duration-200 hover:bg-[#306060] focus:outline-none focus:ring-2 focus:ring-[#408286] focus:ring-offset-2"
                   onClick={addCommittee}
                   aria-label="Add new committee"
                 >
                   Add
                 </button>
                 <button
-                  className="bg-gray-200 text-gray-700 px-6 py-3 rounded-lg font-poppins font-medium text-sm transition-all duration-200 hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2"
+                  className="bg-gray-200 shadow-sm text-gray-700 px-6 py-3 rounded-lg font-poppins font-medium text-sm transition-all duration-200 hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2"
                   onClick={() => setCommitteeName("")}
                   aria-label="Cancel adding committee"
                 >
@@ -670,7 +670,7 @@ function CommitteeManage() {
                             <td className="p-4 border-b border-gray-200">
                               <button
                                 onClick={() => handleDeleteCommittee(committee.id)}
-                                className="bg-[#FF6767] hover:bg-[#f35656] px-4 py-2 rounded-md text-white font-medium flex items-center gap-1 font-poppins text-sm"
+                                className="bg-[#FF6767] hover:bg-[#f35656] shadow-md px-4 py-2 rounded-md text-white font-medium flex items-center gap-1 font-poppins text-sm"
                                 aria-label={`Delete committee ${committee.committee_name}`}
                               >
                                 <FaTrash aria-hidden="true" />
@@ -692,7 +692,7 @@ function CommitteeManage() {
                 {totalCommitteePages > 1 && (
                   <div className="flex justify-end items-center mt-4">
                     <button
-                      className={`px-4 py-2 rounded-lg text-white text-sm font-poppins ${committeePage === 1 ? "bg-gray-400 cursor-not-allowed" : "bg-[#408286] hover:bg-[#306060]"}`}
+                      className={`px-4 py-2 rounded-lg text-white text-sm font-poppins shadow-md ${committeePage === 1 ? "bg-gray-400 cursor-not-allowed" : "bg-[#408286] hover:bg-[#306060]"}`}
                       disabled={committeePage === 1}
                       onClick={() => prevPage("addCommittee")}
                     >
@@ -702,7 +702,7 @@ function CommitteeManage() {
                       Page {committeePage} of {totalCommitteePages}
                     </span>
                     <button
-                      className={`px-4 py-2 rounded-lg text-white text-sm font-poppins ${committeePage === totalCommitteePages ? "bg-gray-400 cursor-not-allowed" : "bg-[#408286] hover:bg-[#306060]"}`}
+                      className={`px-4 py-2 rounded-lg text-white text-sm font-poppins shadow-md ${committeePage === totalCommitteePages ? "bg-gray-400 cursor-not-allowed" : "bg-[#408286] hover:bg-[#306060]"}`}
                       disabled={committeePage === totalCommitteePages}
                       onClick={() => nextPage("addCommittee")}
                     >
@@ -726,14 +726,14 @@ function CommitteeManage() {
                   className="w-full p-3 border border-gray-200 rounded-lg text-gray-700 font-poppins text-sm focus:outline-none focus:ring-2 focus:ring-[#408286] transition-all duration-200 placeholder-gray-400"
                 />
                 <button
-                  className="bg-[#408286] text-white px-6 py-3 rounded-lg font-poppins font-medium text-sm transition-all duration-200 hover:bg-[#306060] focus:outline-none focus:ring-2 focus:ring-[#408286] focus:ring-offset-2"
+                  className="bg-[#408286] shadow-sm text-white px-6 py-3 rounded-lg font-poppins font-medium text-sm transition-all duration-200 hover:bg-[#306060] focus:outline-none focus:ring-2 focus:ring-[#408286] focus:ring-offset-2"
                   onClick={addTerm}
                   aria-label="Add new term"
                 >
                   Add
                 </button>
                 <button
-                  className="bg-gray-200 text-gray-700 px-6 py-3 rounded-lg font-poppins font-medium text-sm transition-all duration-200 hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2"
+                  className="bg-gray-200 shadow-sm text-gray-700 px-6 py-3 rounded-lg font-poppins font-medium text-sm transition-all duration-200 hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2"
                   onClick={() => setNewTerm("")}
                   aria-label="Cancel adding term"
                 >
@@ -783,7 +783,7 @@ function CommitteeManage() {
                             <td className="p-4 border-b border-gray-200">
                               <button
                                 onClick={() => handleDeleteTerm(term.id)}
-                                className="bg-[#FF6767] hover:bg-[#f35656] px-4 py-2 rounded-md text-white font-medium flex items-center gap-1 font-poppins text-sm"
+                                className="bg-[#FF6767] hover:bg-[#f35656] shadow-md px-4 py-2 rounded-md text-white font-medium flex items-center gap-1 font-poppins text-sm"
                                 aria-label={`Delete term ${term.term}`}
                               >
                                 <FaTrash aria-hidden="true" />
@@ -805,7 +805,7 @@ function CommitteeManage() {
                 {totalTermPages > 1 && (
                   <div className="flex justify-end items-center mt-4">
                     <button
-                      className={`px-4 py-2 rounded-lg text-white text-sm font-poppins ${termPage === 1 ? "bg-gray-400 cursor-not-allowed" : "bg-[#408286] hover:bg-[#306060]"}`}
+                      className={`px-4 py-2 rounded-lg text-white text-sm font-poppins shadow-md ${termPage === 1 ? "bg-gray-400 cursor-not-allowed" : "bg-[#408286] hover:bg-[#306060]"}`}
                       disabled={termPage === 1}
                       onClick={() => prevPage("addTerm")}
                     >
@@ -815,7 +815,7 @@ function CommitteeManage() {
                       Page {termPage} of {totalTermPages}
                     </span>
                     <button
-                      className={`px-4 py-2 rounded-lg text-white text-sm font-poppins ${termPage === totalTermPages ? "bg-gray-400 cursor-not-allowed" : "bg-[#408286] hover:bg-[#306060]"}`}
+                      className={`px-4 py-2 rounded-lg text-white text-sm font-poppins shadow-md ${termPage === totalTermPages ? "bg-gray-400 cursor-not-allowed" : "bg-[#408286] hover:bg-[#306060]"}`}
                       disabled={termPage === totalTermPages}
                       onClick={() => nextPage("addTerm")}
                     >
