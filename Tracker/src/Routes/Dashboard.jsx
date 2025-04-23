@@ -85,15 +85,17 @@ function Dashboard() {
         vmReceived: row.vm_received || row.vice_mayor_received,
         cmForwarded: row.cm_forwarded || row.city_mayor_forwarded,
         cmReceived: row.cm_received || row.city_mayor_received,
-        transmitted_recipients: row.editRecord?.transmittedRecipients || row.transmitted_recipients || [],
+        transmitted_recipients: row.transmitted_recipients || [], // Simplified to use row.transmitted_recipients
         dateTransmitted: row.date_transmitted,
         status: row.completed ? "Completed" : row.status,
       }));
+      console.log("Fetched records:", formattedRows); // Debug log
       setRows(formattedRows);
       setSelectedRow((prev) => (prev ? formattedRows.find((row) => row.id === prev.id) || prev : prev));
       updateNotifications(formattedRows);
     } catch (error) {
       console.error("Error fetching records:", error.response?.data || error);
+      alert("Failed to fetch records: " + (error.response?.data?.message || error.message));
     } finally {
       setLoading(false);
     }
@@ -126,15 +128,10 @@ function Dashboard() {
       );
       setSelectedRow(updatedRow);
       setIsEditModalOpen(false);
-
+  
+      // Refetch records to ensure consistency
       await fetchRecords();
-
-      setRows((prevRows) =>
-        prevRows.map((row) =>
-          row.id === updatedRow.id ? { ...row, transmitted_recipients: updatedRow.transmitted_recipients } : row
-        )
-      );
-
+  
       const documentType = updatedRow.document_type?.toLowerCase();
       if (["ordinance", "resolution", "motion"].includes(documentType)) {
         const formattedType = documentType.charAt(0).toUpperCase() + documentType.slice(1);
@@ -143,6 +140,7 @@ function Dashboard() {
       updateNotifications(rows);
     } catch (error) {
       console.error("Error in handleSave:", error);
+      alert("Failed to save changes: " + (error.message || "Unknown error"));
     }
   };
 

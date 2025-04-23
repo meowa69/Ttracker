@@ -36,13 +36,13 @@ const DeletionRequestModal = ({ isOpen, onClose, recordData, onSubmit }) => {
 
     // Check if a deletion request already exists for this record
     const hasExistingRequest = existingRequests.some(
-      (request) => request.record_id === recordData.id
+      (request) => request.record_id === recordData.id && request.status === "Pending"
     );
     if (hasExistingRequest) {
       Swal.fire({
         icon: "error",
         title: "Request Already Sent",
-        text: "You have already sent a deletion request for this document.",
+        text: "A pending deletion request already exists for this document. Please wait for it to be processed or cancel it.",
         confirmButtonColor: "#FF6767",
       });
       return;
@@ -70,11 +70,11 @@ const DeletionRequestModal = ({ isOpen, onClose, recordData, onSubmit }) => {
 
       // Pass request details to onSubmit
       onSubmit({
-        id: response.data.data.id || `temp-${Date.now()}`, // Use server-provided ID or temporary ID
+        id: response.data.data.id || `temp-${Date.now()}`,
         document_type: recordData.document_type,
         number: recordData.no,
         user_name: userData.name,
-        created_at: new Date().toISOString(), // Use current time if API doesn't return created_at
+        created_at: new Date().toISOString(),
         status: "Pending",
       });
 

@@ -19,16 +19,16 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/profiles', [AuthController::class, 'updateProfile']);
     Route::post('/add-record', [AuthController::class, 'addRecord']);
     Route::get('/get-record', [AuthController::class, 'getRecords']);
-    Route::delete('/delete-record/{id}', [AuthController::class, 'deleteRecord']); // Moved here
-    Route::put('/update-record/{id}', [AuthController::class, 'updateRecord']); // Moved here
+    Route::delete('/delete-record/{id}', [AuthController::class, 'deleteRecord']);
+    Route::put('/update-record/{id}', [AuthController::class, 'updateRecord']);
     Route::post('/deletion-request', [AuthController::class, 'submitDeletionRequest']);
     Route::get('/deletion-requests', [AuthController::class, 'getDeletionRequests']);
     Route::put('/deletion-requests/{id}', [AuthController::class, 'handleDeletionRequest']);
+    Route::delete('/deletion-requests/{id}', [AuthController::class, 'cancelDeletionRequest']); // Ensure this is present
     Route::get('/history', [AuthController::class, 'getHistory']);
 });
 
-// Public routes (keep these as is if they should remain public)
-Route::post('/register', [AuthController::class, 'register']); // Note: Duplicated, consider removing
+// Public routes
 Route::get('/users', [AuthController::class, 'getUsers']);
 Route::patch('/users/{id}/role', [AuthController::class, 'updateRole']);
 Route::delete('/users/{id}', [AuthController::class, 'deleteUser']);

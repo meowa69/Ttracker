@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 
 class AuthController extends Controller
@@ -44,7 +45,7 @@ class AuthController extends Controller
     // Fetch all users with pagination
     public function getUsers(Request $request)
     {
-        $perPage = 6; // 6 users per page
+        $perPage = 10; // 10 users per page
         $users = User::select('id', 'name', 'user_name', 'role', 'created_at')
             ->paginate($perPage);
 
@@ -196,39 +197,51 @@ class AuthController extends Controller
 
    // Add Record
    public function addRecord(Request $request)
-   {
-       try {
-           \Log::info('Incoming Request:', $request->all());
+    {
+        try {
+            \Log::info('Incoming Request:', $request->all());
 
-           $validated = $request->validate([
-               'no' => 'required|string|unique:add_record,no',
-               'document_type' => 'required|string',
-               'date_approved' => 'required|date',
-               'title' => 'required|string',
-           ]);
-           
-           $record = new AddRecord();
-           $record->no = $validated['no'];
-           $record->document_type = $validated['document_type'];
-           $record->date_approved = $validated['date_approved'];
-           $record->title = $validated['title'];
-           $record->save();
-           
-           // Log the action
-           $this->logHistory(
-               Auth::user()->user_name,
-               $validated['document_type'],
-               $validated['no'],
-               'Add Document'
-           );
+            $validated = $request->validate([
+                'no' => [
+                    'required',
+                    'string',
+                    // Ensure 'no' is unique for the given 'document_type'
+                    Rule::unique('add_record', 'no')->where(function ($query) use ($request) {
+                        return $query->where('document_type', $request->document_type);
+                    }),
+                ],
+                'document_type' => 'required|string|in:Ordinance,Resolution,Motion', // Restrict to valid types
+                'date_approved' => 'required|date',
+                'title' => 'required|string',
+            ]);
 
-           return response()->json(['message' => 'Record added successfully'], 201);
-       } catch (\Exception $e) {
-           return response()->json(['error' => $e->getMessage()], 500);
-       }
-   }
+            $record = new AddRecord();
+            $record->no = $validated['no'];
+            $record->document_type = $validated['document_type'];
+            $record->date_approved = $validated['date_approved'];
+            $record->title = $validated['title'];
+            $record->save();
 
-    // Get Records
+            // Log the action
+            $this->logHistory(
+                Auth::user()->user_name,
+                $validated['document_type'],
+                $validated['no'],
+                'Add Document'
+            );
+
+            return response()->json(['message' => 'Record added successfully'], 201);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'message' => 'Validation failed',
+                'errors' => $e->errors(),
+            ], 422);
+        } catch (\Exception $e) {
+            \Log::error('Error adding record: ' . $e->getMessage());
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
     public function getRecords()
     {
         try {
@@ -251,12 +264,23 @@ class AuthController extends Controller
                     'edit_record.city_mayor_received as cm_received',
                     'edit_record.date_transmitted',
                     'edit_record.remarks',
-                    'edit_record.completed',          
-                    'edit_record.completion_date'     
+                    'edit_record.completed',
+                    'edit_record.completion_date'
                 )
-                ->get();
+                ->get()
+                ->map(function ($record) {
+                    // Ensure transmitted_recipients is always an array
+                    $record->transmitted_recipients = $record->editRecord && $record->editRecord->transmittedRecipients
+                        ? $record->editRecord->transmittedRecipients->toArray()
+                        : [];
+                    unset($record->editRecord); // Remove editRecord to simplify response
+                    return $record;
+                });
 
-            \Log::info('Records fetched successfully', ['count' => $records->count()]);
+            \Log::info('Records fetched successfully', [
+                'count' => $records->count(),
+                'sample' => $records->take(1)->toArray()
+            ]);
             return response()->json($records, 200);
         } catch (\Exception $e) {
             \Log::error('Error fetching records: ' . $e->getMessage(), ['exception' => $e]);
@@ -392,7 +416,7 @@ class AuthController extends Controller
             $validated = $request->validate([
                 'record_id' => 'required|exists:add_record,id',
                 'user_name' => 'required|string',
-                'document_type' => 'required|string',
+                'document_type' => 'required|string|in:Ordinance,Resolution,Motion',
                 'number' => 'required|string',
                 'title' => 'required|string',
                 'reason' => 'required|string',
@@ -470,6 +494,32 @@ class AuthController extends Controller
         } catch (\Exception $e) {
             \Log::error('Error handling deletion request: ' . $e->getMessage());
             return response()->json(['message' => 'Failed to handle deletion request: ' . $e->getMessage()], 500);
+        }
+    }
+
+    // Cancel Deletion Request
+    public function cancelDeletionRequest($id)
+    {
+        try {
+            $deletionRequest = DeletionRequest::findOrFail($id);
+
+            // Log the action
+            $this->logHistory(
+                $deletionRequest->user_name,
+                $deletionRequest->document_type,
+                $deletionRequest->number,
+                'Cancel Deletion Request'
+            );
+
+            // Delete the deletion request
+            $deletionRequest->delete();
+
+            \Log::info("Deletion request {$id} canceled successfully");
+
+            return response()->json(['message' => 'Deletion request canceled successfully'], 200);
+        } catch (\Exception $e) {
+            \Log::error('Error canceling deletion request: ' . $e->getMessage());
+            return response()->json(['message' => 'Failed to cancel deletion request: ' . $e->getMessage()], 500);
         }
     }
 
@@ -712,25 +762,29 @@ class AuthController extends Controller
         \Log::info("Received batch payload: " . json_encode($request->all()));
 
         $request->validate([
-            'committee_name' => 'required|string|exists:committees,committee_name',
-            'term' => 'required|string|exists:committee_terms,term',
+            'committee_id' => 'required|exists:committees,id',
+            'term_id' => 'required|exists:committee_terms,id',
             'members' => 'required|array',
             'members.*.member_name' => 'required|string',
             'members.*.role' => 'required|in:chairman,vice_chairman,member',
         ]);
 
-        $committee = Committee::where('committee_name', $request->committee_name)->first();
-        $term = CommitteeTerm::where('term', $request->term)->first();
+        $committeeId = $request->committee_id;
+        $termId = $request->term_id;
 
-        if (!$committee || !$term) {
-            \Log::error("Invalid committee or term: committee_name={$request->committee_name}, term={$request->term}");
-            return response()->json(['message' => 'Invalid committee or term.'], 400);
-        }
+        // Check existing roles in a single query
+        $existingRoles = CommitteeMember::where('committee_id', $committeeId)
+            ->where('term_id', $termId)
+            ->selectRaw('role, COUNT(*) as count')
+            ->groupBy('role')
+            ->pluck('count', 'role')
+            ->toArray();
 
-        $committeeId = $committee->id;
-        $termId = $term->id;
+        $existingChairman = isset($existingRoles['chairman']) ? $existingRoles['chairman'] : 0;
+        $existingViceChairman = isset($existingRoles['vice_chairman']) ? $existingRoles['vice_chairman'] : 0;
+        $existingMemberCount = isset($existingRoles['member']) ? $existingRoles['member'] : 0;
 
-        // Check constraints for all members at once
+        // Count roles in the request
         $chairmanCount = 0;
         $viceChairmanCount = 0;
         $memberCount = 0;
@@ -740,22 +794,6 @@ class AuthController extends Controller
             if ($member['role'] === 'vice_chairman') $viceChairmanCount++;
             if ($member['role'] === 'member') $memberCount++;
         }
-
-        // Check existing records
-        $existingChairman = CommitteeMember::where('committee_id', $committeeId)
-            ->where('term_id', $termId)
-            ->where('role', 'chairman')
-            ->exists();
-
-        $existingViceChairman = CommitteeMember::where('committee_id', $committeeId)
-            ->where('term_id', $termId)
-            ->where('role', 'vice_chairman')
-            ->exists();
-
-        $existingMemberCount = CommitteeMember::where('committee_id', $committeeId)
-            ->where('term_id', $termId)
-            ->where('role', 'member')
-            ->count();
 
         // Validate constraints
         if ($chairmanCount > 1 || ($chairmanCount > 0 && $existingChairman)) {
@@ -768,30 +806,43 @@ class AuthController extends Controller
             return response()->json(['message' => 'Maximum of 5 members reached.'], 400);
         }
 
-        // Insert all members in a single transaction
-        $results = [];
+        // Prepare data for bulk insert
+        $membersToInsert = array_map(function ($memberData) use ($committeeId, $termId) {
+            return [
+                'committee_id' => $committeeId,
+                'term_id' => $termId,
+                'member_name' => $memberData['member_name'],
+                'role' => $memberData['role'],
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
+        }, $request->members);
+
         DB::beginTransaction();
         try {
-            foreach ($request->members as $memberData) {
-                $member = new CommitteeMember();
-                $member->committee_id = $committeeId;
-                $member->term_id = $termId;
-                $member->member_name = $memberData['member_name'];
-                $member->role = $memberData['role'];
-                $member->save();
+            // Bulk insert
+            CommitteeMember::insert($membersToInsert);
 
-                $results[] = ['member' => $memberData['member_name'], 'success' => true];
-            }
+            // Fetch the newly created members
+            $newMembers = CommitteeMember::where('committee_id', $committeeId)
+                ->where('term_id', $termId)
+                ->whereIn('member_name', array_column($request->members, 'member_name'))
+                ->get(['id', 'committee_id', 'term_id', 'member_name', 'role'])
+                ->toArray();
+
             DB::commit();
+            \Log::info("Saved members: " . json_encode($newMembers));
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Members added successfully.',
+                'members' => $newMembers,
+            ], 201);
         } catch (\Exception $e) {
             DB::rollBack();
             \Log::error("Failed to save members: " . $e->getMessage());
             return response()->json(['message' => 'Failed to save members.', 'error' => $e->getMessage()], 500);
         }
-
-        \Log::info("Saved members: " . json_encode($results));
-
-        return response()->json(['success' => true, 'message' => 'Members added successfully.', 'results' => $results], 201);
     }
 
     // Delete a committee

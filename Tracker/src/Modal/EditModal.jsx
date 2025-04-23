@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { printReferral, getReferralData } from "../Components/PrintReferral";
-import DeletionRequestModal from "../Modal/DeleteRequestModal"; // Import the DeletionRequestModal
+import DeletionRequestModal from "../Modal/DeleteRequestModal";
 
 const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowData }) => {
   const [committeesWithTerms, setCommitteesWithTerms] = useState([]);
@@ -15,7 +15,8 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
   const [newRecipient, setNewRecipient] = useState({ name: "", designation: "", address: "" });
   const [recipientList, setRecipientList] = useState([]);
   const [recipientsToRemove, setRecipientsToRemove] = useState([]);
-  const [isDeletionModalOpen, setIsDeletionModalOpen] = useState(false); // State for DeletionRequestModal
+  const [isDeletionModalOpen, setIsDeletionModalOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const userRole = (() => {
     const userDataRaw = localStorage.getItem("userData");
@@ -31,20 +32,42 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
       return "";
     }
   })();
-  
-  // Sync localRowData and recipientList when modal opens
+
+  // Fetch record data including recipients when modal opens
   useEffect(() => {
-    if (isOpen && initialRowData) {
-      const updatedRowData = {
-        ...initialRowData,
-        completed: initialRowData.completed ? "true" : "false",
+    if (isOpen && initialRowData?.id) {
+      const fetchRecordData = async () => {
+        setIsLoading(true);
+        try {
+          const response = await axios.get(`http://localhost:8000/api/update-record/${initialRowData.id}`, {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          });
+          const fetchedData = response.data.data;
+          const updatedRowData = {
+            ...initialRowData,
+            ...fetchedData,
+            completed: fetchedData.completed ? "true" : "false",
+            transmitted_recipients: fetchedData.transmitted_recipients || [],
+          };
+          setLocalRowData(updatedRowData);
+          setRecipientList(fetchedData.transmitted_recipients || []);
+          setRecipientsToRemove([]);
+          console.log("1. Modal opened - Fetched data:", fetchedData);
+          console.log("2. Initial recipientList set to:", fetchedData.transmitted_recipients);
+        } catch (error) {
+          console.error("Error fetching record data:", error);
+          setLocalRowData({
+            ...initialRowData,
+            completed: initialRowData.completed ? "true" : "false",
+          });
+          setRecipientList(initialRowData.transmitted_recipients || []);
+        } finally {
+          setIsLoading(false);
+        }
       };
-      setLocalRowData(updatedRowData);
-      const initialRecipients = initialRowData.transmitted_recipients || [];
-      setRecipientList(initialRecipients);
-      setRecipientsToRemove([]);
-      console.log("1. Modal opened - initialRowData:", initialRowData);
-      console.log("2. Initial recipientList set to:", initialRecipients);
+      fetchRecordData();
     }
   }, [isOpen, initialRowData]);
 
@@ -212,13 +235,12 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
     setIsVmReceivedEditing(false);
     setIsCmReceivedEditing(false);
     setNewRecipient({ name: "", designation: "", address: "" });
-    setIsDeletionModalOpen(false); // Close DeletionRequestModal if open
+    setIsDeletionModalOpen(false);
     onClose();
   };
 
   const handleCancel = () => {
-    console.log("14. Cancel - Resetting recipientList to:", initialRowData.transmitted_recipients);
-    setRecipientList(initialRowData.transmitted_recipients || []);
+    console.log("14. Cancel - Resetting to current recipientList:", recipientList);
     setRecipientsToRemove([]);
     handleClose();
   };
@@ -243,7 +265,7 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
       const newRecipients = recipientList.filter((r) => !r.id);
       const payload = {
         committee_sponsor: localRowData.sponsor || null,
-        status: localRowData.completed === "true" ? "Completed" : localRowData.status || null,
+        status: localRowData.status || null,
         vm_forwarded: localRowData.vm_forwarded || null,
         vm_received: localRowData.vm_received || null,
         cm_forwarded: localRowData.cm_forwarded || null,
@@ -297,17 +319,6 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
       setLocalRowData(updatedData);
       setRecipientList(updatedRecipients);
       setRecipientsToRemove([]);
-
-      setRowData((prev) => ({
-        ...prev,
-        ...updatedData,
-        transmitted_recipients: updatedRecipients,
-      }));
-
-      console.log("10. Post-save - localRowData set to:", updatedData);
-      console.log("11. Post-save - recipientList set to:", updatedRecipients);
-      console.log("12. Post-save - updatedData sent to parent via setRowData:", updatedData);
-
       onSave(updatedData);
       handleClose();
     } catch (error) {
@@ -316,19 +327,17 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
     }
   };
 
-  // Handler for opening the DeletionRequestModal
   const handleRequestDeletion = () => {
     setIsDeletionModalOpen(true);
   };
 
-  // Handler for submission of deletion request
   const handleDeletionSubmit = () => {
     setIsDeletionModalOpen(false);
-    // Optionally close the EditModal or refresh data
     handleClose();
   };
 
   const statuses = [
+    "Select status",
     "For Vice Mayor's Signature",
     "For Mailings",
     "For Mayor's & Admin Signature",
@@ -618,7 +627,9 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
                 </div>
               </div>
 
-              {recipientList.length > 0 && (
+              {isLoading ? (
+                <div className="mt-6 text-gray-500 text-sm">Loading recipients...</div>
+              ) : recipientList.length > 0 ? (
                 <div className="mt-6">
                   <h4 className="text-sm font-semibold text-gray-800 mb-3">Added Recipients</h4>
                   <div className="overflow-x-auto border border-gray-200 rounded-md shadow-sm">
@@ -660,6 +671,8 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
                     </table>
                   </div>
                 </div>
+              ) : (
+                <div className="mt-6 text-gray-500 text-sm">No recipients added yet.</div>
               )}
 
               <div>
@@ -770,8 +783,6 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
           )}
         </div>
 
-
-        {/* Render DeletionRequestModal as a child */}
         <DeletionRequestModal
           isOpen={isDeletionModalOpen}
           onClose={() => setIsDeletionModalOpen(false)}

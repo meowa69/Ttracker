@@ -6,7 +6,7 @@ import RecordModal from "./../Modal/RecordModal";
 function AddRecords({ onRecordAdded }) {
     const [showModal, setShowModal] = useState(false);
     const [formData, setFormData] = useState({
-        no: "", // Fixed to match API expectations
+        no: "",
         document_type: "Select type",
         date_approved: "",
         title: "",
@@ -23,7 +23,12 @@ function AddRecords({ onRecordAdded }) {
         e.preventDefault();
 
         if (!formData.no || formData.document_type === "Select type" || !formData.date_approved || !formData.title) {
-            alert("Please fill in all required fields.");
+            Swal.fire({
+                title: "Error",
+                text: "Please fill in all required fields.",
+                icon: "error",
+                confirmButtonColor: "#FF6767",
+            });
             return;
         }
 
@@ -39,14 +44,17 @@ function AddRecords({ onRecordAdded }) {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    Authorization: `Bearer ${localStorage.getItem("token")}`, // Remove this if not needed
+                    Authorization: `Bearer ${localStorage.getItem("token")}`,
                 },
-                body: JSON.stringify(formData), // Fixed: Sending correct data format
+                body: JSON.stringify(formData),
             });
 
             const result = await response.json();
 
             if (!response.ok) {
+                if (response.status === 422 && result.errors?.no) {
+                    throw new Error(`A ${formData.document_type} with number ${formData.no} already exists.`);
+                }
                 throw new Error(result.message || "Failed to add record.");
             }
 
@@ -54,7 +62,7 @@ function AddRecords({ onRecordAdded }) {
                 title: "Success!",
                 text: "New record added successfully",
                 icon: "success",
-                confirmButtonText: "OK",
+                confirmButtonColor: "#408286",
             });
 
             // Send new record to Dashboard
@@ -77,14 +85,13 @@ function AddRecords({ onRecordAdded }) {
             });
 
             setShowModal(false);
-
         } catch (error) {
             console.error("Error:", error);
             Swal.fire({
                 title: "Error",
                 text: error.message,
                 icon: "error",
-                confirmButtonText: "OK",
+                confirmButtonColor: "#FF6767",
             });
         }
     };
@@ -108,7 +115,7 @@ function AddRecords({ onRecordAdded }) {
                                 <label className="block text-gray-700 font-medium mb-2">No.</label>
                                 <input
                                     type="text"
-                                    name="no" // Fixed: Matching state variable
+                                    name="no"
                                     placeholder="Ex. 001-2025"
                                     value={formData.no}
                                     onChange={handleChange}
@@ -118,13 +125,15 @@ function AddRecords({ onRecordAdded }) {
                             <div>
                                 <label className="block text-gray-700 font-medium mb-2">Document Type</label>
                                 <select
-                                    name="document_type" // Fixed: Matching state variable
+                                    name="document_type"
                                     value={formData.document_type}
                                     onChange={handleChange}
                                     className="cursor-pointer w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#408286] focus:border-transparent"
                                 >
                                     {documentTypes.map((type, index) => (
-                                        <option key={index} value={type}>{type}</option>
+                                        <option key={index} value={type} disabled={type === "Select type"}>
+                                            {type}
+                                        </option>
                                     ))}
                                 </select>
                             </div>
@@ -132,7 +141,7 @@ function AddRecords({ onRecordAdded }) {
                                 <label className="block text-gray-700 font-medium mb-2">Date Approved</label>
                                 <input
                                     type="date"
-                                    name="date_approved" // Fixed: Matching state variable
+                                    name="date_approved"
                                     value={formData.date_approved}
                                     onFocus={(e) => e.target.showPicker()}
                                     onChange={handleChange}
@@ -156,13 +165,23 @@ function AddRecords({ onRecordAdded }) {
 
                         {/* Submit Button */}
                         <div className="text-left flex gap-2">
-                            <button type="submit" className="bg-[#408286] hover:bg-[#357a74] text-sm font-poppins text-white font-semibold py-2 px-4 rounded-md transition duration-300 shadow-md">
+                            <button
+                                type="submit"
+                                className="bg-[#408286] hover:bg-[#357a74] text-sm font-poppins text-white font-semibold py-2 px-4 rounded-md transition duration-300 shadow-md"
+                            >
                                 Add Record
                             </button>
 
                             <button
                                 type="button"
-                                onClick={() => setFormData({ no: "", document_type: "Select type", date_approved: "", title: "" })}
+                                onClick={() =>
+                                    setFormData({
+                                        no: "",
+                                        document_type: "Select type",
+                                        date_approved: "",
+                                        title: "",
+                                    })
+                                }
                                 className="bg-gray-600 hover:bg-gray-700 text-sm text-white font-poppins font-semibold py-2 px-4 rounded-md transition duration-300 shadow-md"
                             >
                                 Clear
@@ -170,7 +189,9 @@ function AddRecords({ onRecordAdded }) {
                         </div>
                     </form>
                 </div>
-                {showModal && <RecordModal formData={formData} onClose={() => setShowModal(false)} onConfirm={handleConfirm} />}
+                {showModal && (
+                    <RecordModal formData={formData} onClose={() => setShowModal(false)} onConfirm={handleConfirm} />
+                )}
             </div>
         </div>
     );

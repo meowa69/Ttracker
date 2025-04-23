@@ -1,19 +1,26 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import Sidebar from "../Components/Sidebar";
 import moment from "moment-timezone";
 import axios from "axios";
+import { DateRangePicker } from "react-date-range";
+import "react-date-range/dist/styles.css";
+import "react-date-range/dist/theme/default.css";
 
 const History = () => {
   const [selectedCategory, setSelectedCategory] = useState("All");
-  const [filterBy, setFilterBy] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
+  const [dateRange, setDateRange] = useState({
+    startDate: null,
+    endDate: null,
+    key: "selection",
+  });
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [logs, setLogs] = useState([]);
   const [error, setError] = useState(null);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
+  const datePickerRef = useRef(null);
 
   const categories = [
     "All",
@@ -25,43 +32,61 @@ const History = () => {
 
   const perPage = 12; // Fetch 12 logs per page
 
+  // Close date picker on outside click
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (datePickerRef.current && !datePickerRef.current.contains(event.target)) {
+        setShowDatePicker(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  // Handle date range selection
+  const handleDateSelect = (ranges) => {
+    setDateRange(ranges.selection);
+    setShowDatePicker(false);
+  };
+
+  // Format date for display
+  const formatDateDisplay = () => {
+    if (!dateRange.startDate || !dateRange.endDate) return "Select date range";
+    const start = moment(dateRange.startDate).format("YYYY-MM-DD");
+    const end = moment(dateRange.endDate).format("YYYY-MM-DD");
+    return `${start} to ${end}`;
+  };
+
   // Fetch logs from backend
   const fetchLogs = useCallback(
     async (pageNumber, reset = false) => {
       setIsLoading(true);
       try {
-        console.log("Fetching logs with params:", {
+        const params = {
           page: pageNumber,
           per_page: perPage,
           category: selectedCategory,
           search: searchQuery,
-          filter_by: filterBy,
-          date_from: dateFrom,
-          date_to: dateTo,
-          token: localStorage.getItem("token"),
-        });
+        };
+        if (dateRange.startDate) {
+          params.date_from = moment(dateRange.startDate).format("YYYY-MM-DD");
+        }
+        if (dateRange.endDate) {
+          params.date_to = moment(dateRange.endDate).format("YYYY-MM-DD");
+        }
 
         const response = await axios.get("http://localhost:8000/api/history", {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
           },
-          params: {
-            page: pageNumber,
-            per_page: perPage,
-            category: selectedCategory,
-            search: searchQuery,
-            filter_by: filterBy,
-            date_from: dateFrom,
-            date_to: dateTo,
-          },
+          params,
         });
-
-        console.log("API Response:", response.data);
 
         const newLogs = Array.isArray(response.data.data) ? response.data.data : [];
         setLogs((prevLogs) => {
           if (reset) return newLogs;
-          // Avoid duplicates by filtering out logs with IDs already in prevLogs
           const existingIds = new Set(prevLogs.map((log) => log.id));
           return [...prevLogs, ...newLogs.filter((log) => !existingIds.has(log.id))];
         });
@@ -78,7 +103,7 @@ const History = () => {
         setIsLoading(false);
       }
     },
-    [selectedCategory, searchQuery, filterBy, dateFrom, dateTo]
+    [selectedCategory, searchQuery, dateRange]
   );
 
   // Fetch logs when filters change or on initial load
@@ -87,7 +112,7 @@ const History = () => {
     setLogs([]);
     setHasMore(true);
     fetchLogs(1, true);
-  }, [selectedCategory, searchQuery, filterBy, dateFrom, dateTo, fetchLogs]);
+  }, [selectedCategory, searchQuery, dateRange, fetchLogs]);
 
   // Handle Load More button click
   const handleLoadMore = () => {
@@ -98,51 +123,38 @@ const History = () => {
 
   // Filter logs in frontend
   const filteredLogs = useMemo(() => {
-    console.log("Filtering logs:", logs);
     if (!Array.isArray(logs)) return [];
 
     return logs.filter((log) => {
       if (selectedCategory !== "All" && log.action !== selectedCategory) return false;
       if (
-        filterBy === "username" &&
-        !log.username?.toLowerCase().includes(searchQuery.toLowerCase())
+        searchQuery &&
+        !(
+          log.username?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          log.document_type?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          log.document_no?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          log.action?.toLowerCase().includes(searchQuery.toLowerCase())
+        )
       )
         return false;
-      if (
-        filterBy === "document_type" &&
-        !log.document_type?.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-        return false;
-      if (
-        filterBy === "document_no" &&
-        !log.document_no?.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-        return false;
-      if (
-        filterBy === "action" &&
-        !log.action?.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-        return false;
-      return true;
-    }).filter((log) => {
       const logTime = moment.tz(log.timestamp, "YYYY-MM-DD h:mm A", "Asia/Manila");
-      if (dateFrom && dateTo) {
+      if (dateRange.startDate && dateRange.endDate) {
         return logTime.isBetween(
-          moment(dateFrom, "YYYY-MM-DD"),
-          moment(dateTo, "YYYY-MM-DD").endOf("day"),
+          moment(dateRange.startDate),
+          moment(dateRange.endDate).endOf("day"),
           undefined,
           "[]"
         );
       }
-      if (dateFrom) {
-        return logTime.isSameOrAfter(moment(dateFrom, "YYYY-MM-DD"));
+      if (dateRange.startDate) {
+        return logTime.isSameOrAfter(moment(dateRange.startDate));
       }
-      if (dateTo) {
-        return logTime.isSameOrBefore(moment(dateTo, "YYYY-MM-DD").endOf("day"));
+      if (dateRange.endDate) {
+        return logTime.isSameOrBefore(moment(dateRange.endDate).endOf("day"));
       }
       return true;
     });
-  }, [logs, searchQuery, filterBy, dateFrom, dateTo, selectedCategory]);
+  }, [logs, searchQuery, dateRange, selectedCategory]);
 
   return (
     <div className="flex bg-gray-100 font-poppins">
@@ -150,55 +162,84 @@ const History = () => {
       <div className="flex flex-col w-full h-screen overflow-y-auto p-6">
         <h1 className="font-bold uppercase text-[#494444] text-[35px] mb-6">History</h1>
 
-        {/* Category Tabs */}
-        <div className="flex border-b mb-4">
-          {categories.map((category) => (
-            <button
-              key={category}
-              onClick={() => setSelectedCategory(category)}
-              className={`p-3 text-sm font-semibold ${
-                selectedCategory === category
-                  ? "border-b-2 border-[#408286] text-[#408286]"
-                  : "text-gray-600 hover:text-[#408286]"
-              }`}
-            >
-              {category}
-            </button>
-          ))}
-        </div>
-
-        {/* Filter Section */}
-        <div className="mb-6 flex flex-wrap gap-4">
-          <select
-            value={filterBy}
-            onChange={(e) => setFilterBy(e.target.value)}
-            className="border p-2 rounded text-sm"
-          >
-            <option value="all">All</option>
-            <option value="username">Username</option>
-            <option value="document_type">Document Type</option>
-            <option value="document_no">Document No.</option>
-            <option value="action">Action</option>
-          </select>
-          <input
-            type="text"
-            placeholder="Search..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="border p-2 rounded text-sm w-64"
-          />
-          <input
-            type="date"
-            value={dateFrom}
-            onChange={(e) => setDateFrom(e.target.value)}
-            className="border p-2 rounded text-sm"
-          />
-          <input
-            type="date"
-            value={dateTo}
-            onChange={(e) => setDateTo(e.target.value)}
-            className="border p-2 rounded text-sm"
-          />
+        {/* Category Tabs and Filters */}
+        <div className="flex flex-wrap items-center justify-between mb-4 border-b">
+          <div className="flex">
+            {categories.map((category) => (
+              <button
+                key={category}
+                onClick={() => setSelectedCategory(category)}
+                className={`p-3 text-sm font-semibold ${
+                  selectedCategory === category
+                    ? "border-b-2 border-[#408286] text-[#408286]"
+                    : "text-gray-600 hover:text-[#408286]"
+                }`}
+              >
+                {category}
+              </button>
+            ))}
+          </div>
+          <div className="flex flex-wrap gap-4">
+            <div className="relative" ref={datePickerRef}>
+              <input
+                type="text"
+                value={formatDateDisplay()}
+                onClick={() => setShowDatePicker(!showDatePicker)}
+                readOnly
+                className="border border-gray-300 rounded-md pl-10 pr-4 py-2.5 text-sm w-64 focus:outline-none focus:ring-2 focus:ring-[#408286] cursor-pointer"
+                placeholder="Select date range"
+              />
+              <svg
+                className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                />
+              </svg>
+              {showDatePicker && (
+                <div className="absolute left-1/2 -translate-x-1/2 z-20 mt-2 bg-white shadow-lg rounded-md">
+                  <DateRangePicker
+                    ranges={[dateRange]}
+                    onChange={handleDateSelect}
+                    maxDate={new Date()}
+                    showDateDisplay={false}
+                    direction="horizontal"
+                    className="rounded-md"
+                  />
+                </div>
+              )}
+            </div>
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Search..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="border border-gray-300 rounded-md pl-10 pr-4 py-2.5 text-sm w-64 focus:outline-none focus:ring-2 focus:ring-[#408286]"
+              />
+              <svg
+                className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                />
+              </svg>
+            </div>
+          </div>
         </div>
 
         {/* Error Message */}
@@ -238,7 +279,7 @@ const History = () => {
                         <td className="px-4 py-3 text-gray-700 text-sm">{log.document_type}</td>
                         <td className="px-4 py-3 text-gray-700 text-sm">{log.document_no}</td>
                         <td className="px-4 py-3 text-gray-700 text-sm">{log.action}</td>
-                        <td className="px-4 py-3 text-sm text-gray-700">{log.timestamp}</td>
+                        <td className="px-4 py-3 text-gray-700 text-sm">{log.timestamp}</td>
                       </tr>
                     ))}
                     {hasMore && !isLoading && (

@@ -61,6 +61,33 @@ function Request() {
     });
   };
 
+  const handleCancel = async (id) => {
+    Swal.fire({
+      title: "Are you sure you want to cancel this request?",
+      text: "This will remove the deletion request and restore the ability to request deletion again.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#FF6767",
+      cancelButtonColor: "#6b7280",
+      confirmButtonText: "Yes, cancel it!",
+    }).then(async (result) => {
+      if (result.isConfirmed) {
+        try {
+          await axios.delete(`http://localhost:8000/api/deletion-requests/${id}`, {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          });
+          setRequestData((prev) => prev.filter((request) => request.id !== id));
+          Swal.fire("Canceled!", "The deletion request has been canceled.", "success");
+        } catch (error) {
+          console.error("Error canceling deletion request:", error);
+          Swal.fire("Error", "Failed to cancel the request.", "error");
+        }
+      }
+    });
+  };
+
   // Pagination logic
   const indexOfLastRecord = currentPage * recordsPerPage;
   const indexOfFirstRecord = indexOfLastRecord - recordsPerPage;
@@ -160,9 +187,15 @@ function Request() {
                                   <div className="flex justify-center gap-2">
                                     <button
                                       onClick={() => handleAction(request.id)}
-                                      className="bg-[#FF6767] hover:bg-[#f35656] shadow-md px-4 py-2 rounded-md text-white font-medium flex items-center gap-1 font-poppins text-sm"
+                                      className="bg-[#408286] hover:bg-[#306466] shadow-md px-4 py-2 rounded-md text-white font-medium flex items-center gap-1 font-poppins text-sm"
                                     >
                                       Approve
+                                    </button>
+                                    <button
+                                      onClick={() => handleCancel(request.id)}
+                                      className="bg-[#FF6767] hover:bg-[#f35656] shadow-md px-4 py-2 rounded-md text-white font-medium flex items-center gap-1 font-poppins text-sm"
+                                    >
+                                      Cancel
                                     </button>
                                   </div>
                                 </td>

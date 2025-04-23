@@ -12,16 +12,17 @@ function CommitteeManage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [currentPage, setCurrentPage] = useState(1); // For "Committees" tab
-  const [committeePage, setCommitteePage] = useState(1); // For "Add Committee" tab
-  const [termPage, setTermPage] = useState(1); // For "Add Term" tab
+  const [currentPage, setCurrentPage] = useState(1);
+  const [committeePage, setCommitteePage] = useState(1);
+  const [termPage, setTermPage] = useState(1);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
   const [committees, setCommittees] = useState([]);
   const [committeeName, setCommitteeName] = useState("");
   const [terms, setTerms] = useState([]);
   const [newTerm, setNewTerm] = useState("");
-  const [error, setError] = useState("");
+  const [committeeError, setCommitteeError] = useState("");
+  const [termError, setTermError] = useState("");
   const [alert, setAlert] = useState({ show: false, message: "", progress: 100 });
   const [committeeMembers, setCommitteeMembers] = useState({
     chairman: null,
@@ -31,11 +32,10 @@ function CommitteeManage() {
   const [selectedCommitteeForEdit, setSelectedCommitteeForEdit] = useState("");
   const [selectedTerm, setSelectedTerm] = useState(null);
 
-  const itemsPerPage = 12; // For "Committees" tab (12 cards per page)
-  const committeesPerPage = 6; // For "Add Committee" tab
-  const termsPerPage = activeTab === "editCommittee" ? 20 : 6; // 6 for "Add Term", 20 for "editCommittee"
+  const itemsPerPage = 12;
+  const committeesPerPage = 6;
+  const termsPerPage = activeTab === "editCommittee" ? 20 : 6;
 
-  // Alert handling
   const showAlert = (message) => {
     setAlert({ show: true, message, progress: 100 });
   };
@@ -64,7 +64,6 @@ function CommitteeManage() {
     }
   }, [alert.show]);
 
-  // Fetch committees
   useEffect(() => {
     fetchCommittees();
   }, []);
@@ -79,10 +78,9 @@ function CommitteeManage() {
     }
   };
 
-  // Add committee
   const addCommittee = async () => {
     if (!committeeName.trim()) {
-      showAlert("Committee name cannot be empty.");
+      setCommitteeError("Committee name cannot be empty.");
       return;
     }
 
@@ -92,10 +90,10 @@ function CommitteeManage() {
       });
       setCommittees([...committees, response.data.committee]);
       setCommitteeName("");
-      setError("");
+      setCommitteeError("");
       showAlert("Committee added successfully!");
     } catch (err) {
-      showAlert(err.response?.data?.message || "Failed to add committee.");
+      setCommitteeError(err.response?.data?.message || "Failed to add committee.");
     }
   };
 
@@ -132,7 +130,6 @@ function CommitteeManage() {
     }
   };
 
-  // Fetch terms
   useEffect(() => {
     fetchTerms();
   }, []);
@@ -147,11 +144,9 @@ function CommitteeManage() {
     }
   };
 
-  // Add term
   const addTerm = async () => {
     if (!newTerm.trim()) {
-      setError("Term cannot be empty.");
-      showAlert("Term cannot be empty.");
+      setTermError("Term cannot be empty.");
       return;
     }
 
@@ -161,11 +156,10 @@ function CommitteeManage() {
       });
       setTerms([...terms, response.data.term]);
       setNewTerm("");
-      setError("");
+      setTermError("");
       showAlert("Term added successfully!");
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to add term.");
-      showAlert(err.response?.data?.message || "Failed to add term.");
+      setTermError(err.response?.data?.message || "Failed to add term.");
     }
   };
 
@@ -202,7 +196,18 @@ function CommitteeManage() {
     }
   };
 
-  // Fetch members
+  const updateMembers = (newMembers) => {
+    const chairman = newMembers.find((m) => m.role === "chairman")?.member_name || null;
+    const viceChairman = newMembers.find((m) => m.role === "vice_chairman")?.member_name || null;
+    const members = newMembers.filter((m) => m.role === "member").map((m) => m.member_name);
+
+    setCommitteeMembers((prev) => ({
+      chairman: chairman || prev.chairman,
+      viceChairman: viceChairman || prev.viceChairman,
+      members: [...prev.members, ...members].slice(0, 5), // Ensure max 5 members
+    }));
+  };
+
   const fetchMembers = async () => {
     if (selectedCommittee && selectedTerm) {
       try {
@@ -252,7 +257,6 @@ function CommitteeManage() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Pagination logic
   const filteredCommittees = committees.filter((committee) =>
     committee?.committee_name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -595,7 +599,8 @@ function CommitteeManage() {
             isOpen={isAssignModalOpen}
             onClose={() => setIsAssignModalOpen(false)}
             committee={selectedCommittee}
-            term={selectedTerm}
+            term={terms.find((t) => t.term === selectedTerm)}
+            updateMembers={updateMembers}
             fetchMembers={fetchMembers}
             onMembersAdded={() => showAlert("Members added successfully!")}
             terms={terms}
@@ -621,17 +626,20 @@ function CommitteeManage() {
                 </button>
                 <button
                   className="bg-gray-200 shadow-sm text-gray-700 px-6 py-3 rounded-lg font-poppins font-medium text-sm transition-all duration-200 hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2"
-                  onClick={() => setCommitteeName("")}
+                  onClick={() => {
+                    setCommitteeName("");
+                    setCommitteeError("");
+                  }}
                   aria-label="Cancel adding committee"
                 >
                   Cancel
                 </button>
               </div>
 
-              {error && (
+              {committeeError && (
                 <div className="flex items-center space-x-2 mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
                   <FaExclamationCircle className="text-red-500" aria-hidden="true" />
-                  <p className="text-red-600 text-sm font-poppins">{error}</p>
+                  <p className="text-red-600 text-sm font-poppins">{committeeError}</p>
                 </div>
               )}
 
@@ -734,17 +742,20 @@ function CommitteeManage() {
                 </button>
                 <button
                   className="bg-gray-200 shadow-sm text-gray-700 px-6 py-3 rounded-lg font-poppins font-medium text-sm transition-all duration-200 hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2"
-                  onClick={() => setNewTerm("")}
+                  onClick={() => {
+                    setNewTerm("");
+                    setTermError("");
+                  }}
                   aria-label="Cancel adding term"
                 >
                   Cancel
                 </button>
               </div>
 
-              {error && (
+              {termError && (
                 <div className="flex items-center space-x-2 mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
                   <FaExclamationCircle className="text-red-500" aria-hidden="true" />
-                  <p className="text-red-600 text-sm font-poppins">{error}</p>
+                  <p className="text-red-600 text-sm font-poppins">{termError}</p>
                 </div>
               )}
 
