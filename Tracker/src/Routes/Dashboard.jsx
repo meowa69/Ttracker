@@ -12,8 +12,10 @@ function Dashboard() {
   const [loading, setLoading] = useState(false);
   const committees = [""];
   const [selectedType, setSelectedType] = useState("Document");
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const dropdownRef = useRef(null);
+  const [isCommitteeDropdownOpen, setIsCommitteeDropdownOpen] = useState(false);
+  const committeeDropdownRef = useRef(null);
+  const [isNotifDropdownOpen, setIsNotifDropdownOpen] = useState({});
+  const notifDropdownRef = useRef(null);
   const notificationRef = useRef(null);
   const [zoomLevel, setZoomLevel] = useState(1);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -34,13 +36,9 @@ function Dashboard() {
   const [alert, setAlert] = useState({ show: false, message: "", progress: 100 });
   const [notifications, setNotifications] = useState([]);
   const bellControls = useAnimation();
-  const [allNotifications, setAllNotifications] = useState(() => {
-    const storedNotifications = localStorage.getItem("allNotifications");
-    return storedNotifications ? JSON.parse(storedNotifications) : [];
-  });
-  const [hasViewedNotifications, setHasViewedNotifications] = useState(() => {
-    const storedValue = localStorage.getItem("hasViewedNotifications");
-    return storedValue ? JSON.parse(storedValue) : false;
+  const [unviewedNotificationCount, setUnviewedNotificationCount] = useState(() => {
+    const storedCount = localStorage.getItem("unviewedNotificationCount");
+    return storedCount ? parseInt(storedCount, 10) : 0;
   });
   const [viewedNotificationStatuses, setViewedNotificationStatuses] = useState(() => {
     const storedStatuses = localStorage.getItem("viewedNotificationStatuses");
@@ -65,11 +63,11 @@ function Dashboard() {
     }
   })();
 
-  // Update localStorage for notifications
+  // Update localStorage for viewed statuses and unviewed count
   useEffect(() => {
-    localStorage.setItem("hasViewedNotifications", JSON.stringify(hasViewedNotifications));
     localStorage.setItem("viewedNotificationStatuses", JSON.stringify(viewedNotificationStatuses));
-  }, [hasViewedNotifications, viewedNotificationStatuses]);
+    localStorage.setItem("unviewedNotificationCount", unviewedNotificationCount.toString());
+  }, [viewedNotificationStatuses, unviewedNotificationCount]);
 
   const fetchRecords = async () => {
     setLoading(true);
@@ -85,14 +83,13 @@ function Dashboard() {
         vmReceived: row.vm_received || row.vice_mayor_received,
         cmForwarded: row.cm_forwarded || row.city_mayor_forwarded,
         cmReceived: row.cm_received || row.city_mayor_received,
-        transmitted_recipients: row.transmitted_recipients || [], // Simplified to use row.transmitted_recipients
+        transmitted_recipients: row.transmitted_recipients || [],
         dateTransmitted: row.date_transmitted,
         status: row.completed ? "Completed" : row.status,
       }));
-      console.log("Fetched records:", formattedRows); // Debug log
+      console.log("Fetched records:", formattedRows);
       setRows(formattedRows);
       setSelectedRow((prev) => (prev ? formattedRows.find((row) => row.id === prev.id) || prev : prev));
-      updateNotifications(formattedRows);
     } catch (error) {
       console.error("Error fetching records:", error.response?.data || error);
       alert("Failed to fetch records: " + (error.response?.data?.message || error.message));
@@ -101,8 +98,40 @@ function Dashboard() {
     }
   };
 
+  const fetchNotifications = async () => {
+    try {
+      const response = await axios.get("http://localhost:8000/api/notifications", {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+      const notifications = response.data
+        .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
+        .slice(0, 50); // Limit to 50 for performance
+      setNotifications(notifications.slice(0, 9)); // Latest 9 for dropdown
+
+      // Calculate unviewed notifications
+      let unviewedCount = 0;
+      notifications.forEach((notif) => {
+        const viewed = viewedNotificationStatuses[notif.notification_id];
+        if (
+          !viewed ||
+          viewed.vmStatus !== notif.vm_status ||
+          viewed.cmStatus !== notif.cm_status
+        ) {
+          unviewedCount++;
+        }
+      });
+      setUnviewedNotificationCount(unviewedCount);
+    } catch (error) {
+      console.error("Error fetching notifications:", error.response?.data || error);
+      Swal.fire("Error", "Failed to fetch notifications", "error");
+    }
+  };
+
   useEffect(() => {
     fetchRecords();
+    fetchNotifications();
   }, []);
 
   const handleEditClick = (index) => {
@@ -128,16 +157,15 @@ function Dashboard() {
       );
       setSelectedRow(updatedRow);
       setIsEditModalOpen(false);
-  
-      // Refetch records to ensure consistency
+
       await fetchRecords();
-  
+      await updateNotifications([updatedRow]); // Pass only the updated row
+
       const documentType = updatedRow.document_type?.toLowerCase();
       if (["ordinance", "resolution", "motion"].includes(documentType)) {
         const formattedType = documentType.charAt(0).toUpperCase() + documentType.slice(1);
         showAlert(`${formattedType} No. ${updatedRow.no} has been updated`);
       }
-      updateNotifications(rows);
     } catch (error) {
       console.error("Error in handleSave:", error);
       alert("Failed to save changes: " + (error.message || "Unknown error"));
@@ -151,14 +179,31 @@ function Dashboard() {
 
   useEffect(() => {
     const handleClickOutside = (event) => {
-      const isOutsideNotification = notificationRef.current && !notificationRef.current.contains(event.target);
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setIsDropdownOpen(false);
+      if (committeeDropdownRef.current && !committeeDropdownRef.current.contains(event.target)) {
+        setIsCommitteeDropdownOpen(false);
       }
-      if (isOutsideNotification) {
+      if (
+        notificationRef.current &&
+        !notificationRef.current.contains(event.target)
+      ) {
         setIsOpen(false);
+        setIsNotifDropdownOpen((prev) => {
+          const newState = { ...prev, main: false };
+          Object.keys(newState).forEach((key) => {
+            newState[key] = false;
+          });
+          return newState;
+        });
+      } else {
+        if (notifDropdownRef.current && !notifDropdownRef.current.contains(event.target)) {
+          setIsNotifDropdownOpen((prev) => ({
+            ...prev,
+            main: false,
+          }));
+        }
       }
     };
+
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
@@ -183,7 +228,6 @@ function Dashboard() {
           if (response.status === 200) {
             setRows((prevRows) => prevRows.filter((row) => row.id !== id));
             Swal.fire("Deleted!", "The document has been deleted.", "success");
-            updateNotifications(rows);
           }
         } catch (error) {
           console.error("Error deleting record:", error.response?.data || error);
@@ -261,9 +305,9 @@ function Dashboard() {
     if (time === "Completed") return "fill-blue-600";
     if (time.includes("Overdue")) return "fill-red-600";
     const days = parseInt(time.split(" ")[0], 10);
-    if (isNaN(days)) return "fill-gray-600";
+    if (isNaN(days)) return "fill-red-600"; // Fallback to red if invalid
     if (days >= 8) return "fill-green-600";
-    if (days >= 6) return "fill-yellow-300";
+    if (days >= 6) return "fill-yellow-600";
     return "fill-red-600";
   };
 
@@ -273,130 +317,149 @@ function Dashboard() {
       row.document_type?.toLowerCase() === "ordinance"
         ? calculateTimeRemaining(row.cmForwarded, row.cmReceived)
         : "Not Started";
-    const vmPending = row.vmForwarded && !row.vmReceived;
-    const cmPending = row.document_type?.toLowerCase() === "ordinance" && row.cmForwarded && !row.cmReceived;
-    const isCompleted =
-      row.document_type?.toLowerCase() === "ordinance"
-        ? vmTime === "Completed" && cmTime === "Completed"
-        : vmTime === "Completed";
-    const isNotStarted =
-      row.document_type?.toLowerCase() === "ordinance"
-        ? vmTime === "Not Started" && cmTime === "Not Started"
-        : vmTime === "Not Started";
-    return (vmPending || cmPending || isCompleted) && !isNotStarted;
+    const isCompleted = vmTime === "Completed" || cmTime === "Completed";
+    const isOverdue = vmTime.includes("Overdue") || cmTime.includes("Overdue");
+    const isInProgress =
+      (row.vmForwarded && !row.vmReceived) ||
+      (row.document_type?.toLowerCase() === "ordinance" && row.cmForwarded && !row.cmReceived);
+    const isNotStarted = vmTime === "Not Started" && cmTime === "Not Started";
+    return (isInProgress || isOverdue || isCompleted) && !isNotStarted;
   };
 
   const getStatusColor = (time) => {
     if (time === "Completed") return "bg-blue-600 text-blue-600";
-    if (time.includes("Overdue")) return "bg-red-600 text-red-600";
+    if (time.includes("Overdue")) return "bg-red-600 text-blue-600";
     const days = parseInt(time.split(" ")[0], 10);
-    if (isNaN(days)) return "bg-gray-600 text-gray-600";
-    if (days >= 8) return "bg-green-600 text-green-600";
-    if (days >= 6) return "bg-yellow-300 text-yellow-300";
-    return "bg-red-600 text-red-600";
+    if (isNaN(days)) return "bg-red-600 text-blue-600"; // Fallback to red if invalid
+    if (days >= 8) return "bg-green-600 text-blue-600";
+    if (days >= 6) return "bg-yellow-600 text-blue-600";
+    return "bg-red-600 text-blue-600";
   };
 
-  useEffect(() => {
-    localStorage.setItem("allNotifications", JSON.stringify(allNotifications));
-  }, [allNotifications]);
-
-  const updateNotifications = (data) => {
-    const currentNotificationList = data
-      .filter((row) => ["Ordinance", "Resolution", "Motion"].includes(row.document_type))
-      .map((row) => {
-        const vmTime = calculateTimeRemaining(row.vmForwarded, row.vmReceived);
-        const cmTime =
-          row.document_type.toLowerCase() === "ordinance"
-            ? calculateTimeRemaining(row.cmForwarded, row.cmReceived)
-            : "Not Started";
-        const vmPending = row.vmForwarded && !row.vmReceived;
-        const cmPending = row.document_type.toLowerCase() === "ordinance" && row.cmForwarded && !row.cmReceived;
-        const isCompleted = row.status === "Completed";
-        const isOverdue = vmTime.includes("Overdue") || cmTime.includes("Overdue");
-
-        if (vmPending || cmPending || isCompleted || isOverdue) {
-          const relevantTime =
-            vmTime !== "Not Started" && vmTime !== "Completed"
-              ? vmTime
-              : cmTime !== "Not Started" && cmTime !== "Completed"
-              ? cmTime
-              : vmTime === "Completed" || cmTime === "Completed"
-              ? "Completed"
+  const updateNotifications = async (data) => {
+    try {
+      const newNotifications = data
+        .filter((row) => ["Ordinance", "Resolution", "Motion"].includes(row.document_type))
+        .map((row) => {
+          const vmTime = calculateTimeRemaining(row.vmForwarded, row.vmReceived);
+          const cmTime =
+            row.document_type.toLowerCase() === "ordinance"
+              ? calculateTimeRemaining(row.cmForwarded, row.cmReceived)
               : "Not Started";
-          const statusColor = getStatusColor(relevantTime);
-
+  
+          const isCompleted = row.status === "Completed";
+          const isOverdue = vmTime.includes("Overdue") || cmTime.includes("Overdue");
+          const isNotStarted = vmTime === "Not Started" && cmTime === "Not Started";
+  
+          if (isNotStarted) return null; // Skip notifications for 'Not Started'
+  
+          let relevantTime, statusColor, notificationStatus;
+  
+          if (isCompleted || (vmTime === "Completed" && cmTime === "Completed")) {
+            relevantTime = "Completed";
+            statusColor = "bg-blue-600 text-blue-600";
+            notificationStatus = "Completed";
+          } else if (isOverdue) {
+            relevantTime = vmTime.includes("Overdue") ? vmTime : cmTime;
+            statusColor = "bg-red-600 text-red-600"; // Fixed: Match backend validation
+            notificationStatus = "Overdue";
+          } else {
+            relevantTime = vmTime !== "Not Started" ? vmTime : cmTime;
+            const days = parseInt(relevantTime.split(" ")[0], 10);
+            notificationStatus = "In Progress";
+            if (days >= 8) {
+              statusColor = "bg-green-600 text-green-600"; // Fixed: Match backend validation
+            } else if (days >= 6) {
+              statusColor = "bg-yellow-600 text-yellow-600"; // Fixed: Match backend validation
+            } else {
+              statusColor = "bg-red-600 text-red-600"; // Fixed: Match backend validation
+            }
+          }
+  
           return {
-            id: row.id,
-            documentNo: row.no,
-            documentType: row.document_type,
-            vmStatus: vmTime,
-            cmStatus: cmTime,
-            status: isCompleted ? "Completed" : isOverdue ? "Overdue" : "Pending",
-            statusColor: statusColor,
-            updatedAt: row.updatedAt || new Date().toISOString(),
+            record_id: row.id,
+            notification_id: `${row.id}-${new Date().toISOString()}`,
+            document_no: row.no,
+            document_type: row.document_type,
+            vm_status: vmTime,
+            cm_status: row.document_type.toLowerCase() === "ordinance" ? cmTime : null,
+            status: notificationStatus,
+            status_color: statusColor,
+            updated_at: row.updatedAt || new Date().toISOString(),
           };
-        }
-        return null;
-      })
-      .filter((notification) => notification !== null)
-      .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
-      .slice(0, 9);
-
-    setNotifications(currentNotificationList);
-
-    setAllNotifications((prevAllNotifications) => {
-      const newNotifications = currentNotificationList.filter((newNotif) => {
-        const latestForThisId = prevAllNotifications.find(n => n.id === newNotif.id);
-        if (!latestForThisId) return true;
-        return (
-          latestForThisId.vmStatus !== newNotif.vmStatus || 
-          latestForThisId.cmStatus !== newNotif.cmStatus
+        })
+        .filter((notif) => notif !== null);
+  
+      // Send new notifications
+      for (const notif of newNotifications) {
+        await axios.post(
+          "http://localhost:8000/api/notifications",
+          notif,
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          }
         );
-      });
-      
-      const combinedNotifications = [...newNotifications, ...prevAllNotifications];
-      return combinedNotifications.slice(0, 50);
-    });
-
-    const currentStatuses = {};
-    currentNotificationList.forEach((notif) => {
-      currentStatuses[notif.id] = { vmStatus: notif.vmStatus, cmStatus: notif.cmStatus };
-    });
-
-    let hasChanges = false;
-    for (const id in currentStatuses) {
-      if (!viewedNotificationStatuses[id]) {
-        hasChanges = true;
-        break;
       }
-      const viewed = viewedNotificationStatuses[id];
-      const current = currentStatuses[id];
-      if (viewed.vmStatus !== current.vmStatus || viewed.cmStatus !== current.cmStatus) {
-        hasChanges = true;
-        break;
+  
+      // Fetch updated notifications
+      await fetchNotifications();
+  
+      // Animate bell if there are new notifications
+      if (newNotifications.length > 0) {
+        bellControls.start({
+          rotate: [0, 15, -15, 15, -15, 0],
+          transition: { duration: 0.6, repeat: 1 },
+        });
       }
-    }
-
-    if (hasChanges) {
-      setHasViewedNotifications(false);
-    }
-
-    if (currentNotificationList.length > 0) {
-      bellControls.start({
-        rotate: [0, 15, -15, 15, -15, 0],
-        transition: { duration: 0.6, repeat: 1 }
-      });
+    } catch (error) {
+      console.error("Error updating notifications:", error.response?.data || error);
+      Swal.fire("Error", "Failed to create notifications", "error");
     }
   };
 
   const handleNotificationOpen = () => {
     setIsOpen(true);
-    setHasViewedNotifications(true);
+    setUnviewedNotificationCount(0);
     const newStatuses = { ...viewedNotificationStatuses };
     notifications.forEach((notif) => {
-      newStatuses[notif.id] = { vmStatus: notif.vmStatus, cmStatus: notif.cmStatus };
+      newStatuses[notif.notification_id] = { vmStatus: notif.vm_status, cmStatus: notif.cm_status };
     });
     setViewedNotificationStatuses(newStatuses);
+  };
+
+  const deleteNotification = async (notificationId) => {
+    try {
+      await axios.delete(`http://localhost:8000/api/notifications/${notificationId}`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+      setNotifications((prev) => prev.filter((n) => n.notification_id !== notificationId));
+      await fetchNotifications();
+    } catch (error) {
+      console.error("Error deleting notification:", error.response?.data || error);
+      Swal.fire("Error", "Failed to delete notification", "error");
+    }
+  };
+
+  const clearAllNotifications = async () => {
+    try {
+      await axios.delete("http://localhost:8000/api/notifications", {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+      setNotifications([]);
+      setUnviewedNotificationCount(0);
+      setViewedNotificationStatuses({});
+      localStorage.setItem("viewedNotificationStatuses", JSON.stringify({}));
+      localStorage.setItem("unviewedNotificationCount", "0");
+    } catch (error) {
+      console.error("Error clearing notifications:", error.response?.data || error);
+      Swal.fire("Error", "Failed to clear notifications", "error");
+    }
   };
 
   const showAlert = (message) => {
@@ -497,9 +560,9 @@ function Dashboard() {
                 alt="notification"
                 className="w-5 h-5 self-center invert shadow-lg"
               />
-              {notifications.length > 0 && !hasViewedNotifications && (
+              {unviewedNotificationCount > 0 && (
                 <span className="absolute -top-0 -right-2 bg-red-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                  {notifications.length > 100 ? "99+" : notifications.length}
+                  {unviewedNotificationCount > 100 ? "99+" : unviewedNotificationCount}
                 </span>
               )}
             </div>
@@ -512,38 +575,112 @@ function Dashboard() {
                 exit={{ opacity: 0, y: -10 }}
                 transition={{ duration: 0.2 }}
                 className="absolute right-8 top-16 mt-2 w-96 bg-white text-gray-800 shadow-xl rounded-lg z-10 max-h-[800px] overflow-y-auto border border-gray-200"
+                ref={notificationRef}
               >
-                <div className="p-4 border-b border-gray-200 bg-gray-50">
-                  <h3 className="text-lg font-semibold text-gray-900">Notification History</h3>
-                  <p className="text-sm text-gray-500">{allNotifications.length} updates</p>
+                <div className="p-4 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
+                  <div className="flex flex-col">
+                    <h3 className="text-lg font-semibold text-gray-900">Notification History</h3>
+                    <p className="text-sm text-gray-500">{notifications.length} updates</p>
+                  </div>
+                  <div className="relative z-20 notification-menu" ref={notifDropdownRef}>
+                    <button
+                      onClick={() => setIsNotifDropdownOpen((prev) => ({ ...prev, main: !prev.main }))}
+                      className="text-gray-600 hover:text-gray-900 focus:outline-none flex items-start hover:bg-gray-200 p-2 rounded-[100%]"
+                    >
+                      <img
+                        src="src/assets/Images/menu.png"
+                        alt="Options"
+                        className="w-5 h-5"
+                      />
+                    </button>
+                    {isNotifDropdownOpen.main && (
+                      <div className="absolute right-0 mt-2 w-[250px] p-2 bg-white border border-gray-200 rounded-md shadow-lg z-30 notification-menu">
+                        <button
+                          onClick={clearAllNotifications}
+                          className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                        >
+                          <img
+                            src="src/assets/Images/delete.png"
+                            alt="Delete"
+                            className="w-4 h-4"
+                          />
+                          Clear All Notifications
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
-                {allNotifications.length > 0 ? (
+                {notifications.length > 0 ? (
                   <div className="divide-y divide-gray-200">
-                    {allNotifications.map((notif, index) => {
-                      const statusColor = notif.statusColor;
+                    {notifications.map((notif) => {
+                      const statusColor = notif.status_color;
+                      const uniqueKey = notif.notification_id;
+                      const isThisDropdownOpen = isNotifDropdownOpen[uniqueKey] || false;
                       return (
                         <div
-                          key={`${notif.id}-${index}`}
-                          className="p-4 hover:bg-gray-50 transition-colors duration-150"
+                          key={uniqueKey}
+                          className="p-4 hover:bg-gray-50 transition-colors duration-150 group relative"
                         >
                           <div className="flex items-start space-x-3">
                             <div className={`w-2 h-2 rounded-full mt-2 ${statusColor.split(" ")[0]}`}></div>
                             <div className="flex-1">
                               <p className="text-sm font-medium text-gray-900">
-                                {notif.documentType} No. {notif.documentNo}
+                                {notif.document_type} No. {notif.document_no}
                               </p>
                               <p className="text-xs text-gray-600 mt-1">
-                                Vice Mayor: <span className="font-medium">{notif.vmStatus}</span>
+                                Vice Mayor: <span className="font-medium">{notif.vm_status}</span>
                               </p>
-                              {notif.documentType.toLowerCase() === "ordinance" && (
+                              {notif.document_type.toLowerCase() === "ordinance" && (
                                 <p className="text-xs text-gray-600 mt-1">
-                                  City Mayor: <span className="font-medium">{notif.cmStatus}</span>
+                                  City Mayor: <span className="font-medium">{notif.cm_status}</span>
                                 </p>
                               )}
                               <p className={`text-xs mt-1 ${statusColor.split(" ")[1]}`}>
                                 Status: {notif.status}
                               </p>
-                              <p className="text-xs text-gray-400 mt-1">{formatTimestamp(notif.updatedAt)}</p>
+                              <p className="text-xs text-gray-400 mt-1">{formatTimestamp(notif.updated_at)}</p>
+                            </div>
+                            <div
+                              className={`absolute right-4 top-1/2 transform -translate-y-1/2 transition-opacity notification-menu z-40 ${
+                                isThisDropdownOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                              }`}
+                            >
+                              <div className="relative">
+                                <button
+                                  onClick={() => setIsNotifDropdownOpen((prev) => ({
+                                    ...prev,
+                                    [uniqueKey]: !prev[uniqueKey],
+                                  }))}
+                                  className="text-gray-600 hover:text-gray-900 focus:outline-none flex items-center hover:bg-gray-200 p-2 rounded-[100%]"
+                                >
+                                  <img
+                                    src="src/assets/Images/menu.png"
+                                    alt="Options"
+                                    className="w-5 h-5"
+                                  />
+                                </button>
+                                {isThisDropdownOpen && (
+                                  <div className="absolute right-0 mt-2 w-[250px] p-2 bg-white border border-gray-200 rounded-md shadow-lg z-60 notification-menu">
+                                    <button
+                                      onClick={() => {
+                                        deleteNotification(notif.notification_id);
+                                        setIsNotifDropdownOpen((prev) => ({
+                                          ...prev,
+                                          [uniqueKey]: false,
+                                        }));
+                                      }}
+                                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                                    >
+                                      <img
+                                        src="src/assets/Images/delete.png"
+                                        alt="Delete"
+                                        className="w-4 h-4"
+                                      />
+                                      Delete this notification
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -580,10 +717,10 @@ function Dashboard() {
               />
             </div>
 
-            <div className="relative w-40" ref={dropdownRef}>
+            <div className="relative w-40" ref={committeeDropdownRef}>
               <div
                 className="cursor-pointer w-full appearance-none rounded-md border border-gray-300 shadow-sm px-4 py-2 pr-10 bg-white text-sm font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-[#5FA8AD] truncate"
-                onClick={() => setIsDropdownOpen((prev) => !prev)}
+                onClick={() => setIsCommitteeDropdownOpen((prev) => !prev)}
               >
                 {committeeType || "Committee"}
               </div>
@@ -592,7 +729,7 @@ function Dashboard() {
                 alt="Dropdown Icon"
                 className="absolute top-1/2 right-3 transform -translate-y-1/2 w-4 h-4 pointer-events-none"
               />
-              {isDropdownOpen && (
+              {isCommitteeDropdownOpen && (
                 <div className="absolute mt-1 w-[450px] h-[500px] bg-white border border-gray-300 rounded-md shadow-lg z-10">
                   <input
                     type="text"
@@ -608,7 +745,7 @@ function Dashboard() {
                         className="px-4 py-2 hover:bg-gray-100 cursor-pointer font-poppins text-[13px] text-gray-600"
                         onClick={() => {
                           setCommitteeType(committee.committee_name);
-                          setIsDropdownOpen(false);
+                          setIsCommitteeDropdownOpen(false);
                         }}
                       >
                         {committee.committee_name}
@@ -941,7 +1078,7 @@ function Dashboard() {
         onClose={() => setIsEditModalOpen(false)}
         rowData={selectedRow}
         onSave={handleSave}
-        setRowData={setSelectedRow} 
+        setRowData={setSelectedRow}
       />
       <ViewModal
         isOpen={isViewModalOpen}

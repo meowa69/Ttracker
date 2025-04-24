@@ -24,8 +24,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/deletion-request', [AuthController::class, 'submitDeletionRequest']);
     Route::get('/deletion-requests', [AuthController::class, 'getDeletionRequests']);
     Route::put('/deletion-requests/{id}', [AuthController::class, 'handleDeletionRequest']);
-    Route::delete('/deletion-requests/{id}', [AuthController::class, 'cancelDeletionRequest']); // Ensure this is present
+    Route::delete('/deletion-requests/{id}', [AuthController::class, 'cancelDeletionRequest']);
     Route::get('/history', [AuthController::class, 'getHistory']);
+
+    // Notification routes
+    Route::post('/notifications', [AuthController::class, 'addNotification']);
+    Route::get('/notifications', [AuthController::class, 'getNotifications']);
+    Route::delete('/notifications/{id}', [AuthController::class, 'deleteNotification']);
+    Route::delete('/notifications', [AuthController::class, 'clearNotifications']);
 });
 
 // Public routes

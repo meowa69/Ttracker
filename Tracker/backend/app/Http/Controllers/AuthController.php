@@ -13,6 +13,7 @@ use App\Models\EditRecord;
 use App\Models\TransmittedRecipient;
 use App\Models\DeletionRequest;
 use App\Models\History;
+use App\Models\Notification;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -288,87 +289,157 @@ class AuthController extends Controller
         }
     }
 
-   // Update Record
-   public function updateRecord(Request $request, $id)
-   {
-       try {
-           $validated = $request->validate([
-               'committee_sponsor' => 'nullable|string',
-               'status' => 'nullable|string',
-               'vm_forwarded' => 'nullable|date',
-               'vm_received' => 'nullable|date',
-               'cm_forwarded' => 'nullable|date',
-               'cm_received' => 'nullable|date',
-               'date_transmitted' => 'nullable|date',
-               'remarks' => 'nullable|string',
-               'completed' => 'nullable|boolean',
-               'completion_date' => 'nullable|date',
-               'new_recipients' => 'nullable|array',
-               'new_recipients.*.name' => 'required|string',
-               'new_recipients.*.designation' => 'nullable|string',
-               'new_recipients.*.address' => 'required|string',
-               'recipients_to_remove' => 'nullable|array',
-               'recipients_to_remove.*' => 'integer|exists:transmitted_recipients,id',
-           ]);
-
-           $editRecord = EditRecord::firstOrNew(['record_id' => $id]);
-
-           $editRecord->fill([
-               'committee_sponsor' => $validated['committee_sponsor'] ?? $editRecord->committee_sponsor,
-               'status' => $validated['status'] ?? $editRecord->status,
-               'vice_mayor_forwarded' => $validated['vm_forwarded'] ?? $editRecord->vice_mayor_forwarded,
-               'vice_mayor_received' => $validated['vm_received'] ?? $editRecord->vice_mayor_received,
-               'city_mayor_forwarded' => $validated['cm_forwarded'] ?? $editRecord->city_mayor_forwarded,
-               'city_mayor_received' => $validated['cm_received'] ?? $editRecord->city_mayor_received,
-               'date_transmitted' => $validated['date_transmitted'] ?? $editRecord->date_transmitted,
-               'remarks' => $validated['remarks'] ?? $editRecord->remarks,
-               'completed' => $validated['completed'] ?? $editRecord->completed ?? false,
-               'completion_date' => $validated['completion_date'] ?? $editRecord->completion_date,
-           ]);
-
-           $editRecord->save();
-
-           // Handle new recipients
-           if (isset($validated['new_recipients'])) {
-               foreach ($validated['new_recipients'] as $recipient) {
-                   $newRecipient = $editRecord->transmittedRecipients()->create([
-                       'name' => $recipient['name'],
-                       'designation_office' => $recipient['designation'],
-                       'address' => $recipient['address'],
-                   ]);
-                   \Log::info("Added new recipient:", $newRecipient->toArray());
-               }
-           }
-
-           // Handle recipients to remove
-           if (isset($validated['recipients_to_remove']) && !empty($validated['recipients_to_remove'])) {
-               $editRecord->transmittedRecipients()
-                   ->whereIn('id', $validated['recipients_to_remove'])
-                   ->delete();
-           }
-
-           // Fetch the original record to get document_type and no
-           $record = AddRecord::findOrFail($id);
-
-           // Log the action
-           $this->logHistory(
-               Auth::user()->user_name,
-               $record->document_type,
-               $record->no,
-               'Update Document'
-           );
-
-           // Fetch the updated record with its transmitted recipients
-           $updatedRecord = EditRecord::with('transmittedRecipients')->find($editRecord->id);
-           $responseData = $updatedRecord->toArray();
-           \Log::info("Final response data with transmitted recipients:", $responseData);
-
-           return response()->json(['message' => 'Record updated successfully', 'data' => $responseData], 200);
-       } catch (\Exception $e) {
-           \Log::error('Update error: ' . $e->getMessage());
-           return response()->json(['message' => $e->getMessage()], 500);
-       }
-   }
+    // Update Record
+    public function updateRecord(Request $request, $id)
+    {
+        try {
+            $validated = $request->validate([
+                'committee_sponsor' => 'nullable|string',
+                'status' => 'nullable|string',
+                'vm_forwarded' => 'nullable|date',
+                'vm_received' => 'nullable|date',
+                'cm_forwarded' => 'nullable|date',
+                'cm_received' => 'nullable|date',
+                'date_transmitted' => 'nullable|date',
+                'remarks' => 'nullable|string',
+                'completed' => 'nullable|boolean',
+                'completion_date' => 'nullable|date',
+                'new_recipients' => 'nullable|array',
+                'new_recipients.*.name' => 'required|string',
+                'new_recipients.*.designation' => 'nullable|string',
+                'new_recipients.*.address' => 'required|string',
+                'recipients_to_remove' => 'nullable|array',
+                'recipients_to_remove.*' => 'integer|exists:transmitted_recipients,id',
+            ]);
+    
+            $editRecord = EditRecord::firstOrNew(['record_id' => $id]);
+            $editRecord->fill([
+                'committee_sponsor' => $validated['committee_sponsor'] ?? $editRecord->committee_sponsor,
+                'status' => $validated['status'] ?? $editRecord->status,
+                'vice_mayor_forwarded' => $validated['vm_forwarded'] ?? $editRecord->vice_mayor_forwarded,
+                'vice_mayor_received' => $validated['vm_received'] ?? $editRecord->vice_mayor_received,
+                'city_mayor_forwarded' => $validated['cm_forwarded'] ?? $editRecord->city_mayor_forwarded,
+                'city_mayor_received' => $validated['cm_received'] ?? $editRecord->city_mayor_received,
+                'date_transmitted' => $validated['date_transmitted'] ?? $editRecord->date_transmitted,
+                'remarks' => $validated['remarks'] ?? $editRecord->remarks,
+                'completed' => $validated['completed'] ?? $editRecord->completed ?? false,
+                'completion_date' => $validated['completion_date'] ?? $editRecord->completion_date,
+            ]);
+            $editRecord->save();
+    
+            // Handle new recipients
+            if (isset($validated['new_recipients'])) {
+                foreach ($validated['new_recipients'] as $recipient) {
+                    $newRecipient = $editRecord->transmittedRecipients()->create([
+                        'name' => $recipient['name'],
+                        'designation_office' => $recipient['designation'],
+                        'address' => $recipient['address'],
+                    ]);
+                    \Log::info("Added new recipient:", $newRecipient->toArray());
+                }
+            }
+    
+            // Handle recipients to remove
+            if (isset($validated['recipients_to_remove']) && !empty($validated['recipients_to_remove'])) {
+                $editRecord->transmittedRecipients()
+                    ->whereIn('id', $validated['recipients_to_remove'])
+                    ->delete();
+            }
+    
+            // Fetch the original record to get document_type and no
+            $record = AddRecord::findOrFail($id);
+    
+            // Handle notifications for Ordinance, Resolution, and Motion
+            if (in_array($record->document_type, ['Ordinance', 'Resolution', 'Motion'])) {
+                $vmCompleted = $editRecord->vice_mayor_received && !empty($editRecord->vice_mayor_received);
+                $cmCompleted = $editRecord->city_mayor_received && !empty($editRecord->city_mayor_received);
+    
+                // Calculate time remaining for VM and CM
+                $vmTime = $this->calculateTimeRemaining($editRecord->vice_mayor_forwarded, $editRecord->vice_mayor_received);
+                $cmTime = $record->document_type === 'Ordinance' 
+                    ? $this->calculateTimeRemaining($editRecord->city_mayor_forwarded, $editRecord->city_mayor_received)
+                    : 'Not Started';
+    
+                $notificationStatus = '';
+                $statusColor = '';
+    
+                if ($vmCompleted && ($record->document_type !== 'Ordinance' || $cmCompleted)) {
+                    $notificationStatus = 'Completed';
+                    $statusColor = 'bg-blue-600 text-blue-600';
+                } elseif ($vmTime === 'Overdue' || $cmTime === 'Overdue') {
+                    $notificationStatus = 'Overdue';
+                    $statusColor = 'bg-red-600 text-red-600';
+                } elseif ($vmTime === 'Not Started' && $cmTime === 'Not Started') {
+                    $notificationStatus = 'Not Started';
+                    $statusColor = 'bg-gray-600 text-gray-600'; // Will be filtered out
+                } else {
+                    // Determine status based on time remaining
+                    $days = $vmTime !== 'Not Started' ? (int) explode(' ', $vmTime)[0] : ($cmTime !== 'Not Started' ? (int) explode(' ', $cmTime)[0] : 0);
+                    $notificationStatus = 'In Progress';
+                    if ($days >= 8) {
+                        $statusColor = 'bg-green-600 text-green-600';
+                    } elseif ($days >= 6) {
+                        $statusColor = 'bg-yellow-600 text-yellow-600';
+                    } else {
+                        $statusColor = 'bg-red-600 text-red-600';
+                    }
+                }
+    
+                // Create new notification if status is not 'Not Started'
+                if ($notificationStatus !== 'Not Started') {
+                    $notification = Notification::create([
+                        'record_id' => $id,
+                        'notification_id' => "{$id}-" . now()->toISOString(),
+                        'document_no' => $record->no,
+                        'document_type' => $record->document_type,
+                        'vm_status' => $vmTime,
+                        'cm_status' => $record->document_type === 'Ordinance' ? $cmTime : null,
+                        'status' => $notificationStatus,
+                        'status_color' => $statusColor,
+                        'updated_at' => now(),
+                    ]);
+                    \Log::info('Notification created:', $notification->toArray());
+                }
+            }
+    
+            // Log the action
+            $this->logHistory(
+                Auth::user()->user_name,
+                $record->document_type,
+                $record->no,
+                'Update Document'
+            );
+    
+            // Fetch the updated record with its transmitted recipients
+            $updatedRecord = EditRecord::with('transmittedRecipients')->find($editRecord->id);
+            $responseData = $updatedRecord->toArray();
+            \Log::info("Final response data with transmitted recipients:", $responseData);
+    
+            return response()->json(['message' => 'Record updated successfully', 'data' => $responseData], 200);
+        } catch (\Exception $e) {
+            \Log::error('Update error: ' . $e->getMessage());
+            return response()->json(['message' => $e->getMessage()], 500);
+        }
+    }
+    
+    private function calculateTimeRemaining($forwardedDate, $receivedDate)
+    {
+        if (!$forwardedDate) return 'Not Started';
+        if ($receivedDate && !empty($receivedDate)) return 'Completed';
+    
+        $forwarded = new \DateTime($forwardedDate);
+        $now = new \DateTime();
+        $deadline = (clone $forwarded)->modify('+10 days');
+        $diff = $deadline->diff($now);
+    
+        if ($now > $deadline) {
+            $overdueDays = $now->diff($deadline)->days;
+            return "Overdue $overdueDays days";
+        }
+    
+        $daysRemaining = $diff->days;
+        return "$daysRemaining days remaining";
+    }
     
     // Delete Record
     public function deleteRecord($id)
@@ -864,6 +935,91 @@ class AuthController extends Controller
             return response()->json(['message' => 'Committee deleted successfully'], 200);
         } catch (\Exception $e) {
             return response()->json(['message' => 'Failed to delete committee'], 500);
+        }
+    }
+
+    // Add Notification
+    public function addNotification(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                'record_id' => 'required|exists:add_record,id',
+                'notification_id' => 'required|string|unique:notifications,notification_id',
+                'document_no' => 'required|string',
+                'document_type' => 'required|string|in:Ordinance,Resolution,Motion',
+                'vm_status' => 'required|string',
+                'cm_status' => 'nullable|string',
+                'status' => 'required|string|in:In Progress,Completed,Overdue',
+                'status_color' => 'required|string|in:bg-green-600 text-green-600,bg-yellow-600 text-yellow-600,bg-red-600 text-red-600,bg-blue-600 text-blue-600',
+                'updated_at' => 'required|date',
+            ]);
+
+            $notification = Notification::updateOrCreate(
+                ['record_id' => $validated['record_id']],
+                [
+                    'notification_id' => $validated['notification_id'],
+                    'document_no' => $validated['document_no'],
+                    'document_type' => $validated['document_type'],
+                    'vm_status' => $validated['vm_status'],
+                    'cm_status' => $validated['cm_status'],
+                    'status' => $validated['status'],
+                    'status_color' => $validated['status_color'],
+                    'updated_at' => $validated['updated_at'],
+                ]
+            );
+
+            \Log::info('Notification added/updated:', $notification->toArray());
+
+            return response()->json(['message' => 'Notification added/updated successfully', 'notification' => $notification], 201);
+        } catch (\Exception $e) {
+            \Log::error('Error adding/updating notification: ' . $e->getMessage());
+            return response()->json(['error' => 'Failed to add/update notification: ' . $e->getMessage()], 500);
+        }
+    }
+
+    // Get All Notifications
+    public function getNotifications()
+    {
+        try {
+            $notifications = Notification::orderBy('updated_at', 'desc')->get();
+            \Log::info('Notifications fetched successfully', ['count' => $notifications->count()]);
+            return response()->json($notifications, 200);
+        } catch (\Exception $e) {
+            \Log::error('Error fetching notifications: ' . $e->getMessage());
+            return response()->json(['error' => 'Failed to fetch notifications: ' . $e->getMessage()], 500);
+        }
+    }
+
+    // Delete Notification
+    public function deleteNotification($id)
+    {
+        try {
+            $notification = Notification::where('notification_id', $id)->first();
+            if (!$notification) {
+                \Log::warning("Notification not found with ID: {$id}");
+                return response()->json(['error' => 'Notification not found'], 404);
+            }
+
+            $notification->delete();
+            \Log::info("Successfully deleted notification with ID: {$id}");
+
+            return response()->json(['message' => 'Notification deleted successfully'], 200);
+        } catch (\Exception $e) {
+            \Log::error("Error deleting notification with ID: {$id}: " . $e->getMessage());
+            return response()->json(['error' => 'Failed to delete notification: ' . $e->getMessage()], 500);
+        }
+    }
+
+    // Clear All Notifications
+    public function clearNotifications()
+    {
+        try {
+            Notification::truncate();
+            \Log::info("All notifications cleared successfully");
+            return response()->json(['message' => 'All notifications cleared successfully'], 200);
+        } catch (\Exception $e) {
+            \Log::error('Error clearing notifications: ' . $e->getMessage());
+            return response()->json(['error' => 'Failed to clear notifications: ' . $e->getMessage()], 500);
         }
     }
     

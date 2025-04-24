@@ -17,6 +17,7 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
   const [recipientsToRemove, setRecipientsToRemove] = useState([]);
   const [isDeletionModalOpen, setIsDeletionModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isDataCommitted, setIsDataCommitted] = useState(false);
 
   const userRole = (() => {
     const userDataRaw = localStorage.getItem("userData");
@@ -54,8 +55,9 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
           setLocalRowData(updatedRowData);
           setRecipientList(fetchedData.transmitted_recipients || []);
           setRecipientsToRemove([]);
-          console.log("1. Modal opened - Fetched data:", fetchedData);
-          console.log("2. Initial recipientList set to:", fetchedData.transmitted_recipients);
+          setIsDataCommitted(true);
+          // Trigger notification update after fetching
+          onSave(updatedRowData); // Call onSave to trigger notification
         } catch (error) {
           console.error("Error fetching record data:", error);
           setLocalRowData({
@@ -63,6 +65,7 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
             completed: initialRowData.completed ? "true" : "false",
           });
           setRecipientList(initialRowData.transmitted_recipients || []);
+          setIsDataCommitted(true);
         } finally {
           setIsLoading(false);
         }
@@ -171,7 +174,7 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
   }, [isOpen, localRowData]);
 
   useEffect(() => {
-    if (!isOpen || !localRowData) return;
+    if (!isOpen || !localRowData || !isDataCommitted) return; // Only run timer if data is committed
     const updateTimer = () => {
       setVmTimeRemaining(calculateTimeRemaining(localRowData.vm_forwarded, localRowData.vm_received));
       setCmTimeRemaining(calculateTimeRemaining(localRowData.cm_forwarded, localRowData.cm_received));
@@ -179,8 +182,9 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
     updateTimer();
     const intervalId = setInterval(updateTimer, 1000);
     return () => clearInterval(intervalId);
-  }, [isOpen, localRowData]);
+  }, [isOpen, localRowData, isDataCommitted]);
 
+  
   useEffect(() => {
     const fetchCommitteesAndTerms = async () => {
       try {
@@ -259,6 +263,7 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
     const referralData = getReferralData(localRowData);
     printReferral(referralData);
   };
+  
 
   const handleSave = async () => {
     try {
@@ -278,8 +283,6 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
         recipients_to_remove: recipientsToRemove,
       };
 
-      console.log("7. Saving - Payload sent to backend:", payload);
-
       const response = await axios.put(
         `http://localhost:8000/api/update-record/${localRowData.id}`,
         payload,
@@ -290,16 +293,12 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
         }
       );
 
-      console.log("8. Backend response:", response.data);
-
       const updatedRecipients = response.data.data.transmitted_recipients.map((rec) => ({
         id: rec.id,
         name: rec.name,
         designation: rec.designation_office || rec.designation || "",
         address: rec.address,
       }));
-
-      console.log("9. Updated recipients from backend:", updatedRecipients);
 
       const updatedData = {
         ...localRowData,
@@ -319,6 +318,7 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
       setLocalRowData(updatedData);
       setRecipientList(updatedRecipients);
       setRecipientsToRemove([]);
+      setIsDataCommitted(true); // Mark data as committed
       onSave(updatedData);
       handleClose();
     } catch (error) {
