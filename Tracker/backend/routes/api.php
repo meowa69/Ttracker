@@ -32,6 +32,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/notifications', [AuthController::class, 'getNotifications']);
     Route::delete('/notifications/{id}', [AuthController::class, 'deleteNotification']);
     Route::delete('/notifications', [AuthController::class, 'clearNotifications']);
+    Route::post('/update-time-notification', [AuthController::class, 'updateTimeNotification']);
 });
 
 // Public routes

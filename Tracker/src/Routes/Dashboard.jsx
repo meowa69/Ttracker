@@ -287,27 +287,90 @@ function Dashboard() {
   const calculateTimeRemaining = (forwardedDate, receivedDate) => {
     if (!forwardedDate) return "Not Started";
     if (receivedDate && new Date(receivedDate).toString() !== "Invalid Date") return "Completed";
+  
     const forwarded = new Date(forwardedDate);
     const now = new Date();
     const deadline = new Date(forwarded);
     deadline.setDate(forwarded.getDate() + 10);
     const diffMs = deadline - now;
+  
     if (diffMs <= 0) {
-      const overdueMs = now - deadline;
-      const overdueDays = Math.floor(overdueMs / (1000 * 60 * 60 * 24));
+      const overdueDays = Math.floor(Math.abs(diffMs) / (1000 * 60 * 60 * 24));
       return `Overdue ${overdueDays} days`;
     }
+  
     const daysRemaining = Math.floor(diffMs / (1000 * 60 * 60 * 24));
     return `${daysRemaining} days remaining`;
   };
+
+  // Inside Dashboard component
+  useEffect(() => {
+    const checkTimeChanges = async () => {
+      const updatedRows = await Promise.all(
+        rows.map(async (row) => {
+          const vmTime = calculateTimeRemaining(row.vmForwarded, row.vmReceived);
+          const cmTime =
+            row.document_type?.toLowerCase() === "ordinance"
+              ? calculateTimeRemaining(row.cmForwarded, row.cmReceived)
+              : "Not Started";
+
+          // Check if time status has changed
+          const prevVmTime = localStorage.getItem(`vmTime_${row.id}`) || vmTime;
+          const prevCmTime = localStorage.getItem(`cmTime_${row.id}`) || cmTime;
+
+          if (vmTime !== prevVmTime || cmTime !== prevCmTime) {
+            try {
+              // Send time change to backend
+              await axios.post(
+                "http://localhost:8000/api/update-time-notification",
+                {
+                  record_id: row.id,
+                  document_no: row.no,
+                  document_type: row.document_type,
+                  vm_status: vmTime,
+                  cm_status: row.document_type.toLowerCase() === "ordinance" ? cmTime : null,
+                },
+                {
+                  headers: {
+                    Authorization: `Bearer ${localStorage.getItem("token")}`,
+                  },
+                }
+              );
+
+              // Update localStorage with new time status
+              localStorage.setItem(`vmTime_${row.id}`, vmTime);
+              localStorage.setItem(`cmTime_${row.id}`, cmTime);
+
+              return { ...row, vmTime, cmTime };
+            } catch (error) {
+              console.error("Error updating time notification:", error);
+              return row;
+            }
+          }
+          return row;
+        })
+      );
+
+      // Fetch notifications after updating
+      await fetchNotifications();
+    };
+
+    // Run every minute (60000ms)
+    const intervalId = setInterval(checkTimeChanges, 60000);
+
+    // Initial check
+    checkTimeChanges();
+
+    return () => clearInterval(intervalId);
+  }, [rows]);
 
   const getBookmarkColor = (time) => {
     if (time === "Completed") return "fill-blue-600";
     if (time.includes("Overdue")) return "fill-red-600";
     const days = parseInt(time.split(" ")[0], 10);
     if (isNaN(days)) return "fill-red-600"; // Fallback to red if invalid
-    if (days >= 8) return "fill-green-600";
-    if (days >= 6) return "fill-yellow-600";
+    if (days >=7) return "fill-green-600";
+    if (days >= 4) return "fill-yellow-600";
     return "fill-red-600";
   };
 
@@ -331,8 +394,8 @@ function Dashboard() {
     if (time.includes("Overdue")) return "bg-red-600 text-blue-600";
     const days = parseInt(time.split(" ")[0], 10);
     if (isNaN(days)) return "bg-red-600 text-blue-600"; // Fallback to red if invalid
-    if (days >= 8) return "bg-green-600 text-blue-600";
-    if (days >= 6) return "bg-yellow-600 text-blue-600";
+    if (days >= 7) return "bg-green-600 text-blue-600";
+    if (days >= 4) return "bg-yellow-600 text-blue-600";
     return "bg-red-600 text-blue-600";
   };
 
