@@ -5,8 +5,6 @@ import DeletionRequestModal from "../Modal/DeleteRequestModal";
 
 const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowData }) => {
   const [committeesWithTerms, setCommitteesWithTerms] = useState([]);
-  const [selectedCommittee, setSelectedCommittee] = useState("");
-  const [selectedTerm, setSelectedTerm] = useState("");
   const [localRowData, setLocalRowData] = useState({});
   const [vmTimeRemaining, setVmTimeRemaining] = useState("Not Started");
   const [cmTimeRemaining, setCmTimeRemaining] = useState("Not Started");
@@ -51,7 +49,6 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
           const updatedRowData = {
             ...initialRowData,
             ...fetchedData,
-            status: fetchedData.status || "",
             completed: fetchedData.completed ? "true" : "false",
             transmitted_recipients: fetchedData.transmitted_recipients || [],
           };
@@ -59,20 +56,12 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
           setRecipientList(fetchedData.transmitted_recipients || []);
           setRecipientsToRemove([]);
           setIsDataCommitted(true);
-          // Parse sponsor to set committee and term
-          if (updatedRowData.sponsor) {
-            const match = updatedRowData.sponsor.match(/^(.+?) \((.+)\)$/);
-            if (match) {
-              setSelectedCommittee(match[1]);
-              setSelectedTerm(match[2]);
-            }
-          }
-          onSave(updatedRowData);
+          // Trigger notification update after fetching
+          onSave(updatedRowData); // Call onSave to trigger notification
         } catch (error) {
           console.error("Error fetching record data:", error);
           setLocalRowData({
             ...initialRowData,
-            status: initialRowData.status || "",
             completed: initialRowData.completed ? "true" : "false",
           });
           setRecipientList(initialRowData.transmitted_recipients || []);
@@ -83,76 +72,7 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
       };
       fetchRecordData();
     }
-  }, [isOpen, initialRowData, onSave]);
-
-  // Sync selectedCommittee and selectedTerm with localRowData.sponsor
-  useEffect(() => {
-    if (localRowData.sponsor) {
-      const match = localRowData.sponsor.match(/^(.+?) \((.+)\)$/);
-      if (match) {
-        setSelectedCommittee(match[1]);
-        setSelectedTerm(match[2]);
-      }
-    } else {
-      setSelectedCommittee("");
-      setSelectedTerm("");
-    }
-  }, [localRowData.sponsor]);
-
-  // Log localRowData changes
-  useEffect(() => {
-    if (!isOpen || !localRowData || !isDataCommitted) return;
-
-    const updateTimer = async () => {
-      const newVmTime = calculateTimeRemaining(localRowData.vm_forwarded, localRowData.vm_received);
-      const newCmTime = calculateTimeRemaining(localRowData.cm_forwarded, localRowData.cm_received);
-
-      const getStatusKey = (time) => {
-        if (time === "Not Started" || time === "Completed") return time;
-        if (time === "Overdue") return "Overdue";
-        return `${parseInt(time.split(" ")[0], 10)} days`;
-      };
-
-      const prevVmStatus = localStorage.getItem(`vmStatus_${localRowData.id}`) || getStatusKey(newVmTime);
-      const prevCmStatus = localStorage.getItem(`cmStatus_${localRowData.id}`) || getStatusKey(newCmTime);
-      const newVmStatus = getStatusKey(newVmTime);
-      const newCmStatus = getStatusKey(newCmTime);
-
-      if (newVmStatus !== prevVmStatus || newCmStatus !== prevCmStatus) {
-        try {
-          await axios.post(
-            "http://localhost:8000/api/update-time-notification",
-            {
-              record_id: localRowData.id,
-              document_no: localRowData.no,
-              document_type: localRowData.document_type,
-              vm_status: newVmTime,
-              cm_status: localRowData.document_type?.toLowerCase() === "ordinance" ? newCmTime : null,
-            },
-            {
-              headers: {
-                Authorization: `Bearer ${localStorage.getItem("token")}`,
-              },
-            }
-          );
-
-          localStorage.setItem(`vmStatus_${localRowData.id}`, newVmStatus);
-          localStorage.setItem(`cmStatus_${localRowData.id}`, newCmStatus);
-          onSave(localRowData);
-        } catch (error) {
-          console.error("Error updating time notification in EditModal:", error);
-        }
-      }
-
-      setVmTimeRemaining(newVmTime);
-      setCmTimeRemaining(newCmTime);
-    };
-
-    updateTimer();
-    const intervalId = setInterval(updateTimer, 1000);
-
-    return () => clearInterval(intervalId);
-  }, [isOpen, localRowData, isDataCommitted, onSave]);
+  }, [isOpen, initialRowData]);
 
   // Log recipientList changes
   useEffect(() => {
@@ -220,20 +140,17 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
   const calculateTimeRemaining = (forwardedDate, receivedDate) => {
     if (!forwardedDate) return "Not Started";
     if (receivedDate && new Date(receivedDate).toString() !== "Invalid Date") return "Completed";
-
     const forwarded = new Date(forwardedDate);
     const now = new Date();
     const deadline = new Date(forwarded);
     deadline.setDate(forwarded.getDate() + 10);
     const diffMs = deadline - now;
-
-    if (diffMs <= 0) {
-      const overdueDays = Math.floor(Math.abs(diffMs) / (1000 * 60 * 60 * 24));
-      return `Overdue ${overdueDays} days`;
-    }
-
-    const daysRemaining = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-    return `${daysRemaining} days remaining`;
+    if (diffMs <= 0) return "Overdue";
+    const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((diffMs % (1000 * 60)) / 1000);
+    return `${days.toString().padStart(2, "0")} days ${hours.toString().padStart(2, "0")} hours: ${minutes.toString().padStart(2, "0")} minutes: ${seconds.toString().padStart(2, "0")} seconds`;
   };
 
   const getTimerColor = (time) => {
@@ -257,7 +174,7 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
   }, [isOpen, localRowData]);
 
   useEffect(() => {
-    if (!isOpen || !localRowData || !isDataCommitted) return;
+    if (!isOpen || !localRowData || !isDataCommitted) return; // Only run timer if data is committed
     const updateTimer = () => {
       setVmTimeRemaining(calculateTimeRemaining(localRowData.vm_forwarded, localRowData.vm_received));
       setCmTimeRemaining(calculateTimeRemaining(localRowData.cm_forwarded, localRowData.cm_received));
@@ -267,57 +184,34 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
     return () => clearInterval(intervalId);
   }, [isOpen, localRowData, isDataCommitted]);
 
+  
   useEffect(() => {
     const fetchCommitteesAndTerms = async () => {
       try {
-        const [committeesResponse, termsResponse, membersResponse] = await Promise.all([
+        const [committeesResponse, termsResponse] = await Promise.all([
           axios.get("http://localhost:8000/api/committees"),
           axios.get("http://localhost:8000/api/terms"),
-          axios.get("http://localhost:8000/api/committee-members"),
         ]);
         const committees = committeesResponse.data;
         const terms = termsResponse.data;
-        const members = membersResponse.data;
-
         const enrichedCommittees = committees.map((committee) => ({
           name: committee.committee_name,
           id: committee.id,
-          terms: terms.map((term) => ({
-            term: term.term,
-            termId: term.id,
-            hasMembers: members.some(
-              (member) => member.committee_id === committee.id && member.term_id === term.id
-            ),
-          })),
+          terms: terms.map((term) => term.term),
         }));
         setCommitteesWithTerms(enrichedCommittees);
       } catch (error) {
-        console.error("Error fetching committees, terms, or members:", error);
+        console.error("Error fetching committees and terms:", error);
       }
     };
     fetchCommitteesAndTerms();
   }, []);
 
-  const handleCommitteeChange = (e) => {
-    const committeeName = e.target.value;
-    setSelectedCommittee(committeeName);
-    setSelectedTerm("");
-    setLocalRowData((prev) => ({ ...prev, sponsor: "" }));
-    setRowData((prev) => ({ ...prev, sponsor: "" }));
-  };
-
-  const handleTermChange = (e) => {
-    const term = e.target.value;
-    setSelectedTerm(term);
-    const sponsorValue = selectedCommittee && term ? `${selectedCommittee} (${term})` : "";
-    setLocalRowData((prev) => ({ ...prev, sponsor: sponsorValue }));
-    setRowData((prev) => ({ ...prev, sponsor: sponsorValue }));
-  };
-
-  const handleStatusChange = (e) => {
-    const status = e.target.value;
-    setLocalRowData((prev) => ({ ...prev, status }));
-    setRowData((prev) => ({ ...prev, status }));
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    const newValue = name === "completed" ? value : value;
+    setLocalRowData((prev) => ({ ...prev, [name]: newValue || "" }));
+    setRowData((prev) => ({ ...prev, [name]: newValue || "" }));
   };
 
   const handleVmSetReceivedClick = () => {
@@ -352,8 +246,6 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
   const handleCancel = () => {
     console.log("14. Cancel - Resetting to current recipientList:", recipientList);
     setRecipientsToRemove([]);
-    setSelectedCommittee(localRowData.sponsor ? localRowData.sponsor.match(/^(.+?) \((.+)\)$/)[1] : "");
-    setSelectedTerm(localRowData.sponsor ? localRowData.sponsor.match(/^(.+?) \((.+)\)$/)[2] : "");
     handleClose();
   };
 
@@ -371,6 +263,7 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
     const referralData = getReferralData(localRowData);
     printReferral(referralData);
   };
+  
 
   const handleSave = async () => {
     try {
@@ -410,7 +303,7 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
       const updatedData = {
         ...localRowData,
         sponsor: response.data.data.committee_sponsor,
-        status: response.data.data.status || "",
+        status: response.data.data.status,
         vm_forwarded: response.data.data.vice_mayor_forwarded,
         vm_received: response.data.data.vice_mayor_received,
         cm_forwarded: response.data.data.city_mayor_forwarded,
@@ -425,7 +318,7 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
       setLocalRowData(updatedData);
       setRecipientList(updatedRecipients);
       setRecipientsToRemove([]);
-      setIsDataCommitted(true);
+      setIsDataCommitted(true); // Mark data as committed
       onSave(updatedData);
       handleClose();
     } catch (error) {
@@ -478,7 +371,7 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
                 name="no"
                 value={localRowData.no || ""}
                 readOnly
-                className="w-full px-3 py-2 border rounded-lg bg-gray-100 text-gray-600 cursor-not-allowed focus:outline-none text-sm font-poppins"
+                className="w-full px-3 py-2 border rounded-lg bg-gray-100 text-gray-600 cursor-not-allowed focus:outline-none"
               />
             </div>
             <div>
@@ -487,7 +380,7 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
                 name="document_type"
                 value={localRowData.document_type || ""}
                 disabled
-                className="w-full px-3 py-2 border rounded-lg bg-gray-100 text-gray-600 cursor-not-allowed focus:outline-none text-sm font-poppins"
+                className="w-full px-3 py-2 border rounded-lg bg-gray-100 text-gray-600 cursor-not-allowed focus:outline-none"
               >
                 {documentTypes.map((type, index) => (
                   <option key={index} value={type}>
@@ -503,7 +396,7 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
                 name="date_approved"
                 value={formatDateForInput(localRowData.date_approved)}
                 readOnly
-                className="w-full px-3 py-2 border rounded-lg bg-gray-100 text-gray-600 cursor-not-allowed focus:outline-none text-sm font-poppins"
+                className="w-full px-3 py-2 border rounded-lg bg-gray-100 text-gray-600 cursor-not-allowed focus:outline-none"
               />
             </div>
           </div>
@@ -511,7 +404,7 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
           <div>
             <label className="block text-gray-700 text-sm font-medium mb-1">Title</label>
             <div
-              className="w-full px-3 py-2 border rounded-lg bg-gray-100 text-gray-600 font-semibold whitespace-pre-wrap cursor-not-allowed focus:outline-none resize-none font-poppins"
+              className="w-full px-3 py-2 border rounded-lg bg-gray-100 text-gray-600 font-semibold whitespace-pre-wrap cursor-not-allowed focus:outline-none resize-none"
             >
               {localRowData.title || ""}
             </div>
@@ -520,70 +413,34 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-gray-700 text-sm font-medium mb-1">Committee Sponsor</label>
-              <div className="space-y-4">
-                <select
-                  value={selectedCommittee}
-                  onChange={handleCommitteeChange}
-                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#408286] focus:border-[#408286] cursor-pointer text-sm font-poppins text-gray-900 bg-white shadow-sm transition-all duration-200"
-                >
-                  <option value="" className="text-gray-500">Select Committee</option>
-                  {committeesWithTerms.map((committee) => (
-                    <option
-                      key={committee.id}
-                      value={committee.name}
-                      className={`${
-                        selectedCommittee === committee.name ? "bg-[#408286] text-white " : ""
-                      }`}
-                    >
-                      {committee.name}
-                    </option>
-                  ))}
-                </select>
-                {selectedCommittee && (
-                  <select
-                    value={selectedTerm}
-                    onChange={handleTermChange}
-                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#408286] focus:border-[#408286] cursor-pointer text-sm font-poppins text-gray-900 bg-white shadow-sm transition-all duration-200"
-                  >
-                    <option value="" className="text-gray-500">Select Term</option>
-                    {committeesWithTerms
-                      .find((c) => c.name === selectedCommittee)
-                      ?.terms.map((term, index) => (
-                        <option
-                          key={`${term.termId}-${index}`}
-                          value={term.term}
-                          className={`${
-                            selectedTerm === term.term ? "bg-[#408286] text-white font-semibold" : ""
-                          }`}
-                        >
-                          {`${term.term} ${term.hasMembers ? "✓" : ""}`}
-                        </option>
-                      ))}
-                  </select>
-                )}
-              </div>
-              {selectedCommittee && selectedTerm && (
-                <div className="mt-2 text-xs text-gray-600 uppercase">
-                  Selected: {`${selectedCommittee} (${selectedTerm})`}
-                </div>
-              )}
+              <select
+                name="sponsor"
+                value={localRowData.sponsor || ""}
+                onChange={handleChange}
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#408286] focus:border-[#408286] cursor-pointer"
+              >
+                <option value="">Select Committee</option>
+                {committeesWithTerms.map((committee) => (
+                  <optgroup key={committee.id} label={committee.name}>
+                    {committee.terms.map((term, index) => (
+                      <option key={`${committee.id}-${index}`} value={`${committee.name} (${term})`}>
+                        {`${committee.name} (${term})`}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
             </div>
             <div>
               <label className="block text-gray-700 text-sm font-medium mb-1">Status</label>
               <select
                 name="status"
                 value={localRowData.status || ""}
-                onChange={handleStatusChange}
-                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#408286] focus:border-[#408286] cursor-pointer text-sm font-poppins text-gray-900 bg-white shadow-sm transition-all duration-200"
+                onChange={handleChange}
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#408286] focus:border-[#408286] cursor-pointer"
               >
                 {statuses.map((status, index) => (
-                  <option
-                    key={index}
-                    value={status}
-                    className={`${
-                      localRowData.status === status ? "bg-[#408286] text-white font-semibold" : ""
-                    }`}
-                  >
+                  <option key={index} value={status}>
                     {status}
                   </option>
                 ))}
@@ -601,11 +458,9 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
                     type="date"
                     name="vm_forwarded"
                     value={formatDateForInput(localRowData.vm_forwarded)}
-                    onChange={(e) =>
-                      setLocalRowData((prev) => ({ ...prev, vm_forwarded: e.target.value || "" }))
-                    }
+                    onChange={handleChange}
                     onFocus={(e) => e.target.showPicker()}
-                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#408286] focus:border-[#408286] cursor-pointer text-sm font-poppins"
+                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#408286] focus:border-[#408286] cursor-pointer"
                   />
                   <div className="mt-1 text-xs">
                     <span className="block text-gray-500">{formatDateForDisplay(localRowData.vm_forwarded)}</span>
@@ -632,11 +487,9 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
                         type="date"
                         name="vm_received"
                         value={formatDateForInput(localRowData.vm_received)}
-                        onChange={(e) =>
-                          setLocalRowData((prev) => ({ ...prev, vm_received: e.target.value || "" }))
-                        }
+                        onChange={handleChange}
                         onFocus={(e) => e.target.showPicker()}
-                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#408286] focus:border-[#408286] cursor-pointer "
+                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#408286] focus:border-[#408286] cursor-pointer"
                       />
                       <div className="mt-1 text-xs">
                         <span className="block text-gray-500">{formatDateForDisplay(localRowData.vm_received)}</span>
@@ -657,12 +510,10 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
                       type="date"
                       name="cm_forwarded"
                       value={formatDateForInput(localRowData.cm_forwarded)}
-                      onChange={(e) =>
-                        setLocalRowData((prev) => ({ ...prev, cm_forwarded: e.target.value || "" }))
-                      }
+                      onChange={handleChange}
                       onFocus={(e) => e.target.showPicker()}
                       disabled={showCityMayorFields && !hasValidVmReceived}
-                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#408286] focus:border-[#408286] text-sm font-poppins ${
+                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#408286] focus:border-[#408286] ${
                         showCityMayorFields && !hasValidVmReceived
                           ? "bg-gray-100 text-gray-400 cursor-not-allowed"
                           : "cursor-pointer"
@@ -703,9 +554,7 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
                           type="date"
                           name="cm_received"
                           value={formatDateForInput(localRowData.cm_received)}
-                          onChange={(e) =>
-                            setLocalRowData((prev) => ({ ...prev, cm_received: e.target.value || "" }))
-                          }
+                          onChange={handleChange}
                           onFocus={(e) => e.target.showPicker()}
                           className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#408286] focus:border-[#408286] cursor-pointer"
                         />
@@ -832,9 +681,7 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
                   type="date"
                   name="date_transmitted"
                   value={formatDateForInput(localRowData.date_transmitted)}
-                  onChange={(e) =>
-                    setLocalRowData((prev) => ({ ...prev, date_transmitted: e.target.value || "" }))
-                  }
+                  onChange={handleChange}
                   onFocus={(e) => e.target.showPicker()}
                   className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-[#408286] focus:border-[#408286] text-sm text-gray-900 cursor-pointer transition-all duration-200"
                 />
@@ -852,10 +699,8 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
                 <select
                   name="completed"
                   value={localRowData.completed}
-                  onChange={(e) =>
-                    setLocalRowData((prev) => ({ ...prev, completed: e.target.value }))
-                  }
-                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#408286] focus:border-[#408286] cursor-pointer text-sm font-poppins"
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#408286] focus:border-[#408286] cursor-pointer"
                 >
                   <option value="false">False</option>
                   <option value="true">True</option>
@@ -868,12 +713,10 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
                   type="date"
                   name="completion_date"
                   value={formatDateForInput(localRowData.completion_date)}
-                  onChange={(e) =>
-                    setLocalRowData((prev) => ({ ...prev, completion_date: e.target.value || "" }))
-                  }
+                  onChange={handleChange}
                   onFocus={(e) => e.target.showPicker()}
                   disabled={localRowData.completed !== "true"}
-                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#408286] focus:border-[#408286] text-sm font-poppins ${
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#408286] focus:border-[#408286] ${
                     localRowData.completed !== "true" ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "cursor-pointer"
                   }`}
                 />
@@ -888,9 +731,7 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
               <textarea
                 name="remarks"
                 value={localRowData.remarks || ""}
-                onChange={(e) =>
-                  setLocalRowData((prev) => ({ ...prev, remarks: e.target.value || "" }))
-                }
+                onChange={handleChange}
                 className="w-full text-sm font-poppins text-gray-700 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#408286] focus:border-[#408286] resize-y"
                 rows="4"
               />
