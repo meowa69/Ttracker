@@ -10,6 +10,7 @@ class TransmittedRecipient extends Model
 
     protected $fillable = [
         'edit_record_id',
+        'salutation',
         'name',
         'designation',
         'office',

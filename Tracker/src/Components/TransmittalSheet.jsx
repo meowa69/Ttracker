@@ -204,35 +204,35 @@ export const TransmittalSheet = ({ documentData, onPrint, onClose }) => {
                 position: 'relative',
               }}
             >
-              <div style={{ paddingTop: '20px', padding: '20px' }}>
-                <div className="flex justify-between items-start mb-[10px]">
+              <div style={{ paddingTop: '20.8px', paddingLeft: '18.9px', paddingRight: '18.9px' }}>
+                <div className="flex justify-between items-start mb-[15px]">
                   <div className="flex items-center">
                     <img
                       src="src/assets/Images/cdo_logo.png"
                       alt="Cagayan de Oro Logo"
-                      style={{ width: '94px', height: '94px', marginRight: '10px' }}
+                      style={{ width: '94.5px', height: '94.5px', marginRight: '5px' }}
                     />
                     <img
                       src="src/assets/Images/goldenfriendship_logo.png"
                       alt="Golden Friendship Logo"
-                      style={{ width: '68px', height: '34px', marginRight: '5px' }}
+                      style={{ width: '68.04px', height: '34.02px', marginRight: '10px'}}
                     />
                     <img
                       src="src/assets/Images/bagongpilipinas_logo.png"
                       alt="Bagong Pilipinas Logo"
-                      style={{ width: '94px', height: '94px', marginRight: '10px' }}
+                      style={{ width: '94.5px', height: '94.5px'}}
                     />
-                    <div className="text-center flex-1 mt-[10px]">
-                      <p style={{ fontSize: '12.55px', color: 'rgb(55, 65, 81)' }}>
+                    <div className="text-center flex-1 ">
+                      <p style={{ fontSize: '14.67px', color: 'rgb(55, 65, 81)' }}>
                         Republic of the Philippines
                       </p>
-                      <p style={{ fontSize: '13px', color: 'rgb(55, 65, 81)' }}>
+                      <p style={{ fontSize: '16px', color: 'rgb(55, 65, 81)' }}>
                         CITY OF CAGAYAN DE ORO
                       </p>
-                      <p style={{ fontSize: '16px', fontWeight: 'bold', color: 'rgb(55, 65, 81)' }}>
+                      <p style={{ fontSize: '17.33px', fontWeight: 'bold', color: 'rgb(55, 65, 81)' }}>
                         OFFICE OF THE CITY COUNCIL
                       </p>
-                      <p style={{ fontSize: '10px', color: 'rgb(107, 114, 128)' }}>
+                      <p style={{ fontSize: '10.67px', color: 'rgb(107, 114, 128)' }}>
                         www.cdecitycouncil.com
                       </p>
                     </div>
@@ -240,50 +240,49 @@ export const TransmittalSheet = ({ documentData, onPrint, onClose }) => {
                   <img
                     src="src/assets/Images/CityC_Logo.png"
                     alt="City Council Logo"
-                    style={{ width: '94px', height: '94px', marginLeft: '15px' }}
+                    style={{ width: '94.5px', height: '94.5px'}}
                   />
                 </div>
-                <div style={{ marginBottom: '0' }}>
-                  <div style={{ borderTop: '2px solid rgb(167, 137, 125)', width: '100%' }}></div>
+                <div style={{ marginBottom: '20px'}}>
+                  <div style={{ borderTop: '2.89px solid rgb(167, 137, 125)', width: '100%' }}></div>
                   <div
                     style={{
-                      height: '2px',
+                      height: '2.89px',
                       background: 'linear-gradient(to right, #76adb8, #3f6f8b, #123360)',
-                      marginTop: '4px',
+                      marginTop: '3.78px',
                       width: '100%',
                     }}
                   ></div>
                 </div>
               </div>
 
-              <div style={{ marginLeft: '144px', marginRight: '96px', marginTop: '38px' }}>
-                <div className="text-center mb-[30px]">
-                  <h1 style={{ fontSize: '16px', fontWeight: 'bold', color: 'rgb(55, 65, 81)' }}>
+              <div style={{ marginLeft: '143.94px', marginRight: '96.06px'}}>
+                <div className="text-center mb-[20px]">
+                  <h1 style={{ fontSize: '21.33px', fontWeight: 'bold', color: 'rgb(55, 65, 81)' }}>
                     TRANSMITTAL SHEET
                   </h1>
                   <p
                     style={{
-                      fontSize: '12px',
+                      fontSize: '16px',
                       color: 'rgb(75, 85, 99)',
-                      textAlign: 'center',
-                      marginTop: '19px',
-                      textIndent: '150px',
+                      marginTop: '18.9px',
+                      textIndent: '175px',
                     }}
                   >
                     {currentDate}
                   </p>
                 </div>
 
-                <div className="mb-[20px]">
-                  <p style={{ fontSize: '12px', color: 'rgb(55, 65, 81)' }}>Sirs/Mesdames:</p>
+                <div className="mb-[10.6px]">
+                  <p style={{ fontSize: '16px', color: 'rgb(55, 65, 81)' }}>Sirs/Mesdames:</p>
                   <p
                     style={{
-                      fontSize: '12px',
+                      fontSize: '16px',
                       color: 'rgb(55, 65, 81)',
-                      textIndent: '38px',
+                      textIndent: '45.8px',
                       textAlign: 'justify',
-                      marginTop: '38px',
-                      lineHeight: '1.5',
+                      marginTop: '15.8px',
+                      lineHeight: '18.14px',
                     }}
                   >
                     Enclosed is a copy of{' '}
@@ -291,11 +290,11 @@ export const TransmittalSheet = ({ documentData, onPrint, onClose }) => {
                       {documentData.document_type || "N/A"} No. {documentData.no || "N/A"}
                     </span>
                     , current series, passed by the City Council of this City
-                    <span style={{ textIndent: '0' }}>
+                    <span>
                       , during its Regular Session on the{' '}
                       <span style={{ fontWeight: 'bold' }}>
                         {sessionDate.day}
-                        <span style={{ fontSize: '12px', position: 'relative', top: '-2px' }}>
+                        <span style={{ fontSize: '9.6px', position: 'relative', top: '-2.84px' }}>
                           {sessionDate.suffix}
                         </span>{' '}
                         day of {sessionDate.month} {sessionDate.year}
@@ -305,113 +304,112 @@ export const TransmittalSheet = ({ documentData, onPrint, onClose }) => {
                   </p>
                   <div
                     style={{
-                      width: '450px',
+                      width: '452.76px',
                       border: '0.38px solid rgb(55, 65, 81)',
                       padding: '11.34px',
-                      margin: '19px auto',
+                      margin: '18.9px auto',
                       textAlign: 'justify',
-                      lineHeight: '1.5',
+                      lineHeight: '18.14px',
                     }}
                   >
-                    <p style={{ fontSize: '12px', fontWeight: 'bold', color: 'rgb(55, 65, 81)', textTransform: 'uppercase' }}>
+                    <p style={{ fontSize: '16px', fontWeight: 'bold', color: 'rgb(55, 65, 81)', textTransform: 'uppercase' }}>
                       {documentData.title || "N/A"}
                     </p>
                   </div>
                 </div>
 
-                <div className="mb-[15px]">
-                  <p style={{ fontSize: '12px', color: 'rgb(55, 65, 81)' }}>for your information.</p>
+                <div className="mb-[15.8px]">
+                  <p style={{ fontSize: '16px', color: 'rgb(55, 65, 81)' }}>for your information.</p>
                 </div>
 
-                <div className="mb-[30px]">
-                  <p style={{ fontSize: '12px', color: 'rgb(55, 65, 81)', textIndent: '38px', marginBottom: '15px' }}>
+                <div className="mb-[50.4px]">
+                  <p style={{ fontSize: '16px', color: 'rgb(55, 65, 81)', textIndent: '37.8px', marginBottom: '18.9px' }}>
                     Thank you very much.
                   </p>
-                  <div style={{ textAlign: 'center', marginLeft: '280px' }}>
-                    <p style={{ fontSize: '12px', color: 'rgb(55, 65, 81)', marginBottom: '25px' }}>
+                  <div style={{ textAlign: 'center', marginLeft: '283.5px' }}>
+                    <p style={{ fontSize: '16px', color: 'rgb(55, 65, 81)', marginBottom: '30.7px' }}>
                       Very truly yours,
                     </p>
-                    <p style={{ fontSize: '11px', fontWeight: 'bold', color: 'rgb(55, 65, 81)', textTransform: 'uppercase', marginBottom: '0px' }}>
+                    <p style={{ fontSize: '14.67px', fontWeight: 'bold', color: 'rgb(55, 65, 81)', textTransform: 'uppercase' }}>
                       {signatoryDetails.name}
                     </p>
                     {signatoryDetails.title1 && (
-                      <p style={{ fontSize: '10px', color: 'rgb(55, 65, 81)', marginBottom: '0px' }}>
+                      <p style={{ fontSize: '13.33px', color: 'rgb(55, 65, 81)' }}>
                         {signatoryDetails.title1}
                       </p>
                     )}
                     {signatoryDetails.title2 && (
-                      <p style={{ fontSize: '10px', color: 'rgb(55, 65, 81)', marginBottom: '0px' }}>
+                      <p style={{ fontSize: '13.33px', color: 'rgb(55, 65, 81)' }}>
                         {signatoryDetails.title2}
                       </p>
                     )}
                     {signatoryDetails.title3 && (
-                      <p style={{ fontSize: '10px', color: 'rgb(55, 65, 81)', marginBottom: '0px' }}>
+                      <p style={{ fontSize: '13.33px', color: 'rgb(55, 65, 81)' }}>
                         {signatoryDetails.title3}
                       </p>
                     )}
                     {signatoryDetails.authority && (
-                      <p style={{ fontSize: '10px', color: 'rgb(55, 65, 81)', marginBottom: '0px' }}>
+                      <p style={{ fontSize: '13.33px', color: 'rgb(55, 65, 81)' }}>
                         {signatoryDetails.authority}
                       </p>
                     )}
                     {signatoryDetails.authorityTitle && (
-                      <p style={{ fontSize: '10px', color: 'rgb(55, 65, 81)', marginBottom: '0px' }}>
+                      <p style={{ fontSize: '13.33px', color: 'rgb(55, 65, 81)' }}>
                         {signatoryDetails.authorityTitle}
                       </p>
                     )}
                   </div>
                 </div>
 
-                <div className="mb-[30px]">
-                  <div style={{ display: 'flex', marginBottom: '38px', marginLeft: '40px' }}>
-                    <p style={{ width: '245px', fontSize: '10px', color: 'rgb(55, 65, 81)', textAlign: 'left' }}>
+                <div className="mb-[113.4px]">
+                  <div style={{ display: 'flex', alignItems: 'end', marginBottom: '20.8px', marginLeft: '35.8px' }}>
+                    <p style={{ width: '170.1px', fontSize: '13.33px', color: 'rgb(55, 65, 81)', textAlign: 'left' }}>
                       Office
                     </p>
-                    <p style={{ width: '170px', fontSize: '10px', color: 'rgb(55, 65, 81)', textAlign: 'center' }}>
+                    <p style={{ width: '130.3px', fontSize: '13.33px', color: 'rgb(55, 65, 81)', textAlign: 'center', marginLeft: '60px' }}>
                       Receiver Name
                     </p>
-                    <p style={{ width: '94px', fontSize: '10px', color: 'rgb(55, 65, 81)', textAlign: 'center' }}>
+                    <p style={{ width: '90.5px', fontSize: '13.33px', color: 'rgb(55, 65, 81)', textAlign: 'right' }}>
                       Signature
                     </p>
-                    <p style={{ width: '94px', fontSize: '10px', color: 'rgb(55, 65, 81)', textAlign: 'center' }}>
+                    <p style={{ width: '50.5px', fontSize: '13.33px', color: 'rgb(55, 65, 81)', textAlign: 'right', paddingLeft: '50px'}}>
                       Date
                     </p>
                   </div>
                   {documentData.transmitted_recipients && documentData.transmitted_recipients.length > 0 ? (
                     documentData.transmitted_recipients.map((recipient, index) => (
-                      <div key={index} style={{ display: 'flex', alignItems: 'center', marginBottom: '10px', marginLeft: '0px' }}>
+                      <div key={index} style={{ display: 'flex', alignItems: 'end', }}>
                         <p
                           style={{
-                            width: '245px',
+                            width: '170.1px',
                             fontSize: '13.33px',
                             color: 'rgb(55, 65, 81)',
                             textAlign: 'left',
-                            marginLeft: '0 auto', 
                           }}
                         >
                           {recipient.office || "N/A"}
                         </p>
-                        <div style={{ width: '170px', textAlign: 'center' }}>
-                          <div style={{ borderBottom: '0.38px solid black', width: '120px', margin: '0 auto', marginLeft: "55px" }}></div>
+                        <div style={{ width: '150.3px', textAlign: 'center', marginLeft: '30px', paddingLeft: '5px', paddingRight: '5px' }}>
+                          <div style={{ borderBottom: '0.38px solid black', width: '100%', marginLeft: '60px' }}></div>
                         </div>
-                        <div style={{ width: '94px', textAlign: 'center' }}>
-                          <div style={{ borderBottom: '0.38px solid black', width: '80px', margin: '0 auto', marginLeft: "20px" }}></div>
+                        <div style={{ width: '113.4px', textAlign: 'center', paddingLeft: '5px', paddingRight: '5px' }}>
+                          <div style={{ borderBottom: '0.38px solid black', width: '85px', marginLeft: '63px' }}></div>
                         </div>
-                        <div style={{ width: '94px', textAlign: 'center' }}>
-                          <div style={{ borderBottom: '0.38px solid black', width: '80px', margin: '0 auto', marginLeft: "20px" }}></div>
+                        <div style={{ width: '113.4px', textAlign: 'center', paddingLeft: '5px', paddingRight: '5px' }}>
+                          <div style={{ borderBottom: '0.38px solid black', width: '85px', marginLeft: '45px' }}></div>
                         </div>
                       </div>
                     ))
                   ) : (
-                    <p style={{ fontSize: '10px', color: 'rgb(55, 65, 81)', textAlign: 'center' }}>
+                    <p style={{ fontSize: '13.33px', color: 'rgb(55, 65, 81)', textAlign: 'center' }}>
                       No recipients added.
                     </p>
                   )}
                 </div>
               </div>
 
-              <div style={{ position: 'absolute', bottom: '20px', right: '96px' }}>
-                <p style={{ fontSize: '12px', color: 'rgb(107, 114, 128)', textAlign: 'right' }}>
+              <div style={{ position: 'absolute', bottom: '56.7px', right: '96.06px' }}>
+                <p style={{ fontSize: '13.33px', color: 'rgb(107, 114, 128)', textAlign: 'right' }}>
                   Generated from the LMIS & Records Section{' '}
                   {new Date().toLocaleString('en-US', {
                     month: 'numeric',
@@ -571,7 +569,7 @@ export const TransmittalSheet = ({ documentData, onPrint, onClose }) => {
                 align-items: center !important;
               }
               .w-2\\/3 > div {
-                width: 750px !important;
+                width: 816px !important;
                 min-height: 1247px !important;
                 margin: 0 !important;
                 box-shadow: none !important;

@@ -12,7 +12,7 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
   const [isCmReceivedEditing, setIsCmReceivedEditing] = useState(false);
   const vmReceivedInputRef = useRef(null);
   const cmReceivedInputRef = useRef(null);
-  const [newRecipient, setNewRecipient] = useState({ name: "", designation: "", office: "", address: "" });
+  const [newRecipient, setNewRecipient] = useState({ salutation: "", name: "", designation: "", office: "", address: "" });
   const [recipientList, setRecipientList] = useState([]);
   const [recipientsToRemove, setRecipientsToRemove] = useState([]);
   const [isDeletionModalOpen, setIsDeletionModalOpen] = useState(false);
@@ -34,7 +34,6 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
     }
   })();
 
-  // Fetch record data including recipients when modal opens
   useEffect(() => {
     if (isOpen && initialRowData?.id) {
       const fetchRecordData = async () => {
@@ -76,7 +75,6 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
     }
   }, [isOpen, initialRowData]);
 
-  // Log recipientList changes
   useEffect(() => {
     console.log("3. recipientList updated:", recipientList);
   }, [recipientList]);
@@ -87,16 +85,21 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
   };
 
   const handleAddRecipient = () => {
-    if (newRecipient.name && newRecipient.address) {
-      const recipientToAdd = { ...newRecipient, id: null, designation: newRecipient.designation || "", office: newRecipient.office || "" };
+    if (newRecipient.name && newRecipient.address && newRecipient.salutation) {
+      const recipientToAdd = { 
+        ...newRecipient, 
+        id: null, 
+        designation: newRecipient.designation || "", 
+        office: newRecipient.office || "" 
+      };
       setRecipientList((prev) => {
         const newList = [...prev, recipientToAdd];
         console.log("4. After adding recipient - new recipientList:", newList);
         return newList;
       });
-      setNewRecipient({ name: "", designation: "", office: "", address: "" });
+      setNewRecipient({ salutation: "", name: "", designation: "", office: "", address: "" });
     } else {
-      console.log("Cannot add recipient - missing name or address:", newRecipient);
+      console.log("Cannot add recipient - missing salutation, name, or address:", newRecipient);
     }
   };
 
@@ -176,7 +179,7 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
   }, [isOpen, localRowData]);
 
   useEffect(() => {
-    if (!isOpen || !localRowData || !isDataCommitted) return; // Only run timer if data is committed
+    if (!isOpen || !localRowData || !isDataCommitted) return;
     const updateTimer = () => {
       setVmTimeRemaining(calculateTimeRemaining(localRowData.vm_forwarded, localRowData.vm_received));
       setCmTimeRemaining(calculateTimeRemaining(localRowData.cm_forwarded, localRowData.cm_received));
@@ -239,7 +242,7 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
     console.log("13. Closing modal - Current recipientList:", recipientList);
     setIsVmReceivedEditing(false);
     setIsCmReceivedEditing(false);
-    setNewRecipient({ name: "", designation: "", office: "", address: "" });
+    setNewRecipient({ salutation: "", name: "", designation: "", office: "", address: "" });
     setIsDeletionModalOpen(false);
     onClose();
   };
@@ -280,6 +283,7 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
         completed: localRowData.completed === "true",
         completion_date: localRowData.completed === "true" ? localRowData.completion_date || null : null,
         new_recipients: newRecipients.map(recipient => ({
+          salutation: recipient.salutation,
           name: recipient.name,
           designation: recipient.designation,
           office: recipient.office,
@@ -300,6 +304,7 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
 
       const updatedRecipients = response.data.data.transmitted_recipients.map((rec) => ({
         id: rec.id,
+        salutation: rec.salutation || "",
         name: rec.name,
         designation: rec.designation || "",
         office: rec.office || "",
@@ -587,64 +592,77 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
             <label className="block text-gray-800 text-sm font-semibold mb-4">Transmitted To</label>
             <div className="space-y-6">
               <div className="grid grid-cols-1 gap-6">
-              {/* Name, Designation, Office in one row */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-gray-600 text-xs font-medium mb-1">Name</label>
-                  <input
-                    type="text"
-                    name="name"
-                    value={newRecipient.name}
-                    onChange={handleRecipientChange}
-                    placeholder="Enter recipient name"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-[#408286] focus:border-[#408286] text-sm text-gray-900 placeholder-gray-400 transition-all duration-200"
-                  />
+                {/* Salutation, Name, Designation, Office in one row */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div>
+                    <label className="block text-gray-600 text-xs font-medium mb-1">Salutation</label>
+                    <select
+                      name="salutation"
+                      value={newRecipient.salutation}
+                      onChange={handleRecipientChange}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-[#408286] focus:border-[#408286] text-sm text-gray-900 placeholder-gray-400 transition-all duration-200 cursor-pointer"
+                    >
+                      <option value="">Select Salutation</option>
+                      <option value="Sir">Sir</option>
+                      <option value="Madam">Madame</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-gray-600 text-xs font-medium mb-1">Name</label>
+                    <input
+                      type="text"
+                      name="name"
+                      value={newRecipient.name}
+                      onChange={handleRecipientChange}
+                      placeholder="Enter recipient name"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-[#408286] focus:border-[#408286] text-sm text-gray-900 placeholder-gray-400 transition-all duration-200"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-gray-600 text-xs font-medium mb-1">Designation</label>
+                    <input
+                      type="text"
+                      name="designation"
+                      value={newRecipient.designation || ""}
+                      onChange={handleRecipientChange}
+                      placeholder="Enter designation"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-[#408286] focus:border-[#408286] text-sm text-gray-900 placeholder-gray-400 transition-all duration-200"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-gray-600 text-xs font-medium mb-1">Office</label>
+                    <input
+                      type="text"
+                      name="office"
+                      value={newRecipient.office || ""}
+                      onChange={handleRecipientChange}
+                      placeholder="Enter office"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-[#408286] focus:border-[#408286] text-sm text-gray-900 placeholder-gray-400 transition-all duration-200"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-gray-600 text-xs font-medium mb-1">Designation</label>
-                  <input
-                    type="text"
-                    name="designation"
-                    value={newRecipient.designation || ""}
-                    onChange={handleRecipientChange}
-                    placeholder="Enter designation"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-[#408286] focus:border-[#408286] text-sm text-gray-900 placeholder-gray-400 transition-all duration-200"
-                  />
-                </div>
-                <div>
-                  <label className="block text-gray-600 text-xs font-medium mb-1">Office</label>
-                  <input
-                    type="text"
-                    name="office"
-                    value={newRecipient.office || ""}
-                    onChange={handleRecipientChange}
-                    placeholder="Enter office"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-[#408286] focus:border-[#408286] text-sm text-gray-900 placeholder-gray-400 transition-all duration-200"
-                  />
+                {/* Address and Button in a new row */}
+                <div className="flex flex-col">
+                  <label className="block text-gray-600 text-xs font-medium mb-1">Address</label>
+                  <div className="flex gap-3">
+                    <textarea
+                      name="address"
+                      value={newRecipient.address}
+                      onChange={handleRecipientChange}
+                      onKeyDown={handleRecipientKeyDown}
+                      placeholder="Enter full address"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-[#408286] focus:border-[#408286] text-sm text-gray-900 placeholder-gray-400 resize-y transition-all duration-200"
+                      rows="1"
+                    />
+                    <button
+                      onClick={handleAddRecipient}
+                      className="px-6 py-2 bg-[#408286] text-white text-sm font-medium rounded-md shadow-md hover:bg-[#306466] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#408286] transition-all duration-200 whitespace-nowrap"
+                    >
+                      Add Recipient
+                    </button>
+                  </div>
                 </div>
               </div>
-              {/* Address and Button in a new row */}
-              <div className="flex flex-col">
-                <label className="block text-gray-600 text-xs font-medium mb-1">Address</label>
-                <div className="flex gap-3">
-                  <textarea
-                    name="address"
-                    value={newRecipient.address}
-                    onChange={handleRecipientChange}
-                    onKeyDown={handleRecipientKeyDown}
-                    placeholder="Enter full address"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-[#408286] focus:border-[#408286] text-sm text-gray-900 placeholder-gray-400 resize-y transition-all duration-200"
-                    rows="1"
-                  />
-                  <button
-                    onClick={handleAddRecipient}
-                    className="px-6 py-2 bg-[#408286] text-white text-sm font-medium rounded-md shadow-md hover:bg-[#306466] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#408286] transition-all duration-200 whitespace-nowrap"
-                  >
-                    Add Recipient
-                  </button>
-                </div>
-              </div>
-            </div>
 
               {isLoading ? (
                 <div className="mt-6 text-gray-500 text-sm">Loading recipients...</div>
@@ -655,6 +673,7 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
                     <table className="w-full text-sm text-left text-gray-700">
                       <thead className="text-xs font-semibold text-gray-600 uppercase bg-gray-100 border-b border-gray-200">
                         <tr>
+                          <th className="px-6 py-3">Salutation</th>
                           <th className="px-6 py-3">Name</th>
                           <th className="px-6 py-3">Designation</th>
                           <th className="px-6 py-3">Office</th>
@@ -670,6 +689,7 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
                               recipientsToRemove.includes(recipient.id) ? "opacity-60 line-through text-gray-500" : ""
                             }`}
                           >
+                            <td className="px-6 py-3">{recipient.salutation || "N/A"}</td>
                             <td className="px-6 py-3">{recipient.name}</td>
                             <td className="px-6 py-3">{recipient.designation || "N/A"}</td>
                             <td className="px-6 py-3">{recipient.office || "N/A"}</td>

@@ -31,6 +31,7 @@ return new class extends Migration
         Schema::create('transmitted_recipients', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('edit_record_id');
+            $table->string('salutation')->nullable();
             $table->string('name');
             $table->string('designation')->nullable();
             $table->string('office')->nullable();

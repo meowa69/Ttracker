@@ -249,7 +249,7 @@ class AuthController extends Controller
             \Log::info('Fetching all records with edit details');
             $records = AddRecord::leftJoin('edit_record', 'add_record.id', '=', 'edit_record.record_id')
                 ->with(['editRecord.transmittedRecipients' => function ($query) {
-                    $query->select('id', 'edit_record_id', 'name', 'designation', 'office', 'address');
+                    $query->select('id', 'edit_record_id', 'salutation', 'name', 'designation', 'office', 'address');
                 }])
                 ->select(
                     'add_record.id',
@@ -294,7 +294,7 @@ class AuthController extends Controller
             \Log::info("Fetching record with ID: {$id}");
             $record = AddRecord::leftJoin('edit_record', 'add_record.id', '=', 'edit_record.record_id')
                 ->with(['editRecord.transmittedRecipients' => function ($query) {
-                    $query->select('id', 'edit_record_id', 'name', 'designation', 'office', 'address');
+                    $query->select('id', 'edit_record_id', 'salutation', 'name', 'designation', 'office', 'address');
                 }])
                 ->select(
                     'add_record.id',
@@ -349,6 +349,7 @@ class AuthController extends Controller
                 'completed' => 'nullable|boolean',
                 'completion_date' => 'nullable|date',
                 'new_recipients' => 'nullable|array',
+                'new_recipients.*.salutation' => 'required|string|in:Sir,Madam',
                 'new_recipients.*.name' => 'required|string',
                 'new_recipients.*.designation' => 'nullable|string',
                 'new_recipients.*.office' => 'nullable|string',
@@ -375,6 +376,7 @@ class AuthController extends Controller
             if (isset($validated['new_recipients'])) {
                 foreach ($validated['new_recipients'] as $recipient) {
                     $newRecipient = $editRecord->transmittedRecipients()->create([
+                        'salutation' => $recipient['salutation'],
                         'name' => $recipient['name'],
                         'designation' => $recipient['designation'],
                         'office' => $recipient['office'],
