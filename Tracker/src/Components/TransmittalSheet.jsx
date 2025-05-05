@@ -379,25 +379,26 @@ export const TransmittalSheet = ({ documentData, onPrint, onClose }) => {
                   </div>
                   {documentData.transmitted_recipients && documentData.transmitted_recipients.length > 0 ? (
                     documentData.transmitted_recipients.map((recipient, index) => (
-                      <div key={index} style={{ display: 'flex', alignItems: 'center', marginBottom: '10px', marginLeft: '40px' }}>
+                      <div key={index} style={{ display: 'flex', alignItems: 'center', marginBottom: '10px', marginLeft: '0px' }}>
                         <p
                           style={{
                             width: '245px',
                             fontSize: '13.33px',
                             color: 'rgb(55, 65, 81)',
                             textAlign: 'left',
+                            marginLeft: '0 auto', 
                           }}
                         >
-                          {recipient.designation || "N/A"}
+                          {recipient.office || "N/A"}
                         </p>
-                        <div style={{ width: '161px', textAlign: 'center' }}>
-                          <div style={{ borderBottom: '0.38px solid black', width: '150px', margin: '0 auto' }}></div>
+                        <div style={{ width: '170px', textAlign: 'center' }}>
+                          <div style={{ borderBottom: '0.38px solid black', width: '120px', margin: '0 auto', marginLeft: "55px" }}></div>
                         </div>
                         <div style={{ width: '94px', textAlign: 'center' }}>
-                          <div style={{ borderBottom: '0.38px solid black', width: '60px', margin: '0 auto' }}></div>
+                          <div style={{ borderBottom: '0.38px solid black', width: '80px', margin: '0 auto', marginLeft: "20px" }}></div>
                         </div>
                         <div style={{ width: '94px', textAlign: 'center' }}>
-                          <div style={{ borderBottom: '0.38px solid black', width: '60px', margin: '0 auto' }}></div>
+                          <div style={{ borderBottom: '0.38px solid black', width: '80px', margin: '0 auto', marginLeft: "20px" }}></div>
                         </div>
                       </div>
                     ))

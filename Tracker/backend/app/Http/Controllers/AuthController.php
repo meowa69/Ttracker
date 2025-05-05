@@ -249,7 +249,7 @@ class AuthController extends Controller
             \Log::info('Fetching all records with edit details');
             $records = AddRecord::leftJoin('edit_record', 'add_record.id', '=', 'edit_record.record_id')
                 ->with(['editRecord.transmittedRecipients' => function ($query) {
-                    $query->select('id', 'edit_record_id', 'name', 'designation_office', 'address');
+                    $query->select('id', 'edit_record_id', 'name', 'designation', 'office', 'address');
                 }])
                 ->select(
                     'add_record.id',
@@ -270,11 +270,10 @@ class AuthController extends Controller
                 )
                 ->get()
                 ->map(function ($record) {
-                    // Ensure transmitted_recipients is always an array
                     $record->transmitted_recipients = $record->editRecord && $record->editRecord->transmittedRecipients
                         ? $record->editRecord->transmittedRecipients->toArray()
                         : [];
-                    unset($record->editRecord); // Remove editRecord to simplify response
+                    unset($record->editRecord);
                     return $record;
                 });
 
@@ -289,7 +288,52 @@ class AuthController extends Controller
         }
     }
 
-    // Update Record
+    public function getRecordById($id)
+    {
+        try {
+            \Log::info("Fetching record with ID: {$id}");
+            $record = AddRecord::leftJoin('edit_record', 'add_record.id', '=', 'edit_record.record_id')
+                ->with(['editRecord.transmittedRecipients' => function ($query) {
+                    $query->select('id', 'edit_record_id', 'name', 'designation', 'office', 'address');
+                }])
+                ->select(
+                    'add_record.id',
+                    'add_record.no',
+                    'add_record.document_type',
+                    'add_record.date_approved',
+                    'add_record.title',
+                    'edit_record.committee_sponsor as sponsor',
+                    'edit_record.status',
+                    'edit_record.vice_mayor_forwarded as vm_forwarded',
+                    'edit_record.vice_mayor_received as vm_received',
+                    'edit_record.city_mayor_forwarded as cm_forwarded',
+                    'edit_record.city_mayor_received as cm_received',
+                    'edit_record.date_transmitted',
+                    'edit_record.remarks',
+                    'edit_record.completed',
+                    'edit_record.completion_date'
+                )
+                ->where('add_record.id', $id)
+                ->first();
+
+            if (!$record) {
+                \Log::warning("Record not found with ID: {$id}");
+                return response()->json(['message' => 'Record not found'], 404);
+            }
+
+            $record->transmitted_recipients = $record->editRecord && $record->editRecord->transmittedRecipients
+                ? $record->editRecord->transmittedRecipients->toArray()
+                : [];
+            unset($record->editRecord);
+
+            \Log::info('Record fetched successfully', ['record' => $record->toArray()]);
+            return response()->json(['data' => $record], 200);
+        } catch (\Exception $e) {
+            \Log::error('Error fetching record: ' . $e->getMessage(), ['exception' => $e]);
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
     public function updateRecord(Request $request, $id)
     {
         try {
@@ -307,11 +351,12 @@ class AuthController extends Controller
                 'new_recipients' => 'nullable|array',
                 'new_recipients.*.name' => 'required|string',
                 'new_recipients.*.designation' => 'nullable|string',
+                'new_recipients.*.office' => 'nullable|string',
                 'new_recipients.*.address' => 'required|string',
                 'recipients_to_remove' => 'nullable|array',
                 'recipients_to_remove.*' => 'integer|exists:transmitted_recipients,id',
             ]);
-    
+
             $editRecord = EditRecord::firstOrNew(['record_id' => $id]);
             $editRecord->fill([
                 'committee_sponsor' => $validated['committee_sponsor'] ?? $editRecord->committee_sponsor,
@@ -326,43 +371,39 @@ class AuthController extends Controller
                 'completion_date' => $validated['completion_date'] ?? $editRecord->completion_date,
             ]);
             $editRecord->save();
-    
-            // Handle new recipients
+
             if (isset($validated['new_recipients'])) {
                 foreach ($validated['new_recipients'] as $recipient) {
                     $newRecipient = $editRecord->transmittedRecipients()->create([
                         'name' => $recipient['name'],
-                        'designation_office' => $recipient['designation'],
+                        'designation' => $recipient['designation'],
+                        'office' => $recipient['office'],
                         'address' => $recipient['address'],
                     ]);
                     \Log::info("Added new recipient:", $newRecipient->toArray());
                 }
             }
-    
-            // Handle recipients to remove
+
             if (isset($validated['recipients_to_remove']) && !empty($validated['recipients_to_remove'])) {
                 $editRecord->transmittedRecipients()
                     ->whereIn('id', $validated['recipients_to_remove'])
                     ->delete();
             }
-    
-            // Fetch the original record to get document_type and no
+
             $record = AddRecord::findOrFail($id);
-    
-            // Handle notifications for Ordinance, Resolution, and Motion
+
             if (in_array($record->document_type, ['Ordinance', 'Resolution', 'Motion'])) {
                 $vmCompleted = $editRecord->vice_mayor_received && !empty($editRecord->vice_mayor_received);
                 $cmCompleted = $editRecord->city_mayor_received && !empty($editRecord->city_mayor_received);
-    
-                // Calculate time remaining for VM and CM
+
                 $vmTime = $this->calculateTimeRemaining($editRecord->vice_mayor_forwarded, $editRecord->vice_mayor_received);
                 $cmTime = $record->document_type === 'Ordinance' 
                     ? $this->calculateTimeRemaining($editRecord->city_mayor_forwarded, $editRecord->city_mayor_received)
                     : 'Not Started';
-    
+
                 $notificationStatus = '';
                 $statusColor = '';
-    
+
                 if ($vmCompleted && ($record->document_type !== 'Ordinance' || $cmCompleted)) {
                     $notificationStatus = 'Completed';
                     $statusColor = 'bg-blue-600 text-blue-600';
@@ -371,9 +412,8 @@ class AuthController extends Controller
                     $statusColor = 'bg-red-600 text-red-600';
                 } elseif ($vmTime === 'Not Started' && $cmTime === 'Not Started') {
                     $notificationStatus = 'Not Started';
-                    $statusColor = 'bg-gray-600 text-gray-600'; // Will be filtered out
+                    $statusColor = 'bg-gray-600 text-gray-600';
                 } else {
-                    // Determine status based on time remaining
                     $days = $vmTime !== 'Not Started' ? (int) explode(' ', $vmTime)[0] : ($cmTime !== 'Not Started' ? (int) explode(' ', $cmTime)[0] : 0);
                     $notificationStatus = 'In Progress';
                     if ($days >= 8) {
@@ -384,8 +424,7 @@ class AuthController extends Controller
                         $statusColor = 'bg-red-600 text-red-600';
                     }
                 }
-    
-                // Create new notification if status is not 'Not Started'
+
                 if ($notificationStatus !== 'Not Started') {
                     $notification = Notification::create([
                         'record_id' => $id,
@@ -401,20 +440,18 @@ class AuthController extends Controller
                     \Log::info('Notification created:', $notification->toArray());
                 }
             }
-    
-            // Log the action
+
             $this->logHistory(
                 Auth::user()->user_name,
                 $record->document_type,
                 $record->no,
                 'Update Document'
             );
-    
-            // Fetch the updated record with its transmitted recipients
+
             $updatedRecord = EditRecord::with('transmittedRecipients')->find($editRecord->id);
             $responseData = $updatedRecord->toArray();
             \Log::info("Final response data with transmitted recipients:", $responseData);
-    
+
             return response()->json(['message' => 'Record updated successfully', 'data' => $responseData], 200);
         } catch (\Exception $e) {
             \Log::error('Update error: ' . $e->getMessage());

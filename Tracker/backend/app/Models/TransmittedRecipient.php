@@ -11,7 +11,8 @@ class TransmittedRecipient extends Model
     protected $fillable = [
         'edit_record_id',
         'name',
-        'designation_office',
+        'designation',
+        'office',
         'address',
     ];
 

@@ -32,7 +32,8 @@ return new class extends Migration
             $table->id();
             $table->unsignedBigInteger('edit_record_id');
             $table->string('name');
-            $table->string('designation_office')->nullable();
+            $table->string('designation')->nullable();
+            $table->string('office')->nullable();
             $table->text('address');
             $table->timestamps();
 

@@ -16,7 +16,7 @@ export const downloadPDF = (documentData, signatoryDetails, currentDate, session
   // Margins
   const marginLeft = 38.1; // ~3.81cm
   const marginRight = 25.4; // ~2.54cm
-  const marginTop = 20; // ~mt-5
+  const marginTop = 0; // No top margin
   const marginBottom = 15; // ~mb-4
   const pageWidth = 216;
   const contentWidth = pageWidth - marginLeft - marginRight;
@@ -204,28 +204,28 @@ export const downloadPDF = (documentData, signatoryDetails, currentDate, session
       width: 25,
       height: 25,
       x: 5,
-      y: yPosition + -15,
+      y: yPosition + 5,
     },
     goldenfriendship: {
       image: goldenfriendship_logoBase64,
       width: 18,
       height: 9,
       x: 32,
-      y: yPosition + -7,
+      y: yPosition + 13,
     },
     bagongpilipinas: {
       image: bagongpilipinas_logoBase64,
       width: 25,
       height: 25,
       x: 49,
-      y: yPosition + -15,
+      y: yPosition + 5,
     },
     cityCouncil: {
       image: CityC_LogoBase64,
       width: 25,
       height: 25,
       x: pageWidth - 30,
-      y: yPosition + -15,
+      y: yPosition + 5,
     },
   };
 
@@ -239,21 +239,19 @@ export const downloadPDF = (documentData, signatoryDetails, currentDate, session
   const textAreaWidth = pageWidth - leftLogosWidth - rightLogoWidth - 10;
 
   const textXOffset = 0;
-  const textYOffset = -10;
-  const lineSpacing = 4;
   const textX = logos.bagongpilipinas.x + logos.bagongpilipinas.width + 5 + textXOffset;
-
-  const textYStart = yPosition + textYOffset;
+  const textYStart = yPosition + 10;
   let textY = textYStart;
+
   addText('Republic of the Philippines', { x: textX + 31, y: textY + 4, size: 11, align: 'center', maxWidth: textAreaWidth });
-  textY += lineSpacing;
+  textY += 4;
   addText('CITY OF CAGAYAN DE ORO', { x: textX + 33, y: textY + 5, size: 12, align: 'center', maxWidth: textAreaWidth });
-  textY += lineSpacing;
+  textY += 4;
   addText('OFFICE OF THE CITY COUNCIL', { x: textX + 33, y: textY + 6, size: 13, bold: true, align: 'center', maxWidth: textAreaWidth });
-  textY += lineSpacing;
+  textY += 4;
   addText('www.cdecitycouncil.com', { x: textX + 31.5, y: textY + 6.5, size: 8, align: 'center', color: [107, 114, 128], maxWidth: textAreaWidth });
 
-  yPosition += headerHeight + -12;
+  yPosition += headerHeight + 10;
 
   const borderThickness = 0.5;
   drawLine(5, yPosition, pageWidth - 5, [167, 137, 125], borderThickness);
@@ -268,9 +266,9 @@ export const downloadPDF = (documentData, signatoryDetails, currentDate, session
   // Title and Date
   const titleXOffset = 0;
   const titleX = marginLeft + titleXOffset;
-  addText('TRANSMITTAL SHEET', { x: titleX + 75, y: titleX + 10, size: 16, bold: true, align: 'center', maxWidth: contentWidth });
-  yPosition += 8; // Initial adjustment after title
-  yPosition += 5; // 1 gap (single line space) between title and date, approximately 5mm
+  addText('TRANSMITTAL SHEET', { x: titleX + 75, y: yPosition, size: 16, bold: true, align: 'center', maxWidth: contentWidth });
+  yPosition += 8;
+  yPosition += 5;
   addText(currentDate, { size: 12, align: 'left', indent: 89, y: yPosition, color: [75, 85, 99] });
   yPosition += 10;
 
@@ -283,67 +281,59 @@ export const downloadPDF = (documentData, signatoryDetails, currentDate, session
   const datePhrase = `${String(sessionDate.day)}${sessionDate.suffix} day of ${sessionDate.month} ${sessionDate.year}`;
   const monthPhrase = `day of ${sessionDate.month}`;
   const yearPhrase = `${sessionDate.year}`;
-  const fullDateStr = `${String(sessionDate.day)}${sessionDate.suffix}`; // For bolding day + suffix
+  const fullDateStr = `${String(sessionDate.day)}${sessionDate.suffix}`;
 
-  // Split the body text at "City"
   const splitIndex = bodyText.indexOf('City') + 'City'.length;
-  const indentedText = bodyText.substring(0, splitIndex); // "Enclosed is a copy of ... City"
-  const remainingText = bodyText.substring(splitIndex); // ", during its Regular Session ..."
+  const indentedText = bodyText.substring(0, splitIndex);
+  const remainingText = bodyText.substring(splitIndex);
 
-  // Render the indented part
   const indentedHeight = addText(indentedText, { 
     size: 12, 
     maxWidth: contentWidth,
-    boldPhrases: [documentPhrase], // Only the document phrase might be in this part
-    indent: 10 // 10mm indent
+    boldPhrases: [documentPhrase],
+    indent: 10
   });
 
-  // Adjust yPosition after the indented part
   yPosition += indentedHeight;
 
-  // Render the remaining part without indent
   yPosition += addText(remainingText, { 
     size: 12, 
     maxWidth: contentWidth,
     boldPhrases: [datePhrase, monthPhrase, yearPhrase, fullDateStr],
     superscript: true,
-    indent: 0 // No indent for the remaining text
+    indent: 0
   });
   
   // Title Box
   yPosition += 5;
   const title = documentData.title || 'N/A';
   doc.setDrawColor(55, 65, 81);
-  doc.setLineWidth(0.1); // Set border thickness to 0.3mm for a lighter border
+  doc.setLineWidth(0.1);
   const boxWidth = contentWidth * 0.85;
   const boxX = marginLeft + (contentWidth - boxWidth) / 2;
 
-  // Calculate text dimensions
   const titleText = title.toUpperCase();
   doc.setFontSize(12);
   doc.setFont('times', 'bold');
-  const textLines = doc.splitTextToSize(titleText, boxWidth - 8); // 4mm padding on each side
-  const titleLineHeight = 12 * 0.5; // Line height for title (6mm per line)
+  const textLines = doc.splitTextToSize(titleText, boxWidth - 8);
+  const titleLineHeight = 12 * 0.5;
   const textHeight = textLines.length * titleLineHeight;
-  const paddingTopBottom = 3; // 3mm padding for top and bottom
-  const boxHeight = textHeight + paddingTopBottom * 2; // Dynamically adjust box height
+  const paddingTopBottom = 3;
+  const boxHeight = textHeight + paddingTopBottom * 2;
 
-  // Draw the box
   doc.rect(boxX, yPosition, boxWidth, boxHeight, 'S');
 
-  // Calculate starting Y position to vertically center the text in the box
   const textBlockHeight = textLines.length * titleLineHeight;
   const yStart = yPosition + paddingTopBottom + (boxHeight - textBlockHeight) / 2;
 
-  // Add title text, ensuring it stays within the box
   addText(titleText, { 
-    x: boxX + 4, // 4mm left padding
-    y: yStart, // Vertically centered
+    x: boxX + 4,
+    y: yStart,
     size: 12, 
     bold: true, 
-    align: 'justify', // Justified text
-    maxWidth: boxWidth - 8, // 4mm padding on each side
-    customLineHeight: titleLineHeight // Use specified line height for title
+    align: 'justify',
+    maxWidth: boxWidth - 8,
+    customLineHeight: titleLineHeight
   });
   yPosition += boxHeight + 5;
 
@@ -355,7 +345,7 @@ export const downloadPDF = (documentData, signatoryDetails, currentDate, session
   yPosition += 6;
 
   // Signature Section
-  const signatureX = pageWidth - marginRight - 40; // Align text to end at right margin
+  const signatureX = pageWidth - marginRight - 40;
   addText('Very truly yours,', { size: 12, x: signatureX, align: 'center' });
   yPosition += 15;
   addText(signatoryDetails.name.toUpperCase(), { size: 11, bold: true, x: signatureX, align: 'center' });
@@ -369,65 +359,66 @@ export const downloadPDF = (documentData, signatoryDetails, currentDate, session
   addText(signatoryDetails.authority, { size: 10, x: signatureX, align: 'center' });
   yPosition += 4;
   addText(signatoryDetails.authorityTitle, { size: 10, x: signatureX, align: 'center' });
-  yPosition += 15; // Increased spacing after signature section
+  yPosition += 15;
 
   // Recipients Table
-  // Define column widths (in mm) to match the image proportions
+  const isSecondSignatory = signatoryDetails.title1 === "City Secretary" && 
+                           !signatoryDetails.title2 && 
+                           !signatoryDetails.title3 && 
+                           !signatoryDetails.authority && 
+                           !signatoryDetails.authorityTitle;
+  yPosition += isSecondSignatory ? -15 : 0; // Reduce gap for second signatory
+
   const colWidths = {
-    office: 45, // Wider for office names
+    office: 45,
     receiverName: 35,
     signature: 30,
     date: 25,
   };
 
-  // Calculate column positions for headers and underlines
   const headerXPositions = {
     office: marginLeft + 10,
     receiverName: marginLeft + colWidths.office + 23,
     signature: marginLeft + colWidths.office + colWidths.receiverName + 23,
-    date: marginLeft + colWidths.office + colWidths.receiverName + colWidths.signature + 19.25, // Adjusted offset
+    date: marginLeft + colWidths.office + colWidths.receiverName + colWidths.signature + 19.25,
   };
 
-  // Table Header
   doc.setFontSize(10);
   doc.setFont('times', 'normal');
-  // Align "Office" header to the left
   doc.text('Office', headerXPositions.office, yPosition, { align: 'left' });
   doc.text('Receiver Name', headerXPositions.receiverName + colWidths.receiverName / 2, yPosition, { align: 'center' });
   doc.text('Signature', headerXPositions.signature + colWidths.signature / 2, yPosition, { align: 'center' });
   doc.text('Date', headerXPositions.date + colWidths.date / 2, yPosition, { align: 'center' });
-  yPosition += 10; // Space after header (no underlines)
+  yPosition += 10;
 
   if (documentData.transmitted_recipients && documentData.transmitted_recipients.length > 0) {
     documentData.transmitted_recipients.forEach((recipient) => {
-      const designation = recipient.designation || 'N/A';
-      const truncatedDesignation = doc.splitTextToSize(designation, colWidths.office - 5)[0];
+      const office = recipient.office || 'N/A';
+      const truncatedOffice = doc.splitTextToSize(office, colWidths.office - 5)[0];
 
       doc.setFontSize(10);
-      doc.text(truncatedDesignation, headerXPositions.office, yPosition, { align: 'left' });
-      yPosition += 1; 
+      doc.text(truncatedOffice, marginLeft, yPosition, { align: 'left' });
+      yPosition += 1;
 
       doc.setLineWidth(0.1);
       doc.setDrawColor(0, 0, 0);
 
-      const receiverNameLineWidth = (colWidths.receiverName - 10) * 1.5; // 10% wider
+      const receiverNameLineWidth = (colWidths.receiverName - 10) * 1.5;
       const receiverNameX1 = headerXPositions.receiverName + (colWidths.receiverName - receiverNameLineWidth) / 2;
       const receiverNameX2 = receiverNameX1 + receiverNameLineWidth;
       doc.line(receiverNameX1, yPosition, receiverNameX2, yPosition);
 
-      // Signature underline
-      const signatureLineWidth = colWidths.signature - 10; // Fixed length
+      const signatureLineWidth = colWidths.signature - 10;
       const signatureX1 = headerXPositions.signature + (colWidths.signature - signatureLineWidth) / 2;
       const signatureX2 = signatureX1 + signatureLineWidth;
       doc.line(signatureX1, yPosition, signatureX2, yPosition);
 
-      // Date underline (match Signature length for consistency)
-      const dateLineWidth = signatureLineWidth; // Same as Signature
+      const dateLineWidth = signatureLineWidth;
       const dateX1 = headerXPositions.date + (colWidths.date - dateLineWidth) / 2;
       const dateX2 = dateX1 + dateLineWidth;
       doc.line(dateX1, yPosition, dateX2, yPosition);
 
-      yPosition += 5; // Space between rows
+      yPosition += 5;
     });
   } else {
     yPosition += addText('No recipients added.', { size: 10, align: 'center', x: pageWidth / 2 });
