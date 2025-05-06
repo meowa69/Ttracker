@@ -18,6 +18,7 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
   const [isDeletionModalOpen, setIsDeletionModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isDataCommitted, setIsDataCommitted] = useState(false);
+  const [isDataEdited, setIsDataEdited] = useState(false);
 
   const userRole = (() => {
     const userDataRaw = localStorage.getItem("userData");
@@ -35,7 +36,7 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
   })();
 
   useEffect(() => {
-    if (isOpen && initialRowData?.id) {
+    if (isOpen && initialRowData?.id && !isDataEdited) {
       const fetchRecordData = async () => {
         setIsLoading(true);
         try {
@@ -45,9 +46,9 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
             },
           });
           const records = response.data;
-          const fetchedData = records.find(record => record.id === initialRowData.id);
+          const fetchedData = records.find((record) => record.id === initialRowData.id);
           if (!fetchedData) {
-            throw new Error('Record not found');
+            throw new Error("Record not found");
           }
           const updatedRowData = {
             ...initialRowData,
@@ -73,7 +74,7 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
       };
       fetchRecordData();
     }
-  }, [isOpen, initialRowData]);
+  }, [isOpen, initialRowData, isDataEdited]);
 
   useEffect(() => {
     console.log("3. recipientList updated:", recipientList);
@@ -115,17 +116,23 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
       const recipient = prev[index];
       if (recipient.id) {
         setRecipientsToRemove((prevRemove) => {
-          const updatedRemove = prevRemove.includes(recipient.id)
-            ? prevRemove
-            : [...prevRemove, recipient.id];
+          const updatedRemove = [...prevRemove, recipient.id];
           console.log("5. Recipient marked for removal - recipientsToRemove:", updatedRemove);
           return updatedRemove;
         });
-        return prev;
+        return prev; // Keep the recipient in the list but marked for removal
       }
       const newList = prev.filter((_, i) => i !== index);
       console.log("6. After removing unsaved recipient - new recipientList:", newList);
       return newList;
+    });
+  };
+
+  const handleUndoRecipient = (recipientId) => {
+    setRecipientsToRemove((prevRemove) => {
+      const updatedRemove = prevRemove.filter((id) => id !== recipientId);
+      console.log("7. Undo removal - new recipientsToRemove:", updatedRemove);
+      return updatedRemove;
     });
   };
 
@@ -214,8 +221,12 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
   const handleChange = (e) => {
     const { name, value } = e.target;
     const newValue = name === "completed" ? value : value;
-    setLocalRowData((prev) => ({ ...prev, [name]: newValue || "" }));
-    setRowData((prev) => ({ ...prev, [name]: newValue || "" }));
+    setLocalRowData((prev) => {
+      const newData = { ...prev, [name]: newValue || "" };
+      console.log(`Changed ${name} to ${newValue}`, newData);
+      return newData;
+    });
+    setIsDataEdited(true);
   };
 
   const handleVmSetReceivedClick = () => {
@@ -282,7 +293,7 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
         remarks: localRowData.remarks || "",
         completed: localRowData.completed === "true",
         completion_date: localRowData.completed === "true" ? localRowData.completion_date || null : null,
-        new_recipients: newRecipients.map(recipient => ({
+        new_recipients: newRecipients.map((recipient) => ({
           salutation: recipient.salutation,
           name: recipient.name,
           designation: recipient.designation,
@@ -310,7 +321,7 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
         office: rec.office || "",
         address: rec.address,
       }));
-      
+
       const updatedData = {
         ...localRowData,
         sponsor: response.data.data.committee_sponsor,
@@ -330,6 +341,7 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
       setRecipientList(updatedRecipients);
       setRecipientsToRemove([]);
       setIsDataCommitted(true);
+      setIsDataEdited(false);
       onSave(updatedData);
       handleClose();
     } catch (error) {
@@ -592,7 +604,6 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
             <label className="block text-gray-800 text-sm font-semibold mb-4">Transmitted To</label>
             <div className="space-y-6">
               <div className="grid grid-cols-1 gap-6">
-                {/* Salutation, Name, Designation, Office in one row */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <div>
                     <label className="block text-gray-600 text-xs font-medium mb-1">Salutation</label>
@@ -641,7 +652,6 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
                     />
                   </div>
                 </div>
-                {/* Address and Button in a new row */}
                 <div className="flex flex-col">
                   <label className="block text-gray-600 text-xs font-medium mb-1">Address</label>
                   <div className="flex gap-3">
@@ -696,7 +706,11 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
                             <td className="px-6 py-3">{recipient.address}</td>
                             <td className="px-6 py-3">
                               <button
-                                onClick={() => handleRemoveRecipient(index)}
+                                onClick={() =>
+                                  recipientsToRemove.includes(recipient.id)
+                                    ? handleUndoRecipient(recipient.id)
+                                    : handleRemoveRecipient(index)
+                                }
                                 className={`text-sm font-medium transition-colors duration-200 ${
                                   recipientsToRemove.includes(recipient.id)
                                     ? "text-blue-600 hover:text-blue-800"
