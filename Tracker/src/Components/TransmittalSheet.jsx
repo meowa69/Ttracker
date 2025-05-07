@@ -1,11 +1,9 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { useReactToPrint } from 'react-to-print';
 import { downloadPDF } from '../utils/downloadPDF';
-import { downloadDOCX } from '../utils/downloadDOCX';
 
-// SVG icons for PDF, DOCX, Preview, Zoom In, and Zoom Out
+// SVG icons for PDF, Preview, Zoom In, and Zoom Out
 const PDFIcon = () => <img src="src/assets/Images/pdf.png" alt="PDF Icon" className="w-6 h-6" />;
-const DOCXIcon = () => <img src="src/assets/Images/docx.png" alt="DOCX Icon" className="w-6 h-6" />;
 const PreviewIcon = () => <img src="src/assets/Images/preview.png" alt="Preview Icon" className="w-6 h-6" />;
 const ZoomInIcon = () => (
   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -138,10 +136,6 @@ export const TransmittalSheet = ({ documentData, onPrint, onClose }) => {
     downloadPDF(documentData, signatoryDetails, currentDate, sessionDate, documentData.no);
   };
 
-  const handleDownloadDOCX = () => {
-    console.log('Downloading DOCX...');
-    downloadDOCX(documentData, signatoryDetails, currentDate, sessionDate);
-  };
 
   const dataUrlToBlob = (dataUrl) => {
     const base64Index = dataUrl.indexOf('base64,');
@@ -303,7 +297,7 @@ export const TransmittalSheet = ({ documentData, onPrint, onClose }) => {
                   OFFICE OF THE CITY COUNCIL
                 </p>
                 <p style={{ fontSize: '10.67px', color: 'rgb(107, 114, 128)' }}>
-                  www.cdecitycouncil.com
+                  (088) 565-0568 ∙ (088) 565-0697 ∙ www.cdocitycouncil.com
                 </p>
               </div>
             </div>
@@ -328,38 +322,38 @@ export const TransmittalSheet = ({ documentData, onPrint, onClose }) => {
 
         <div style={{ marginLeft: '143.94px', marginRight: '96.06px' }}>
           <div className="mb-[20px]">
-            <p style={{ fontSize: '16px', color: 'rgb(75, 85, 99)', marginTop: '80px', marginBottom: '20px', textIndent: '340px' }}>
+            <p style={{ fontSize: '12px', color: 'rgb(75, 85, 99)', marginTop: '80px', marginBottom: '20px', textIndent: '340px' }}>
               {currentDate}
             </p>
             <div style={{ display: 'flex', alignItems: 'baseline' }}>
-              <p style={{ fontSize: '16px', fontWeight: 'bold', color: 'rgb(55, 65, 81)', textTransform: 'uppercase' }}>
+              <p style={{ fontSize: '12px', fontWeight: 'bold', color: 'rgb(55, 65, 81)', textTransform: 'uppercase' }}>
                 {recipient.name.toUpperCase()}
               </p>
             </div>
             {recipient.designation && (
-              <p style={{ fontSize: '14px', color: 'rgb(55, 65, 81)' }}>
+              <p style={{ fontSize: '12px', color: 'rgb(55, 65, 81)' }}>
                 {recipient.designation}
               </p>
             )}
             {recipient.office && (
-              <p style={{ fontSize: '14px', color: 'rgb(55, 65, 81)' }}>
+              <p style={{ fontSize: '12px', color: 'rgb(55, 65, 81)' }}>
                 {recipient.office}
               </p>
             )}
             {recipient.address && (
-              <p style={{ fontSize: '14px', color: 'rgb(55, 65, 81)' }}>
+              <p style={{ fontSize: '12px', color: 'rgb(55, 65, 81)' }}>
                 {recipient.address}
               </p>
             )}
           </div>
 
           <div className="mb-[10.6px]">
-            <p style={{ fontSize: '16px', color: 'rgb(55, 65, 81)', marginBottom: '15.8px' }}>
+            <p style={{ fontSize: '12px', color: 'rgb(55, 65, 81)', marginBottom: '15.8px' }}>
               {recipient.salutation || "Sir/Madame"}:
             </p>
             <p
               style={{
-                fontSize: '16px',
+                fontSize: '12px',
                 color: 'rgb(55, 65, 81)',
                 textIndent: '45.8px',
                 textAlign: 'justify',
@@ -393,49 +387,49 @@ export const TransmittalSheet = ({ documentData, onPrint, onClose }) => {
                 lineHeight: '18.14px',
               }}
             >
-              <p style={{ fontSize: '16px', fontWeight: 'bold', color: 'rgb(55, 65, 81)', textTransform: 'uppercase' }}>
+              <p style={{ fontSize: '11px', fontWeight: 'bold', color: 'rgb(55, 65, 81)', textTransform: 'uppercase' }}>
                 {documentData.title || "N/A"}
               </p>
             </div>
           </div>
 
           <div className="mb-[15.8px]">
-            <p style={{ fontSize: '16px', color: 'rgb(55, 65, 81)' }}>for your information.</p>
+            <p style={{ fontSize: '12px', color: 'rgb(55, 65, 81)' }}>for your information.</p>
           </div>
 
           <div className="mb-[50.4px]">
-            <p style={{ fontSize: '16px', color: 'rgb(55, 65, 81)', textIndent: '37.8px', marginBottom: '18.9px' }}>
+            <p style={{ fontSize: '12px', color: 'rgb(55, 65, 81)', textIndent: '37.8px', marginBottom: '18.9px' }}>
               Thank you very much.
             </p>
-            <div style={{ textAlign: 'center', marginLeft: '283.5px' }}>
-              <p style={{ fontSize: '16px', color: 'rgb(55, 65, 81)', marginBottom: '30.7px' }}>
+            <div style={{ textAlign: 'center', marginLeft: '190px' }}>
+              <p style={{ fontSize: '12px', color: 'rgb(55, 65, 81)', marginBottom: '30.7px' }}>
                 Very truly yours,
               </p>
-              <p style={{ fontSize: '14.67px', fontWeight: 'bold', color: 'rgb(55, 65, 81)', textTransform: 'uppercase' }}>
+              <p style={{ fontSize: '12px', fontWeight: 'bold', color: 'rgb(55, 65, 81)', textTransform: 'uppercase' }}>
                 {signatoryDetails.name}
               </p>
               {signatoryDetails.title1 && (
-                <p style={{ fontSize: '13.33px', color: 'rgb(55, 65, 81)' }}>
+                <p style={{ fontSize: '11px', color: 'rgb(55, 65, 81)' }}>
                   {signatoryDetails.title1}
                 </p>
               )}
               {signatoryDetails.title2 && (
-                <p style={{ fontSize: '13.33px', color: 'rgb(55, 65, 81)' }}>
+                <p style={{ fontSize: '11px', color: 'rgb(55, 65, 81)' }}>
                   {signatoryDetails.title2}
                 </p>
               )}
               {signatoryDetails.title3 && (
-                <p style={{ fontSize: '13.33px', color: 'rgb(55, 65, 81)' }}>
+                <p style={{ fontSize: '11px', color: 'rgb(55, 65, 81)' }}>
                   {signatoryDetails.title3}
                 </p>
               )}
               {signatoryDetails.authority && (
-                <p style={{ fontSize: '13.33px', color: 'rgb(55, 65, 81)' }}>
+                <p style={{ fontSize: '11px', color: 'rgb(55, 65, 81)' }}>
                   {signatoryDetails.authority}
                 </p>
               )}
               {signatoryDetails.authorityTitle && (
-                <p style={{ fontSize: '13.33px', color: 'rgb(55, 65, 81)' }}>
+                <p style={{ fontSize: '11px', color: 'rgb(55, 65, 81)' }}>
                   {signatoryDetails.authorityTitle}
                 </p>
               )}
@@ -443,7 +437,7 @@ export const TransmittalSheet = ({ documentData, onPrint, onClose }) => {
           </div>
 
           <div style={{ position: 'absolute', bottom: '56.7px', right: '96.06px' }}>
-            <p style={{ fontSize: '13.33px', color: 'rgb(107, 114, 128)', textAlign: 'right' }}>
+            <p style={{ fontSize: '12px', color: 'rgb(107, 114, 128)', textAlign: 'right' }}>
               Generated from the LMIS & Records Section{' '}
               {new Date().toLocaleString('en-US', {
                 month: 'numeric',
@@ -499,7 +493,7 @@ export const TransmittalSheet = ({ documentData, onPrint, onClose }) => {
                 OFFICE OF THE CITY COUNCIL
               </p>
               <p style={{ fontSize: '10.67px', color: 'rgb(107, 114, 128)' }}>
-                www.cdecitycouncil.com
+                (088) 565-0568 ∙ (088) 565-0697 ∙ www.cdocitycouncil.com
               </p>
             </div>
           </div>
@@ -524,12 +518,12 @@ export const TransmittalSheet = ({ documentData, onPrint, onClose }) => {
 
       <div style={{ marginLeft: '143.94px', marginRight: '96.06px' }}>
         <div className="text-center mb-[20px]">
-          <h1 style={{ fontSize: '14px', fontWeight: 'bold', color: 'rgb(55, 65, 81)' }}>
+          <h1 style={{ fontSize: '16px', fontWeight: 'bold', color: 'rgb(55, 65, 81)' }}>
             TRANSMITTAL SHEET
           </h1>
           <p
             style={{
-              fontSize: '14px',
+              fontSize: '12px',
               color: 'rgb(75, 85, 99)',
               marginTop: '18.9px',
               textIndent: '190px',
@@ -540,10 +534,10 @@ export const TransmittalSheet = ({ documentData, onPrint, onClose }) => {
         </div>
 
         <div className="mb-[10.6px]">
-          <p style={{ fontSize: '14px', color: 'rgb(55, 65, 81)' }}>Sirs/Mesdames:</p>
+          <p style={{ fontSize: '12px', color: 'rgb(55, 65, 81)' }}>Sirs/Mesdames:</p>
           <p
             style={{
-              fontSize: '14px',
+              fontSize: '12px',
               color: 'rgb(55, 65, 81)',
               textIndent: '45.8px',
               textAlign: 'justify',
@@ -578,49 +572,49 @@ export const TransmittalSheet = ({ documentData, onPrint, onClose }) => {
               lineHeight: '18.14px',
             }}
           >
-            <p style={{ fontSize: '14px', fontWeight: 'bold', color: 'rgb(55, 65, 81)', textTransform: 'uppercase' }}>
+            <p style={{ fontSize: '11px', fontWeight: 'bold', color: 'rgb(55, 65, 81)', textTransform: 'uppercase' }}>
               {documentData.title || "N/A"}
             </p>
           </div>
         </div>
 
         <div className="mb-[15.8px]">
-          <p style={{ fontSize: '14px', color: 'rgb(55, 65, 81)' }}>for your information.</p>
+          <p style={{ fontSize: '12px', color: 'rgb(55, 65, 81)' }}>for your information.</p>
         </div>
 
         <div className="mb-[50.4px]">
-          <p style={{ fontSize: '14px', color: 'rgb(55, 65, 81)', textIndent: '37.8px', marginBottom: '18.9px' }}>
+          <p style={{ fontSize: '12px', color: 'rgb(55, 65, 81)', textIndent: '37.8px', marginBottom: '18.9px' }}>
             Thank you very much.
           </p>
-          <div style={{ textAlign: 'center', marginLeft: '283.5px' }}>
-            <p style={{ fontSize: '14px', color: 'rgb(55, 65, 81)', marginBottom: '30.7px' }}>
+          <div style={{ textAlign: 'center', marginLeft: '190px' }}>
+            <p style={{ fontSize: '12px', color: 'rgb(55, 65, 81)', marginBottom: '30.7px' }}>
               Very truly yours,
             </p>
-            <p style={{ fontSize: '14px', fontWeight: 'bold', color: 'rgb(55, 65, 81)', textTransform: 'uppercase' }}>
+            <p style={{ fontSize: '12px', fontWeight: 'bold', color: 'rgb(55, 65, 81)', textTransform: 'uppercase' }}>
               {signatoryDetails.name}
             </p>
             {signatoryDetails.title1 && (
-              <p style={{ fontSize: '13.33px', color: 'rgb(55, 65, 81)' }}>
+              <p style={{ fontSize: '11px', color: 'rgb(55, 65, 81)' }}>
                 {signatoryDetails.title1}
               </p>
             )}
             {signatoryDetails.title2 && (
-              <p style={{ fontSize: '13.33px', color: 'rgb(55, 65, 81)' }}>
+              <p style={{ fontSize: '11px', color: 'rgb(55, 65, 81)' }}>
                 {signatoryDetails.title2}
               </p>
             )}
             {signatoryDetails.title3 && (
-              <p style={{ fontSize: '13.33px', color: 'rgb(55, 65, 81)' }}>
+              <p style={{ fontSize: '11px', color: 'rgb(55, 65, 81)' }}>
                 {signatoryDetails.title3}
               </p>
             )}
             {signatoryDetails.authority && (
-              <p style={{ fontSize: '13.33px', color: 'rgb(55, 65, 81)' }}>
+              <p style={{ fontSize: '11px', color: 'rgb(55, 65, 81)' }}>
                 {signatoryDetails.authority}
               </p>
             )}
             {signatoryDetails.authorityTitle && (
-              <p style={{ fontSize: '13.33px', color: 'rgb(55, 65, 81)' }}>
+              <p style={{ fontSize: '11px', color: 'rgb(55, 65, 81)' }}>
                 {signatoryDetails.authorityTitle}
               </p>
             )}
@@ -629,16 +623,16 @@ export const TransmittalSheet = ({ documentData, onPrint, onClose }) => {
 
         <div className="mb-[113.4px]">
           <div style={{ display: 'flex', alignItems: 'end', marginBottom: '20.8px', marginLeft: '40.8px' }}>
-            <p style={{ width: '170.1px', fontSize: '13.33px', color: 'rgb(55, 65, 81)', textAlign: 'left' }}>
+            <p style={{ width: '170.1px', fontSize: '12px', color: 'rgb(55, 65, 81)', textAlign: 'left' }}>
               Office
             </p>
-            <p style={{ width: '130.3px', fontSize: '13.33px', color: 'rgb(55, 65, 81)', textAlign: 'center', marginLeft: '60px' }}>
+            <p style={{ width: '130.3px', fontSize: '12px', color: 'rgb(55, 65, 81)', textAlign: 'center', marginLeft: '60px' }}>
               Receiver Name
             </p>
-            <p style={{ width: '90.5px', fontSize: '13.33px', color: 'rgb(55, 65, 81)', textAlign: 'right' }}>
+            <p style={{ width: '90.5px', fontSize: '12px', color: 'rgb(55, 65, 81)', textAlign: 'right' }}>
               Signature
             </p>
-            <p style={{ width: '50.5px', fontSize: '13.33px', color: 'rgb(55, 65, 81)', textAlign: 'right', paddingLeft: '50px' }}>
+            <p style={{ width: '50.5px', fontSize: '12px', color: 'rgb(55, 65, 81)', textAlign: 'right', paddingLeft: '50px' }}>
               Date
             </p>
           </div>
@@ -667,7 +661,7 @@ export const TransmittalSheet = ({ documentData, onPrint, onClose }) => {
               </div>
             ))
           ) : (
-            <p style={{ fontSize: '13.33px', color: 'rgb(55, 65, 81)', textAlign: 'center' }}>
+            <p style={{ fontSize: '11px', color: 'rgb(55, 65, 81)', textAlign: 'center' }}>
               No recipients added.
             </p>
           )}
@@ -675,7 +669,7 @@ export const TransmittalSheet = ({ documentData, onPrint, onClose }) => {
       </div>
 
       <div style={{ position: 'absolute', bottom: '56.7px', right: '96.06px' }}>
-        <p style={{ fontSize: '13.33px', color: 'rgb(107, 114, 128)', textAlign: 'right' }}>
+        <p style={{ fontSize: '12px', color: 'rgb(107, 114, 128)', textAlign: 'right' }}>
           Generated from the LMIS & Records Section{' '}
           {new Date().toLocaleString('en-US', {
             month: 'numeric',
@@ -790,13 +784,6 @@ export const TransmittalSheet = ({ documentData, onPrint, onClose }) => {
               title="Download PDF (Editable)"
             >
               <PDFIcon />
-            </button>
-            <button
-              onClick={handleDownloadDOCX}
-              className="p-2 text-green-500 hover:text-green-600 focus:outline-none focus:ring-2 focus:ring-green-400 transition-all"
-              title="Download DOCX (Editable)"
-            >
-              <DOCXIcon />
             </button>
           </div>
 

@@ -11,8 +11,6 @@ function Settings() {
   const [role, setRole] = useState("");
   const [profilePic, setProfilePic] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [theme, setTheme] = useState("light");
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -87,7 +85,7 @@ function Settings() {
   return (
     <div className="flex">
       <Sidebar />
-      <div className="flex flex-col w-full overflow-y-auto p-6 bg-gray-50">
+      <div className="flex flex-col w-full overflow-y-auto p-6">
         <div className="font-poppins font-bold uppercase p-4 text-[#494444] text-[35px]">
           <h1>Settings</h1>
         </div>
@@ -130,57 +128,8 @@ function Settings() {
               Edit
             </button>
           </div>
-          <h1 className="font-poppins text-lg font-bold uppercase p-2 text-gray-500">Others</h1>
-          <div className="bg-white shadow-lg rounded-lg p-6 mb-2">
-            <div
-              className="flex justify-between cursor-pointer"
-              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-            >
-              <h1 className="font-poppins font-medium">Theme</h1>
-              <img
-                src="src/assets/Images/down.png"
-                className={`w-5 h-5 self-center transform transition-transform ${
-                  isDropdownOpen ? "rotate-180" : ""
-                }`}
-                alt="Toggle"
-              />
-            </div>
-            <div
-              className={`transition-all duration-300 ease-in-out overflow-hidden ${
-                isDropdownOpen ? "max-h-48 opacity-100" : "max-h-0 opacity-0"
-              }`}
-              style={{ transitionProperty: "max-height, opacity" }}
-            >
-              <div className="p-4">
-                <div>
-                  <label className="font-poppins block text-md font-medium text-gray-700">
-                    <input
-                      type="radio"
-                      name="theme"
-                      value="light"
-                      checked={theme === "light"}
-                      onChange={() => setTheme("light")}
-                      className="mr-2"
-                    />
-                    Light mode
-                  </label>
-                </div>
-                <div>
-                  <label className="font-poppins block text-md font-medium text-gray-700">
-                    <input
-                      type="radio"
-                      name="theme"
-                      value="dark"
-                      checked={theme === "dark"}
-                      onChange={() => setTheme("dark")}
-                      className="mr-2"
-                    />
-                    Dark mode
-                  </label>
-                </div>
-              </div>
-            </div>
-          </div>
+          <h1 className="font-poppins text-lg font-bold uppercase p-2 text-gray-500">Other</h1>
+        
           <div className="bg-white shadow-lg rounded-lg p-6">
             <div className="flex justify-between items-center">
               <h1 className="font-poppins font-medium">Change password</h1>

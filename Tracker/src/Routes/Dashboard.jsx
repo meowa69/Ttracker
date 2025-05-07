@@ -6,8 +6,10 @@ import { motion, AnimatePresence, useAnimation } from "framer-motion";
 import Swal from "sweetalert2";
 import axios from "axios";
 import { TransmittalSheet, getTransmittalData } from "../Components/TransmittalSheet";
+import { useNavigate } from "react-router-dom";
 
 function Dashboard() {
+  const navigate = useNavigate();
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
   const committees = [""];
@@ -17,7 +19,6 @@ function Dashboard() {
   const [isNotifDropdownOpen, setIsNotifDropdownOpen] = useState({});
   const notifDropdownRef = useRef(null);
   const notificationRef = useRef(null);
-  const [zoomLevel, setZoomLevel] = useState(1);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [selectedRow, setSelectedRow] = useState(null);
@@ -281,8 +282,9 @@ function Dashboard() {
   const showPrevEllipsis = visiblePages[0] > 1;
   const showNextEllipsis = visiblePages[visiblePages.length - 1] < totalPages;
 
-  const handleZoomIn = () => setZoomLevel((prev) => Math.min(prev + 0.1, 1.5));
-  const handleZoomOut = () => setZoomLevel((prev) => Math.max(prev - 0.1, 0.5));
+  const handleAddClick = () => {
+    navigate("/add-records");
+  };
 
   const calculateTimeRemaining = (forwardedDate, receivedDate) => {
     if (!forwardedDate) return "Not Started";
@@ -574,7 +576,7 @@ function Dashboard() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
                 transition={{ duration: 0.2 }}
-                className="absolute right-8 top-16 mt-2 w-96 bg-white text-gray-800 shadow-xl rounded-lg z-10 max-h-[800px] overflow-y-auto border border-gray-200"
+                className="absolute right-8 top-16 mt-2 w-96 bg-white text-gray-800 shadow-xl rounded-lg z-50 max-h-[800px] overflow-y-auto border border-gray-200"
                 ref={notificationRef}
               >
                 <div className="p-4 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
@@ -594,7 +596,7 @@ function Dashboard() {
                       />
                     </button>
                     {isNotifDropdownOpen.main && (
-                      <div className="absolute right-0 mt-2 w-[250px] p-2 bg-white border border-gray-200 rounded-md shadow-lg z-30 notification-menu">
+                      <div className="absolute right-0 mt-2 w-[250px] p-2 bg-white border border-gray-200 rounded-md shadow-lg z-50 notification-menu">
                         <button
                           onClick={clearAllNotifications}
                           className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
@@ -660,7 +662,7 @@ function Dashboard() {
                                   />
                                 </button>
                                 {isThisDropdownOpen && (
-                                  <div className="absolute right-0 mt-2 w-[250px] p-2 bg-white border border-gray-200 rounded-md shadow-lg z-60 notification-menu">
+                                  <div className="absolute right-0 mt-2 w-[250px] p-2 bg-white border border-gray-200 rounded-md shadow-lg z-50 notification-menu">
                                     <button
                                       onClick={() => {
                                         deleteNotification(notif.notification_id);
@@ -730,7 +732,7 @@ function Dashboard() {
                 className="absolute top-1/2 right-3 transform -translate-y-1/2 w-4 h-4 pointer-events-none"
               />
               {isCommitteeDropdownOpen && (
-                <div className="absolute mt-1 w-[450px] h-[500px] bg-white border border-gray-300 rounded-md shadow-lg z-10">
+                <div className="absolute mt-1 w-[450px] h-[500px] bg-white border border-gray-300 rounded-md shadow-lg z-50">
                   <input
                     type="text"
                     placeholder="Search..."
@@ -830,16 +832,23 @@ function Dashboard() {
           <div className="bg-white w-full border rounded-md shadow-lg p-4 min-h-[100px] flex flex-col">
             <div className="flex justify-end mb-2">
               <button
-                onClick={handleZoomIn}
-                className="bg-[#408286] hover:bg-[#5FA8AD] text-white font-bold py-2 px-4 rounded-l-md"
+                onClick={handleAddClick}
+                className="bg-[#408286] hover:bg-[#5FA8AD] text-white font-bold py-2 px-2 shadow-md rounded-[100%] flex items-center gap-1"
               >
-                +
-              </button>
-              <button
-                onClick={handleZoomOut}
-                className="bg-[#408286] hover:bg-[#5FA8AD] text-white font-bold py-2 px-4 rounded-r-md"
-              >
-                -
+                <svg
+                  className="w-5 h-5"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 4v16m8-8H4"
+                  />
+                </svg>
               </button>
             </div>
 
@@ -848,8 +857,6 @@ function Dashboard() {
                 <div
                   className="overflow-auto"
                   style={{
-                    transform: `scale(${zoomLevel})`,
-                    transformOrigin: "top left",
                     minHeight: paginatedRows.length > 0 ? "300px" : "auto",
                     maxHeight: "650px",
                     position: "relative",

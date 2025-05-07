@@ -243,6 +243,7 @@ class AuthController extends Controller
         }
     }
 
+    // Get Records
     public function getRecords()
     {
         try {
@@ -268,6 +269,7 @@ class AuthController extends Controller
                     'edit_record.completed',
                     'edit_record.completion_date'
                 )
+                ->orderBy('add_record.id', 'desc') // Sort by id in descending order
                 ->get()
                 ->map(function ($record) {
                     $record->transmitted_recipients = $record->editRecord && $record->editRecord->transmittedRecipients
@@ -349,7 +351,7 @@ class AuthController extends Controller
                 'completed' => 'nullable|boolean',
                 'completion_date' => 'nullable|date',
                 'new_recipients' => 'nullable|array',
-                'new_recipients.*.salutation' => 'required|string|in:Sir,Madam',
+                'new_recipients.*.salutation' => 'required|string|in:Sir,Madame',
                 'new_recipients.*.name' => 'required|string',
                 'new_recipients.*.designation' => 'nullable|string',
                 'new_recipients.*.office' => 'nullable|string',

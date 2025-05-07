@@ -109,7 +109,7 @@ function Request() {
   return (
     <div className="flex min-h-screen">
       <Sidebar />
-      <div className="flex flex-col flex-1 p-6 bg-gray-100">
+      <div className="flex flex-col flex-1 p-6">
         <div className="flex justify-between items-center mb-6">
           <h1 className="font-poppins font-bold uppercase text-[#333] text-[35px] tracking-wide">
             Deletion Requests

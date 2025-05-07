@@ -383,7 +383,7 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-      <div className="bg-white p-6 rounded-lg w-[1300px] max-h-[96vh] overflow-y-auto">
+      <div className="bg-white p-6 rounded-lg w-[1500px] max-h-[96vh] overflow-y-auto">
         <h2 className="text-lg font-semibold mb-4 font-poppins">Edit Record</h2>
         <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -615,7 +615,7 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
                     >
                       <option value="">Select Salutation</option>
                       <option value="Sir">Sir</option>
-                      <option value="Madam">Madame</option>
+                      <option value="Madame">Madame</option>
                     </select>
                   </div>
                   <div>

@@ -190,7 +190,7 @@ function CreateAccount() {
   return (
     <div className="flex font-poppins">
       <Sidebar />
-      <div className="flex flex-col w-full h-screen overflow-y-auto p-6 bg-gray-100">
+      <div className="flex flex-col w-full h-screen overflow-y-auto p-6">
         {/* Page Header */}
         <div className="flex justify-between items-center mb-6">
           <h1 className="font-poppins font-bold uppercase text-[#494444] text-[35px]">

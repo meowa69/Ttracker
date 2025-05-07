@@ -157,7 +157,7 @@ const History = () => {
   }, [logs, searchQuery, dateRange, selectedCategory]);
 
   return (
-    <div className="flex bg-gray-100 font-poppins">
+    <div className="flex font-poppins">
       <Sidebar />
       <div className="flex flex-col w-full h-screen overflow-y-auto p-6">
         <h1 className="font-bold uppercase text-[#494444] text-[35px] mb-6">History</h1>

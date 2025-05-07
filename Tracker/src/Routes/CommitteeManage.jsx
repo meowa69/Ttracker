@@ -294,7 +294,7 @@ function CommitteeManage() {
   return (
     <div className="flex font-poppins">
       <Sidebar />
-      <div className="flex flex-col w-full h-screen overflow-hidden bg-gray-100 p-6">
+      <div className="flex flex-col w-full h-screen overflow-hidden p-6">
         <div className="flex justify-between items-center mb-6">
           <h1 className="font-bold uppercase text-[#494444] text-[35px]">
             Manage Committees

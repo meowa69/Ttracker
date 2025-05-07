@@ -39,13 +39,13 @@ export const downloadPDF = (documentData, signatoryDetails, currentDate, session
     const {
       x = marginLeft,
       y = yPosition,
-      size = 11, // Default size set to 11
+      size = 12, // Default size set to 11
       bold = false,
       italic = false,
       align = 'left',
       indent = 0,
       maxWidth = contentWidth,
-      color = [55, 65, 81],
+      color = [0, 0, 0], // Changed to black
       boldPhrases = [],
       superscript = null,
       customLineHeight = size * 0.4,
@@ -212,10 +212,10 @@ export const downloadPDF = (documentData, signatoryDetails, currentDate, session
 
     // Header: Logos and Text
     const logos = {
-      cdo: { image: cdo_logoBase64, width: 25, height: 25, x: 5, y: yPosition + 5 },
-      goldenfriendship: { image: goldenfriendship_logoBase64, width: 18, height: 9, x: 32, y: yPosition + 13 },
-      bagongpilipinas: { image: bagongpilipinas_logoBase64, width: 25, height: 25, x: 49, y: yPosition + 5 },
-      cityCouncil: { image: CityC_LogoBase64, width: 25, height: 25, x: pageWidth - 30, y: yPosition + 5 },
+      cdo: { image: cdo_logoBase64, width: 25, height: 25, x: 5, y: yPosition + 3 },
+      goldenfriendship: { image: goldenfriendship_logoBase64, width: 18, height: 9, x: 31, y: yPosition + 11 },
+      bagongpilipinas: { image: bagongpilipinas_logoBase64, width: 25, height: 25, x: 49, y: yPosition + 3 },
+      cityCouncil: { image: CityC_LogoBase64, width: 25, height: 25, x: pageWidth - 30, y: yPosition + 3 },
     };
 
     Object.values(logos).forEach((logo) => {
@@ -233,7 +233,7 @@ export const downloadPDF = (documentData, signatoryDetails, currentDate, session
 
     const textXOffset = 0;
     const textX = logos.bagongpilipinas.x + logos.bagongpilipinas.width + 5 + textXOffset;
-    const textYStart = yPosition + 10;
+    const textYStart = yPosition + 7.5;
     let textY = textYStart;
 
     // Header with specified sizes
@@ -243,9 +243,9 @@ export const downloadPDF = (documentData, signatoryDetails, currentDate, session
     textY += 4;
     addText(doc, 'OFFICE OF THE CITY COUNCIL', textY, { x: textX + 33, y: textY + 6, size: 13, bold: true, align: 'center', maxWidth: textAreaWidth });
     textY += 4;
-    addText(doc, 'www.cdecitycouncil.com', textY, { x: textX + 31.5, y: textY + 6.5, size: 8, align: 'center', color: [107, 114, 128], maxWidth: textAreaWidth });
+    addText(doc, '(088) 565-0568 ∙ (088) 565-0697 ∙ www.cdocitycouncil.com', textY, { x: textX + 32.5, y: textY + 6.5, size: 8, align: 'center', color: [0, 0, 0] });
 
-    yPosition += headerHeight + 10;
+    yPosition += headerHeight + 5;
 
     const borderThickness = 0.5;
     drawLine(doc, 5, yPosition, pageWidth - 5, [167, 137, 125], borderThickness);
@@ -261,14 +261,14 @@ export const downloadPDF = (documentData, signatoryDetails, currentDate, session
     const titleXOffset = 0;
     const titleX = marginLeft + titleXOffset;
     if (!recipient) {
-      addText(doc, 'TRANSMITTAL SHEET', yPosition, { x: titleX + 75, y: yPosition, size: 11, bold: true, align: 'center', maxWidth: contentWidth });
+      addText(doc, 'TRANSMITTAL SHEET', yPosition, { x: titleX + 75, y: yPosition, size: 16, bold: true, align: 'center', maxWidth: contentWidth });
       yPosition += 8;
       yPosition += 5;
-      addText(doc, currentDate, yPosition, { size: 11, align: 'left', indent: 89, y: yPosition, color: [75, 85, 99] });
+      addText(doc, currentDate, yPosition, { size: 12, align: 'left', indent: 89, y: yPosition, color: [0, 0, 0] });
       yPosition += 10;
 
       // Body
-      addText(doc, 'Sirs/Mesdames:', yPosition, { size: 11 });
+      addText(doc, 'Sirs/Mesdames:', yPosition, { size: 12 });
       yPosition += 10;
 
       const bodyText = `Enclosed is a copy of ${documentData.document_type || "N/A"} No. ${documentData.no || "N/A"}, current series, passed by the City Council of this City, during its Regular Session on the ${String(sessionDate.day)}${sessionDate.suffix} day of ${sessionDate.month} ${sessionDate.year}, to wit:`;
@@ -278,12 +278,12 @@ export const downloadPDF = (documentData, signatoryDetails, currentDate, session
       const yearPhrase = `${sessionDate.year}`;
       const fullDateStr = `${String(sessionDate.day)}${sessionDate.suffix}`;
 
-      const splitIndex = bodyText.indexOf('this') + 'City'.length;
+      const splitIndex = bodyText.indexOf('City') + 'City'.length;
       const indentedText = bodyText.substring(0, splitIndex);
       const remainingText = bodyText.substring(splitIndex);
 
       const indentedHeight = addText(doc, indentedText, yPosition, { 
-        size: 11, 
+        size: 12, 
         maxWidth: contentWidth,
         boldPhrases: [documentPhrase],
         indent: 10
@@ -292,35 +292,35 @@ export const downloadPDF = (documentData, signatoryDetails, currentDate, session
       yPosition += indentedHeight;
 
       yPosition += addText(doc, remainingText, yPosition, { 
-        size: 11, 
+        size: 12, 
         maxWidth: contentWidth,
         boldPhrases: [datePhrase, monthPhrase, yearPhrase, fullDateStr],
         superscript: true,
         indent: 0
       });
     } else {
-      yPosition += 15; // Match margin-top from renderRecipientPage
-      addText(doc, currentDate, yPosition, { size: 11, align: 'left', indent: 89, y: yPosition, color: [75, 85, 99] });
+      yPosition += 13; // Match margin-top from renderRecipientPage
+      addText(doc, currentDate, yPosition, { size: 12, align: 'left', indent: 89, y: yPosition, color: [0, 0, 0] });
       yPosition += 20; // Move down after date to align with recipient details
 
       // Recipient Details
-      addText(doc, recipient.name.toUpperCase(), yPosition, { size: 11, bold: true, align: 'left', y: yPosition });
+      addText(doc, recipient.name.toUpperCase(), yPosition, { size: 12, bold: true, align: 'left', y: yPosition });
       yPosition += 5;
       if (recipient.designation) {
-        addText(doc, recipient.designation, yPosition, { size: 11, align: 'left', y: yPosition });
+        addText(doc, recipient.designation, yPosition, { size: 12, align: 'left', y: yPosition });
         yPosition += 5;
       }
       if (recipient.office) {
-        addText(doc, recipient.office, yPosition, { size: 11, align: 'left', y: yPosition });
+        addText(doc, recipient.office, yPosition, { size: 12, align: 'left', y: yPosition });
         yPosition += 5;
       }
       if (recipient.address) {
-        addText(doc, recipient.address, yPosition, { size: 11, align: 'left', y: yPosition });
+        addText(doc, recipient.address, yPosition, { size: 12, align: 'left', y: yPosition });
         yPosition += 10;
       }
 
       // Body
-      addText(doc, `${recipient.salutation || "Sir/Madam"}:`, yPosition, { size: 11 });
+      addText(doc, `${recipient.salutation || "Sir/Madam"}:`, yPosition, { size: 12 });
       yPosition += 10;
 
       const bodyText = `Enclosed is a copy of ${documentData.document_type || "N/A"} No. ${documentData.no || "N/A"}, current series, passed by the City Council of this City, during its Regular Session on the ${String(sessionDate.day)}${sessionDate.suffix} day of ${sessionDate.month} ${sessionDate.year}, to wit:`;
@@ -330,12 +330,12 @@ export const downloadPDF = (documentData, signatoryDetails, currentDate, session
       const yearPhrase = `${sessionDate.year}`;
       const fullDateStr = `${String(sessionDate.day)}${sessionDate.suffix}`;
 
-      const splitIndex = bodyText.indexOf('this') + 'City'.length;
+      const splitIndex = bodyText.indexOf('City') + 'City'.length;
       const indentedText = bodyText.substring(0, splitIndex);
       const remainingText = bodyText.substring(splitIndex);
 
       const indentedHeight = addText(doc, indentedText, yPosition, { 
-        size: 11, 
+        size: 12, 
         maxWidth: contentWidth,
         boldPhrases: [documentPhrase],
         indent: 10
@@ -344,7 +344,7 @@ export const downloadPDF = (documentData, signatoryDetails, currentDate, session
       yPosition += indentedHeight;
 
       yPosition += addText(doc, remainingText, yPosition, { 
-        size: 11, 
+        size: 12, 
         maxWidth: contentWidth,
         boldPhrases: [datePhrase, monthPhrase, yearPhrase, fullDateStr],
         superscript: true,
@@ -387,16 +387,16 @@ export const downloadPDF = (documentData, signatoryDetails, currentDate, session
 
     // Additional Text
     yPosition += 5;
-    yPosition += addText(doc, 'for your information.', yPosition, { size: 11 });
+    yPosition += addText(doc, 'for your information.', yPosition, { size: 12 });
     yPosition += 5;
-    yPosition += addText(doc, 'Thank you very much.', yPosition, { size: 11, indent: 10 });
+    yPosition += addText(doc, 'Thank you very much.', yPosition, { size: 12, indent: 10 });
     yPosition += 6;
 
     // Signature Section
-    const signatureX = pageWidth - marginRight - 40;
-    addText(doc, 'Very truly yours,', yPosition, { size: 11, x: signatureX, align: 'center' });
+    const signatureX = pageWidth - marginRight - 49;
+    addText(doc, 'Very truly yours,', yPosition, { size: 12, x: signatureX, align: 'center' });
     yPosition += 15;
-    addText(doc, signatoryDetails.name.toUpperCase(), yPosition, { size: 11, bold: true, x: signatureX, align: 'center' });
+    addText(doc, signatoryDetails.name.toUpperCase(), yPosition, { size: 12, bold: true, x: signatureX, align: 'center' });
     yPosition += 4;
     addText(doc, signatoryDetails.title1, yPosition, { size: 11, x: signatureX, align: 'center' });
     yPosition += 4;
@@ -432,7 +432,7 @@ export const downloadPDF = (documentData, signatoryDetails, currentDate, session
         date: marginLeft + colWidths.office + colWidths.receiverName + colWidths.signature + 19.25,
       };
 
-      doc.setFontSize(11);
+      doc.setFontSize(9);
       doc.setFont('EBGaramond', 'normal');
       doc.text('Office', headerXPositions.office, yPosition, { align: 'left' });
       doc.text('Receiver Name', headerXPositions.receiverName + colWidths.receiverName / 2, yPosition, { align: 'center' });
@@ -450,7 +450,7 @@ export const downloadPDF = (documentData, signatoryDetails, currentDate, session
 
           // Render office text (no underline)
           officeLines.forEach((line, lineIndex) => {
-            doc.setFontSize(11);
+            doc.setFontSize(9);
             doc.setFont('EBGaramond', 'normal');
             doc.text(line, marginLeft, yPosition + lineIndex * lineHeight, { align: 'left' });
           });
@@ -494,10 +494,10 @@ export const downloadPDF = (documentData, signatoryDetails, currentDate, session
     })}`;
     addText(doc, footerText, 330 - marginBottom, {
       x: pageWidth - marginRight,
-      y: 330 - marginBottom,
-      size: 10,
+      y: 338 - marginBottom,
+      size: 9,
       align: 'right',
-      color: [107, 114, 128],
+      color: [0, 0, 0],
     });
   };
 
