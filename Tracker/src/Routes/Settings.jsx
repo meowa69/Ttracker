@@ -128,19 +128,7 @@ function Settings() {
               Edit
             </button>
           </div>
-          <h1 className="font-poppins text-lg font-bold uppercase p-2 text-gray-500">Other</h1>
-        
-          <div className="bg-white shadow-lg rounded-lg p-6">
-            <div className="flex justify-between items-center">
-              <h1 className="font-poppins font-medium">Change password</h1>
-              <button
-                onClick={() => setIsPasswordModalOpen(true)}
-                className="text-white text-sm font-poppins font-semibold bg-[#408286] hover:bg-[#356f6f] rounded-md px-4 py-2"
-              >
-                Reset
-              </button>
-            </div>
-          </div>
+          
           <EditProfileModal
             isOpen={isModalOpen}
             onClose={() => setIsModalOpen(false)}

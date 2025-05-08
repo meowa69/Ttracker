@@ -14,6 +14,7 @@ use App\Models\TransmittedRecipient;
 use App\Models\DeletionRequest;
 use App\Models\History;
 use App\Models\Notification;
+use App\Models\StatusHistory;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -247,11 +248,16 @@ class AuthController extends Controller
     public function getRecords()
     {
         try {
-            \Log::info('Fetching all records with edit details');
+            \Log::info('Fetching all records with edit details and status history');
             $records = AddRecord::leftJoin('edit_record', 'add_record.id', '=', 'edit_record.record_id')
-                ->with(['editRecord.transmittedRecipients' => function ($query) {
-                    $query->select('id', 'edit_record_id', 'salutation', 'name', 'designation', 'office', 'address');
-                }])
+                ->with([
+                    'editRecord.transmittedRecipients' => function ($query) {
+                        $query->select('id', 'edit_record_id', 'salutation', 'name', 'designation', 'office', 'address');
+                    },
+                    'editRecord.statusHistory' => function ($query) {
+                        $query->select('id', 'edit_record_id', 'status', 'status_date')->orderBy('status_date', 'asc');
+                    }
+                ])
                 ->select(
                     'add_record.id',
                     'add_record.no',
@@ -269,11 +275,19 @@ class AuthController extends Controller
                     'edit_record.completed',
                     'edit_record.completion_date'
                 )
-                ->orderBy('add_record.id', 'desc') // Sort by id in descending order
+                ->orderBy('add_record.id', 'desc')
                 ->get()
                 ->map(function ($record) {
                     $record->transmitted_recipients = $record->editRecord && $record->editRecord->transmittedRecipients
                         ? $record->editRecord->transmittedRecipients->toArray()
+                        : [];
+                    $record->status_history = $record->editRecord && $record->editRecord->statusHistory
+                        ? $record->editRecord->statusHistory->map(function ($history) {
+                            return [
+                                'status' => $history->status,
+                                'status_date' => $history->status_date,
+                            ];
+                        })->toArray()
                         : [];
                     unset($record->editRecord);
                     return $record;
@@ -361,6 +375,8 @@ class AuthController extends Controller
             ]);
 
             $editRecord = EditRecord::firstOrNew(['record_id' => $id]);
+            $oldStatus = $editRecord->status;
+
             $editRecord->fill([
                 'committee_sponsor' => $validated['committee_sponsor'] ?? $editRecord->committee_sponsor,
                 'status' => $validated['status'] ?? $editRecord->status,
@@ -374,6 +390,16 @@ class AuthController extends Controller
                 'completion_date' => $validated['completion_date'] ?? $editRecord->completion_date,
             ]);
             $editRecord->save();
+
+            // Log status change in status_history if status has changed
+            if (isset($validated['status']) && $validated['status'] !== $oldStatus && $validated['status'] !== 'Select status') {
+                StatusHistory::create([
+                    'edit_record_id' => $editRecord->id,
+                    'status' => $validated['status'],
+                    'status_date' => now()->toDateString(),
+                ]);
+                \Log::info("Status history logged: {$validated['status']} on " . now()->toDateString());
+            }
 
             if (isset($validated['new_recipients'])) {
                 foreach ($validated['new_recipients'] as $recipient) {
@@ -452,9 +478,9 @@ class AuthController extends Controller
                 'Update Document'
             );
 
-            $updatedRecord = EditRecord::with('transmittedRecipients')->find($editRecord->id);
+            $updatedRecord = EditRecord::with(['transmittedRecipients', 'statusHistory'])->find($editRecord->id);
             $responseData = $updatedRecord->toArray();
-            \Log::info("Final response data with transmitted recipients:", $responseData);
+            \Log::info("Final response data with transmitted recipients and status history:", $responseData);
 
             return response()->json(['message' => 'Record updated successfully', 'data' => $responseData], 200);
         } catch (\Exception $e) {

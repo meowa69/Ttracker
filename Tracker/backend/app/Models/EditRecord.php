@@ -18,9 +18,19 @@ class EditRecord extends Model
         return $this->belongsTo(AddRecord::class, 'record_id');
     }
 
-    // Add this relationship
     public function transmittedRecipients()
     {
         return $this->hasMany(TransmittedRecipient::class, 'edit_record_id', 'id');
     }
+
+    public function statusHistory()
+    {
+        return $this->hasMany(StatusHistory::class, 'edit_record_id', 'id');
+    }
+}
+
+class StatusHistory extends Model
+{
+    protected $table = 'status_history';
+    protected $fillable = ['edit_record_id', 'status', 'status_date'];
 }

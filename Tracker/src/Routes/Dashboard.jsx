@@ -1,7 +1,9 @@
 import Sidebar from "../Components/Sidebar";
+import HighlightText from "../Components/HighlightText";
 import { useState, useEffect, useRef } from "react";
 import EditModal from "../Modal/EditModal";
 import ViewModal from "../Modal/ViewModal";
+import StatusHistoryModal from "../Modal/StatusHistoryModal";
 import { motion, AnimatePresence, useAnimation } from "framer-motion";
 import Swal from "sweetalert2";
 import axios from "axios";
@@ -12,26 +14,23 @@ function Dashboard() {
   const navigate = useNavigate();
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
-  const committees = [""];
   const [selectedType, setSelectedType] = useState("Document");
-  const [isCommitteeDropdownOpen, setIsCommitteeDropdownOpen] = useState(false);
-  const committeeDropdownRef = useRef(null);
   const [isNotifDropdownOpen, setIsNotifDropdownOpen] = useState({});
   const notifDropdownRef = useRef(null);
   const notificationRef = useRef(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [isStatusHistoryModalOpen, setIsStatusHistoryModalOpen] = useState(false);
   const [selectedRow, setSelectedRow] = useState(null);
+  const [selectedStatusHistory, setSelectedStatusHistory] = useState([]);
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const filteredCommittees = committees.filter((committee) =>
-    committee.toLowerCase().startsWith(searchTerm.toLowerCase())
-  );
   const [yearRange, setYearRange] = useState("");
-  const [committeeType, setCommitteeType] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [completedStatus, setCompletedStatus] = useState("");
+  const [colorFilter, setColorFilter] = useState(""); // New state for color filter
   const [currentPage, setCurrentPage] = useState(1);
+  const [sortField, setSortField] = useState("");
   const recordsPerPage = 10;
   const maxVisiblePages = 5;
   const [alert, setAlert] = useState({ show: false, message: "", progress: 100 });
@@ -77,6 +76,9 @@ function Dashboard() {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
+        params: {
+          sort: sortField,
+        },
       });
       const formattedRows = response.data.map((row) => ({
         ...row,
@@ -87,8 +89,13 @@ function Dashboard() {
         transmitted_recipients: row.transmitted_recipients || [],
         dateTransmitted: row.date_transmitted,
         status: row.completed ? "Completed" : row.status,
+        status_history: row.status_history || [],
       }));
-      console.log("Fetched records:", formattedRows);
+      console.log("fetchRecords - Records with status_history:", formattedRows.map(row => ({
+        id: row.id,
+        status: row.status,
+        status_history: row.status_history
+      })));
       setRows(formattedRows);
       setSelectedRow((prev) => (prev ? formattedRows.find((row) => row.id === prev.id) || prev : prev));
     } catch (error) {
@@ -108,10 +115,8 @@ function Dashboard() {
       });
       const notifications = response.data
         .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
-        .slice(0, 50); // Limit to 50 for performance
-      setNotifications(notifications.slice(0, 9)); // Latest 9 for dropdown
-
-      // Calculate unviewed notifications
+        .slice(0, 50);
+      setNotifications(notifications.slice(0, 9));
       let unviewedCount = 0;
       notifications.forEach((notif) => {
         const viewed = viewedNotificationStatuses[notif.notification_id];
@@ -133,7 +138,7 @@ function Dashboard() {
   useEffect(() => {
     fetchRecords();
     fetchNotifications();
-  }, []);
+  }, [sortField]);
 
   const handleEditClick = (index) => {
     if (loading || !paginatedRows[index]) {
@@ -151,17 +156,23 @@ function Dashboard() {
     setIsViewModalOpen(true);
   };
 
+  const handleStatusHistoryClick = (index) => {
+    const row = paginatedRows[index];
+    console.log("handleStatusHistoryClick - Selected status_history:", row.status_history);
+    setSelectedStatusHistory(row.status_history || []);
+    setIsStatusHistoryModalOpen(true);
+  };
+
   const handleSave = async (updatedRow) => {
     try {
       setRows((prevRows) =>
-        prevRows.map((row) => (row.id === updatedRow.id ? updatedRow : row))
+        prevRows.map((row) => (row.id === updatedRow.id ? { ...row, ...updatedRow } : row))
       );
+      console.log("Dashboard handleSave - Updated row status_history:", updatedRow.status_history);
       setSelectedRow(updatedRow);
       setIsEditModalOpen(false);
-
       await fetchRecords();
-      await updateNotifications([updatedRow]); // Pass only the updated row
-
+      await updateNotifications([updatedRow]);
       const documentType = updatedRow.document_type?.toLowerCase();
       if (["ordinance", "resolution", "motion"].includes(documentType)) {
         const formattedType = documentType.charAt(0).toUpperCase() + documentType.slice(1);
@@ -180,9 +191,6 @@ function Dashboard() {
 
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (committeeDropdownRef.current && !committeeDropdownRef.current.contains(event.target)) {
-        setIsCommitteeDropdownOpen(false);
-      }
       if (
         notificationRef.current &&
         !notificationRef.current.contains(event.target)
@@ -238,20 +246,140 @@ function Dashboard() {
     });
   };
 
+  const getStatusBadgeClass = (status) => {
+    switch (status) {
+      case "Completed":
+        return "bg-blue-100 text-blue-800 border-blue-300";
+      case "For Vice Mayor's Signature":
+        return "bg-yellow-100 text-yellow-800 border-yellow-300";
+      case "For Mailings":
+        return "bg-green-100 text-green-800 border-green-300";
+      case "Delivered":
+        return "bg-teal-100 text-teal-800 border-teal-300";
+      case "Returned":
+        return "bg-red-100 text-red-800 border-red-300";
+      case "Draft":
+        return "bg-gray-100 text-gray-800 border-gray-300";
+      default:
+        return "bg-gray-100 text-gray-800 border-gray-300";
+    }
+  };
+
+  const calculateTimeRemaining = (forwardedDate, receivedDate) => {
+    if (!forwardedDate) return "Not Started";
+    if (receivedDate && new Date(receivedDate).toString() !== "Invalid Date") return "Completed";
+    const forwarded = new Date(forwardedDate);
+    const now = new Date();
+    const deadline = new Date(forwarded);
+    deadline.setDate(forwarded.getDate() + 10);
+    const diffMs = deadline - now;
+    if (diffMs <= 0) {
+      const overdueMs = now - deadline;
+      const overdueDays = Math.floor(overdueMs / (1000 * 60 * 60 * 24));
+      return `Overdue ${overdueDays} days`;
+    }
+    const daysRemaining = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    return `${daysRemaining} days remaining`;
+  };
+
+  const getBookmarkColor = (time) => {
+    if (time === "Completed") return "fill-blue-600";
+    if (time.includes("Overdue")) return "fill-red-600";
+    const days = parseInt(time.split(" ")[0], 10);
+    if (isNaN(days)) return "fill-red-600";
+    if (days >= 8) return "fill-green-600";
+    if (days >= 6) return "fill-yellow-600";
+    return "fill-red-600";
+  };
+
+  const getBookmarkColorName = (time) => {
+    if (time === "Completed") return "blue";
+    if (time.includes("Overdue")) return "red";
+    const days = parseInt(time.split(" ")[0], 10);
+    if (isNaN(days)) return "red";
+    if (days >= 8) return "green";
+    if (days >= 6) return "yellow";
+    return "red";
+  };
+
+  const shouldShowBookmark = (row) => {
+    const vmTime = calculateTimeRemaining(row.vmForwarded, row.vmReceived);
+    const cmTime =
+      row.document_type?.toLowerCase() === "ordinance"
+        ? calculateTimeRemaining(row.cmForwarded, row.cmReceived)
+        : "Not Started";
+    const isCompleted = vmTime === "Completed" || cmTime === "Completed";
+    const isOverdue = vmTime.includes("Overdue") || cmTime.includes("Overdue");
+    const isInProgress =
+      (row.vmForwarded && !row.vmReceived) ||
+      (row.document_type?.toLowerCase() === "ordinance" && row.cmForwarded && !row.cmReceived);
+    const isNotStarted = vmTime === "Not Started" && cmTime === "Not Started";
+    return (isInProgress || isOverdue || isCompleted) && !isNotStarted;
+  };
+
+ // Count records by bookmark color
+  const colorCounts = rows.reduce(
+    (acc, row) => {
+      if (!shouldShowBookmark(row)) return acc;
+      const vmTime = calculateTimeRemaining(row.vmForwarded, row.vmReceived);
+      const cmTime =
+        row.document_type?.toLowerCase() === "ordinance" // Fixed typo here
+          ? calculateTimeRemaining(row.cmForwarded, row.cmReceived)
+          : "Not Started";
+      const relevantTime =
+        vmTime !== "Not Started" && vmTime !== "Completed"
+          ? vmTime
+          : cmTime !== "Not Started" && cmTime !== "Completed"
+          ? cmTime
+          : vmTime === "Completed" || cmTime === "Completed"
+          ? "Completed"
+          : "Not Started";
+      const color = getBookmarkColorName(relevantTime);
+      acc[color] = (acc[color] || 0) + 1;
+      return acc;
+    },
+    { green: 0, yellow: 0, red: 0, blue: 0 }
+  );
+
   const filteredRows = rows.filter((row) => {
     const matchesYearRange = !yearRange || row.date_approved?.includes(yearRange);
-    const matchesCommitteeType = !committeeType || row.sponsor === committeeType;
-    const matchesStatus = !statusFilter || row.status === statusFilter;
+    const matchesStatus = !statusFilter || 
+      row.status === statusFilter || 
+      (row.status_history && row.status_history.some((entry) => entry.status === statusFilter));
     const matchesCompletedStatus =
       completedStatus === "" ||
       (completedStatus === "True" ? row.status === "Completed" : row.status !== "Completed");
     const matchesDocumentType = selectedType === "Document" || row.document_type === selectedType;
+    const matchesSearchTerm =
+      !searchTerm ||
+      row.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      row.no?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      row.document_type?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesColorFilter = !colorFilter || (() => {
+      if (!shouldShowBookmark(row)) return false;
+      const vmTime = calculateTimeRemaining(row.vmForwarded, row.vmReceived);
+      const cmTime =
+        row.document_type?.toLowerCase() === "ordinance"
+          ? calculateTimeRemaining(row.cmForwarded, row.cmReceived)
+          : "Not Started";
+      const relevantTime =
+        vmTime !== "Not Started" && vmTime !== "Completed"
+          ? vmTime
+          : cmTime !== "Not Started" && cmTime !== "Completed"
+          ? cmTime
+          : vmTime === "Completed" || cmTime === "Completed"
+          ? "Completed"
+          : "Not Started";
+      const color = getBookmarkColorName(relevantTime);
+      return color === colorFilter;
+    })();
     return (
       matchesYearRange &&
-      matchesCommitteeType &&
       matchesStatus &&
       matchesCompletedStatus &&
-      matchesDocumentType
+      matchesDocumentType &&
+      matchesSearchTerm &&
+      matchesColorFilter
     );
   });
 
@@ -286,53 +414,11 @@ function Dashboard() {
     navigate("/add-records");
   };
 
-  const calculateTimeRemaining = (forwardedDate, receivedDate) => {
-    if (!forwardedDate) return "Not Started";
-    if (receivedDate && new Date(receivedDate).toString() !== "Invalid Date") return "Completed";
-    const forwarded = new Date(forwardedDate);
-    const now = new Date();
-    const deadline = new Date(forwarded);
-    deadline.setDate(forwarded.getDate() + 10);
-    const diffMs = deadline - now;
-    if (diffMs <= 0) {
-      const overdueMs = now - deadline;
-      const overdueDays = Math.floor(overdueMs / (1000 * 60 * 60 * 24));
-      return `Overdue ${overdueDays} days`;
-    }
-    const daysRemaining = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-    return `${daysRemaining} days remaining`;
-  };
-
-  const getBookmarkColor = (time) => {
-    if (time === "Completed") return "fill-blue-600";
-    if (time.includes("Overdue")) return "fill-red-600";
-    const days = parseInt(time.split(" ")[0], 10);
-    if (isNaN(days)) return "fill-red-600"; // Fallback to red if invalid
-    if (days >= 8) return "fill-green-600";
-    if (days >= 6) return "fill-yellow-600";
-    return "fill-red-600";
-  };
-
-  const shouldShowBookmark = (row) => {
-    const vmTime = calculateTimeRemaining(row.vmForwarded, row.vmReceived);
-    const cmTime =
-      row.document_type?.toLowerCase() === "ordinance"
-        ? calculateTimeRemaining(row.cmForwarded, row.cmReceived)
-        : "Not Started";
-    const isCompleted = vmTime === "Completed" || cmTime === "Completed";
-    const isOverdue = vmTime.includes("Overdue") || cmTime.includes("Overdue");
-    const isInProgress =
-      (row.vmForwarded && !row.vmReceived) ||
-      (row.document_type?.toLowerCase() === "ordinance" && row.cmForwarded && !row.cmReceived);
-    const isNotStarted = vmTime === "Not Started" && cmTime === "Not Started";
-    return (isInProgress || isOverdue || isCompleted) && !isNotStarted;
-  };
-
   const getStatusColor = (time) => {
     if (time === "Completed") return "bg-blue-600 text-blue-600";
     if (time.includes("Overdue")) return "bg-red-600 text-blue-600";
     const days = parseInt(time.split(" ")[0], 10);
-    if (isNaN(days)) return "bg-red-600 text-blue-600"; // Fallback to red if invalid
+    if (isNaN(days)) return "bg-red-600 text-blue-600";
     if (days >= 8) return "bg-green-600 text-blue-600";
     if (days >= 6) return "bg-yellow-600 text-blue-600";
     return "bg-red-600 text-blue-600";
@@ -348,36 +434,31 @@ function Dashboard() {
             row.document_type.toLowerCase() === "ordinance"
               ? calculateTimeRemaining(row.cmForwarded, row.cmReceived)
               : "Not Started";
-  
           const isCompleted = row.status === "Completed";
           const isOverdue = vmTime.includes("Overdue") || cmTime.includes("Overdue");
           const isNotStarted = vmTime === "Not Started" && cmTime === "Not Started";
-  
-          if (isNotStarted) return null; // Skip notifications for 'Not Started'
-  
+          if (isNotStarted) return null;
           let relevantTime, statusColor, notificationStatus;
-  
           if (isCompleted || (vmTime === "Completed" && cmTime === "Completed")) {
             relevantTime = "Completed";
             statusColor = "bg-blue-600 text-blue-600";
             notificationStatus = "Completed";
           } else if (isOverdue) {
             relevantTime = vmTime.includes("Overdue") ? vmTime : cmTime;
-            statusColor = "bg-red-600 text-red-600"; // Fixed: Match backend validation
+            statusColor = "bg-red-600 text-red-600";
             notificationStatus = "Overdue";
           } else {
             relevantTime = vmTime !== "Not Started" ? vmTime : cmTime;
             const days = parseInt(relevantTime.split(" ")[0], 10);
             notificationStatus = "In Progress";
             if (days >= 8) {
-              statusColor = "bg-green-600 text-green-600"; // Fixed: Match backend validation
+              statusColor = "bg-green-600 text-green-600";
             } else if (days >= 6) {
-              statusColor = "bg-yellow-600 text-yellow-600"; // Fixed: Match backend validation
+              statusColor = "bg-yellow-600 text-yellow-600";
             } else {
-              statusColor = "bg-red-600 text-red-600"; // Fixed: Match backend validation
+              statusColor = "bg-red-600 text-red-600";
             }
           }
-  
           return {
             record_id: row.id,
             notification_id: `${row.id}-${new Date().toISOString()}`,
@@ -391,8 +472,6 @@ function Dashboard() {
           };
         })
         .filter((notif) => notif !== null);
-  
-      // Send new notifications
       for (const notif of newNotifications) {
         await axios.post(
           "http://localhost:8000/api/notifications",
@@ -404,11 +483,7 @@ function Dashboard() {
           }
         );
       }
-  
-      // Fetch updated notifications
       await fetchNotifications();
-  
-      // Animate bell if there are new notifications
       if (newNotifications.length > 0) {
         bellControls.start({
           rotate: [0, 15, -15, 15, -15, 0],
@@ -511,6 +586,12 @@ function Dashboard() {
   const handleClosePreview = () => {
     setIsPreviewOpen(false);
     setPreviewData(null);
+  };
+
+  // Handle color filter click
+  const handleColorFilterClick = (color) => {
+    setColorFilter((prev) => (prev === color ? "" : color));
+    setCurrentPage(1); // Reset to first page when filter changes
   };
 
   return (
@@ -719,45 +800,6 @@ function Dashboard() {
               />
             </div>
 
-            <div className="relative w-40" ref={committeeDropdownRef}>
-              <div
-                className="cursor-pointer w-full appearance-none rounded-md border border-gray-300 shadow-sm px-4 py-2 pr-10 bg-white text-sm font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-[#5FA8AD] truncate"
-                onClick={() => setIsCommitteeDropdownOpen((prev) => !prev)}
-              >
-                {committeeType || "Committee"}
-              </div>
-              <img
-                src="src/assets/Images/down2.png"
-                alt="Dropdown Icon"
-                className="absolute top-1/2 right-3 transform -translate-y-1/2 w-4 h-4 pointer-events-none"
-              />
-              {isCommitteeDropdownOpen && (
-                <div className="absolute mt-1 w-[450px] h-[500px] bg-white border border-gray-300 rounded-md shadow-lg z-50">
-                  <input
-                    type="text"
-                    placeholder="Search..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full px-2 py-2 border-b border-gray-300 focus:outline-none rounded-t-lg"
-                  />
-                  <div className="max-h-[450px] overflow-y-auto">
-                    {filteredCommittees.map((committee, index) => (
-                      <div
-                        key={index}
-                        className="px-4 py-2 hover:bg-gray-100 cursor-pointer font-poppins text-[13px] text-gray-600"
-                        onClick={() => {
-                          setCommitteeType(committee.committee_name);
-                          setIsCommitteeDropdownOpen(false);
-                        }}
-                      >
-                        {committee.committee_name}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
             <div className="relative">
               <select
                 value={statusFilter}
@@ -767,6 +809,7 @@ function Dashboard() {
                 <option value="">Status</option>
                 <option value="For Vice Mayor's Signature">For Vice Mayor's Signature</option>
                 <option value="For Mailings">For Mailings</option>
+                <option value="For Mayor's & Admin Signature">For Mayor's & Admin Signature</option>
                 <option value="Delivered">Delivered</option>
                 <option value="Returned">Returned</option>
                 <option value="Completed">Completed</option>
@@ -809,8 +852,20 @@ function Dashboard() {
             <input
               type="text"
               placeholder="Search..."
-              className="w-[300px] font-poppins pl-10 pr-4 rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-[#5FA8AD]"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-[300px] font-poppins pl-10 pr-10 rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-[#5FA8AD]"
             />
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm("")}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
             <svg
               className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400"
               fill="none"
@@ -830,7 +885,45 @@ function Dashboard() {
 
         <div className="flex-grow px-4 py-2">
           <div className="bg-white w-full border rounded-md shadow-lg p-4 min-h-[100px] flex flex-col">
-            <div className="flex justify-end mb-2">
+            <div className="flex justify-between items-center mb-2 ">
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={() => handleColorFilterClick("green")}
+                  className={`flex items-center gap-2 px-3 py-1 rounded-full cursor-pointer hover:bg-gray-100 ${
+                    colorFilter === "green" ? "ring-2 ring-green-600" : ""
+                  }`}
+                >
+                  <div className="w-4 h-4 rounded-full bg-green-600 shadow-lg"></div>
+                  <span className="text-sm font-poppins text-gray-700">{colorCounts.green}</span>
+                </button>
+                <button
+                  onClick={() => handleColorFilterClick("yellow")}
+                  className={`flex items-center gap-2 px-3 py-1 rounded-full cursor-pointer hover:bg-gray-100 ${
+                    colorFilter === "yellow" ? "ring-2 ring-yellow-600" : ""
+                  }`}
+                >
+                  <div className="w-4 h-4 rounded-full bg-yellow-600 shadow-lg"></div>
+                  <span className="text-sm font-poppins text-gray-700">{colorCounts.yellow}</span>
+                </button>
+                <button
+                  onClick={() => handleColorFilterClick("red")}
+                  className={`flex items-center gap-2 px-3 py-1 rounded-full cursor-pointer hover:bg-gray-100 ${
+                    colorFilter === "red" ? "ring-2 ring-red-600" : ""
+                  }`}
+                >
+                  <div className="w-4 h-4 rounded-full bg-red-600 shadow-lg"></div>
+                  <span className="text-sm font-poppins text-gray-700">{colorCounts.red}</span>
+                </button>
+                <button
+                  onClick={() => handleColorFilterClick("blue")}
+                  className={`flex items-center gap-2 px-3 py-1 rounded-full cursor-pointer hover:bg-gray-100 ${
+                    colorFilter === "blue" ? "ring-2 ring-blue-600" : ""
+                  }`}
+                >
+                  <div className="w-4 h-4 rounded-full bg-blue-600 shadow-lg"></div>
+                  <span className="text-sm font-poppins text-gray-700">{colorCounts.blue}</span>
+                </button>
+              </div>
               <button
                 onClick={handleAddClick}
                 className="bg-[#408286] hover:bg-[#5FA8AD] text-white font-bold py-2 px-2 shadow-md rounded-[100%] flex items-center gap-1"
@@ -853,72 +946,106 @@ function Dashboard() {
             </div>
 
             <div className="flex flex-col flex-grow">
-              <div className="relative w-full border rounded-lg shadow-lg overflow-hidden flex-grow">
-                <div
-                  className="overflow-auto"
-                  style={{
-                    minHeight: paginatedRows.length > 0 ? "300px" : "auto",
-                    maxHeight: "650px",
-                    position: "relative",
-                  }}
+              <div
+                  className="relative w-full border rounded-lg shadow-lg overflow-hidden flex-grow"
                 >
-                  <table className="w-full border-collapse">
-                    <thead className="bg-[#408286] text-white sticky top-0 z-10">
-                      <tr className="text-left text-[14px]">
-                        {selectedType === "Document" && (
-                          <th className="border border-gray-300 px-4 py-4">Document</th>
-                        )}
-                        <th className="border border-gray-300 px-4 py-4">
-                          {selectedType === "Document"
-                            ? "No."
-                            : selectedType === "Ordinance"
-                            ? "Ordinance No."
-                            : selectedType === "Motion"
-                            ? "Motion No."
-                            : "Resolution No."}
-                        </th>
-                        <th className="border border-gray-300 px-4 py-4 text-center">Title</th>
-                        <th className="border border-gray-300 px-4 py-4">Status</th>
-                        <th className="border border-gray-300 px-4 py-4">Remarks</th>
-                        <th className="border border-gray-300 px-4 py-4 text-center">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {loading && (
-                        <tr>
-                          <td colSpan={selectedType === "Document" ? 6 : 5} className="text-center py-6">
-                            <div className="flex justify-center items-center">
-                              <div className="w-7 h-7 border-4 border-[#408286] border-t-transparent rounded-full animate-spin"></div>
-                            </div>
-                          </td>
+                  <div
+                    className="overflow-auto"
+                    style={{
+                      minHeight: paginatedRows.length > 0 ? "300px" : "auto",
+                      maxHeight: "650px",
+                      position: "relative",
+                    }}
+                  >
+                    <table className="w-full border-collapse table-fixed">
+                      <thead className="bg-[#408286] text-white sticky top-0 z-10">
+                        <tr className="text-left text-[14px]">
+                          {selectedType === "Document" && (
+                            <th className="border border-gray-300 px-4 py-4 w-[9%]">Document</th>
+                          )}
+                          <th className="border border-gray-300 px-4 py-4 w-[9%]">
+                            {selectedType === "Document"
+                              ? "No."
+                              : selectedType === "Ordinance"
+                              ? "Ordinance No."
+                              : selectedType === "Motion"
+                              ? "Motion No."
+                              : "Resolution No."}
+                          </th>
+                          <th className="border border-gray-300 px-4 py-4 text-center w-[40%]">Title</th>
+                          <th
+                            className="border border-gray-300 px-4 py-4 cursor-pointer w-[12%]"
+                            onClick={() => setSortField(sortField === "status_history" ? "" : "status_history")}
+                          >
+                            Status {sortField === "status_history" ? "↑" : "↓"}
+                          </th>
+                          <th className="border border-gray-300 px-4 py-4 w-[9%]">Remarks</th>
+                          <th className="border border-gray-300 px-4 py-4 text-center w-[30%]">Actions</th>
                         </tr>
-                      )}
-                      {!loading && paginatedRows.length > 0 ? (
-                        paginatedRows.map((row, index) => {
-                          const vmTime = calculateTimeRemaining(row.vmForwarded, row.vmReceived);
-                          const cmTime =
-                            row.document_type?.toLowerCase() === "ordinance"
-                              ? calculateTimeRemaining(row.cmForwarded, row.cmReceived)
-                              : "Not Started";
-                          const relevantTime =
-                            vmTime !== "Not Started" && vmTime !== "Completed"
-                              ? vmTime
-                              : cmTime !== "Not Started" && cmTime !== "Completed"
-                              ? cmTime
-                              : vmTime === "Completed" || cmTime === "Completed"
-                              ? "Completed"
-                              : "Not Started";
-                          const bookmarkColor = getBookmarkColor(relevantTime);
-                          const showBookmark = shouldShowBookmark(row);
-
-                          return (
-                            <tr
-                              key={row.id}
-                              className="border border-gray-300 hover:bg-gray-100 text-[14px]"
+                      </thead>
+                      <tbody>
+                        {loading && (
+                          <tr>
+                            <td
+                              colSpan={selectedType === "Document" ? 6 : 5}
+                              className="text-center py-6"
                             >
-                              {selectedType === "Document" && (
+                              <div className="flex justify-center items-center">
+                                <div className="w-7 h-7 border-4 border-[#408286] border-t-transparent rounded-full animate-spin"></div>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                        {!loading && paginatedRows.length > 0 ? (
+                          paginatedRows.map((row, index) => {
+                            const vmTime = calculateTimeRemaining(row.vmForwarded, row.vmReceived);
+                            const cmTime =
+                              row.document_type?.toLowerCase() === "ordinance"
+                                ? calculateTimeRemaining(row.cmForwarded, row.cmReceived)
+                                : "Not Started";
+                            const relevantTime =
+                              vmTime !== "Not Started" && vmTime !== "Completed"
+                                ? vmTime
+                                : cmTime !== "Not Started" && cmTime !== "Completed"
+                                ? cmTime
+                                : vmTime === "Completed" || cmTime === "Completed"
+                                ? "Completed"
+                                : "Not Started";
+                            const bookmarkColor = getBookmarkColor(relevantTime);
+                            const showBookmark = shouldShowBookmark(row);
+
+                            return (
+                              <tr
+                                key={row.id}
+                                className="border border-gray-300 hover:bg-gray-100 text-[14px]"
+                              >
+                                {selectedType === "Document" && (
+                                  <td className="border border-gray-300 px-4 py-2 font-poppins text-sm text-gray-700 relative">
+                                    {showBookmark && (
+                                      <motion.div
+                                        className="absolute left-0 top-0 flex items-center cursor-pointer"
+                                        initial={{ x: -125 }}
+                                        whileHover={{ x: 0 }}
+                                        transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                                      >
+                                        <div className="bg-white to-gray-100 border border-gray-300 rounded-lg p-2 text-sm font-semibold font-poppins text-gray-500 w-[120px] text-center shadow-sm hover:shadow-md transition-shadow duration-200">
+                                          {relevantTime.toUpperCase()}
+                                        </div>
+                                        <svg
+                                          className={`w-6 h-12 ${bookmarkColor} transform rotate-[-90deg] cursor-pointer`}
+                                          xmlns="http://www.w3.org/2000/svg"
+                                          viewBox="0 0 24 48"
+                                          fill="currentColor"
+                                        >
+                                          <path d="M2 2H22V42L17 36L12 30L2 42V2Z" />
+                                        </svg>
+                                      </motion.div>
+                                    )}
+                                    <HighlightText text={row.document_type} searchTerm={searchTerm} />
+                                  </td>
+                                )}
                                 <td className="border border-gray-300 px-4 py-2 font-poppins text-sm text-gray-700 relative">
-                                  {showBookmark && (
+                                  {selectedType !== "Document" && showBookmark && (
                                     <motion.div
                                       className="absolute left-0 top-0 flex items-center cursor-pointer"
                                       initial={{ x: -125 }}
@@ -938,171 +1065,196 @@ function Dashboard() {
                                       </svg>
                                     </motion.div>
                                   )}
-                                  {row.document_type}
+                                  <HighlightText text={row.no} searchTerm={searchTerm} />
                                 </td>
-                              )}
-                              <td className="border border-gray-300 px-4 py-2 font-poppins text-sm text-gray-700 relative">
-                                {selectedType !== "Document" && showBookmark && (
-                                  <motion.div
-                                    className="absolute left-0 top-0 flex items-center cursor-pointer"
-                                    initial={{ x: -125 }}
-                                    whileHover={{ x: 0 }}
-                                    transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                                  >
-                                    <div className="bg-white to-gray-100 border border-gray-300 rounded-lg p-2 text-sm font-semibold font-poppins text-gray-500 w-[120px] text-center shadow-sm hover:shadow-md transition-shadow duration-200">
-                                      {relevantTime.toUpperCase()}
+                                <td className="border border-gray-300 px-4 py-2 font-poppins text-sm text-gray-700 text-justify">
+                                  <HighlightText text={row.title} searchTerm={searchTerm} />
+                                </td>
+                                <td className="border border-gray-300 px-4 py-2 font-poppins text-sm text-gray-700">
+                                  {row.status_history && row.status_history.length > 0 ? (
+                                    <div className="flex flex-wrap gap-1 items-center">
+                                      {row.status_history.slice(0).map((entry, idx) => (
+                                        <span
+                                          key={idx}
+                                          className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold border ${getStatusBadgeClass(entry.status)}`}
+                                        >
+                                          {entry.status}
+                                        </span>
+                                      ))}
+                                      {row.status_history.length > 0 && (
+                                        <button
+                                          onClick={() => {
+                                            console.log("Show More clicked - status_history:", row.status_history);
+                                            handleStatusHistoryClick(index);
+                                          }}
+                                          className="inline-block px-2 py-0.5 rounded-full text-xs font-medium underline text-gray-600 hover:text-[#5FA8AD]"
+                                        >
+                                          Show More
+                                        </button>
+                                      )}
                                     </div>
-                                    <svg
-                                      className={`w-6 h-12 ${bookmarkColor} transform rotate-[-90deg] cursor-pointer`}
-                                      xmlns="http://www.w3.org/2000/svg"
-                                      viewBox="0 0 24 48"
-                                      fill="currentColor"
+                                  ) : (
+                                    <span
+                                      className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold border ${getStatusBadgeClass(row.status || "None")}`}
                                     >
-                                      <path d="M2 2H22V42L17 36L12 30L2 42V2Z" />
-                                    </svg>
-                                  </motion.div>
-                                )}
-                                {row.no}
-                              </td>
-                              <td className="border border-gray-300 px-4 py-2 w-[40%] text-justify font-poppins text-sm text-gray-700">
-                                {row.title}
-                              </td>
-                              <td className="border border-gray-300 px-4 py-2 w-[10%] text-justify font-poppins text-sm text-gray-700">
-                                {row.status || "None"}
-                              </td>
-                              <td className="border border-gray-300 px-4 py-2 text-justify font-poppins text-sm text-gray-700">
-                                {row.remarks || "None"}
-                              </td>
-                              <td className={userRole === "user" ? "px-2 py-2 w-[20%] min-w-[200px] border font-poppins text-sm text-gray-700" : "px-2 py-2 w-[27%] min-w-[200px] border font-poppins text-sm text-gray-700"}>
-                                <div className={userRole === "user" ? "flex justify-center gap-2" : "md:flex md:flex-wrap md:justify-start gap-2"}>
-                                  <button
-                                    onClick={() => handleViewClick(index)}
-                                    className="bg-[#37ad6c] hover:bg-[#2d8f59] px-4 py-2 rounded-md text-white font-medium flex items-center gap-1 font-poppins text-sm shadow-md"
+                                      {row.status || "None"}
+                                    </span>
+                                  )}
+                                </td>
+                                <td
+                                  className="border border-gray-300 px-4 py-2 font-poppins text-sm text-gray-700 break-words w-[9%]"
+                                >
+                                  {row.remarks || "None"}
+                                </td>
+                                <td
+                                  className={
+                                    userRole === "user"
+                                      ? "px-2 py-2 min-w-[200px] border font-poppins text-sm text-gray-700"
+                                      : "px-2 py-2 min-w-[200px] border font-poppins text-sm text-gray-700"
+                                  }
+                                >
+                                  <div
+                                    className={
+                                      userRole === "user"
+                                        ? "flex justify-center gap-2"
+                                        : "md:flex md:flex-wrap md:justify-start gap-2"
+                                    }
                                   >
-                                    <img
-                                      src="src/assets/Images/view.png"
-                                      alt="View"
-                                      className="w-5 h-5 invert self-center"
-                                    />
-                                    View
-                                  </button>
-                                  <button
-                                    onClick={() => handleEditClick(index)}
-                                    className="bg-[#f5bd64] hover:bg-[#e9b158] px-4 py-2 rounded-md text-white font-medium flex items-center gap-1 font-poppins text-sm shadow-md"
-                                  >
-                                    <img
-                                      src="src/assets/Images/edit.png"
-                                      alt="Edit"
-                                      className="w-5 h-5 invert self-center"
-                                    />
-                                    Edit
-                                  </button>
-                                  <button
-                                    onClick={() => handlePrintClick(index)}
-                                    className="bg-[#3b7bcf] hover:bg-[#3166ac] px-4 py-2 rounded-md text-white font-medium flex items-center gap-1 font-poppins text-sm shadow-md"
-                                  >
-                                    <img
-                                      src="src/assets/Images/print.png"
-                                      alt="Print"
-                                      className="w-5 h-5 invert self-center"
-                                    />
-                                    Print
-                                  </button>
-                                  {userRole !== "user" && (
                                     <button
-                                      onClick={() => deleteRow(index, row.id)}
-                                      className="bg-[#FF6767] hover:bg-[#f35656] px-4 py-2 rounded-md text-white font-medium flex items-center gap-1 font-poppins text-sm shadow-md"
+                                      onClick={() => handleViewClick(index)}
+                                      className="bg-[#37ad6c] hover:bg-[#2d8f59] px-4 py-2 rounded-md text-white font-medium flex items-center gap-1 font-poppins text-sm shadow-md"
                                     >
                                       <img
-                                        src="src/assets/Images/delete.png"
-                                        alt="Delete"
+                                        src="src/assets/Images/view.png"
+                                        alt="View"
                                         className="w-5 h-5 invert self-center"
                                       />
-                                      Delete
+                                      View
                                     </button>
-                                  )}
-                                </div>
+                                    <button
+                                      onClick={() => handleEditClick(index)}
+                                      className="bg-[#f5bd64] hover:bg-[#e9b158] px-4 py-2 rounded-md text-white font-medium flex items-center gap-1 font-poppins text-sm shadow-md"
+                                    >
+                                      <img
+                                        src="src/assets/Images/edit.png"
+                                        alt="Edit"
+                                        className="w-5 h-5 invert self-center"
+                                      />
+                                      Edit
+                                    </button>
+                                    <button
+                                      onClick={() => handlePrintClick(index)}
+                                      className="bg-[#3b7bcf] hover:bg-[#3166ac] px-4 py-2 rounded-md text-white font-medium flex items-center gap-1 font-poppins text-sm shadow-md"
+                                    >
+                                      <img
+                                        src="src/assets/Images/print.png"
+                                        alt="Print"
+                                        className="w-5 h-5 invert self-center"
+                                      />
+                                      Print
+                                    </button>
+                                    {userRole !== "user" && (
+                                      <button
+                                        onClick={() => deleteRow(index, row.id)}
+                                        className="bg-[#FF6767] hover:bg-[#f35656] px-4 py-2 rounded-md text-white font-medium flex items-center gap-1 font-poppins text-sm shadow-md"
+                                      >
+                                        <img
+                                          src="src/assets/Images/delete.png"
+                                          alt="Delete"
+                                          className="w-5 h-5 invert self-center"
+                                        />
+                                        Delete
+                                      </button>
+                                    )}
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })
+                        ) : (
+                          !loading && (
+                            <tr>
+                              <td
+                                colSpan={selectedType === "Document" ? 6 : 5}
+                                className="text-center text-gray-500 py-6 text-md font-poppins"
+                              >
+                                No data yet
                               </td>
                             </tr>
-                          );
-                        })
-                      ) : (
-                        !loading && (
-                          <tr>
-                            <td colSpan={selectedType === "Document" ? 6 : 5} className="text-center text-gray-500 py-6 text-md font-poppins">
-                              No data yet
-                            </td>
-                          </tr>
-                        )
-                      )}
-                    </tbody>
-                  </table>
+                          )
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-              </div>
-
-              <div className="flex justify-center mt-4 items-center">
-                <button
-                  onClick={() => handlePageChange(currentPage - 1)}
-                  disabled={currentPage === 1}
-                  className="bg-[#408286] hover:bg-[#5FA8AD] text-white font-bold py-2 px-4 rounded-l-md shadow-md disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors duration-200"
-                >
-                  Previous
-                </button>
-                {showPrevEllipsis && (
-                  <span className="mx-1 py-2 px-4 text-gray-700">...</span>
-                )}
-                {visiblePages.map((page) => (
+                <div className="flex justify-center mt-4 items-center">
                   <button
-                    key={page}
-                    onClick={() => handlePageChange(page)}
-                    className={`mx-[2px] py-2 px-4 rounded-md ${
-                      currentPage === page
-                        ? "bg-[#5FA8AD] text-white"
-                        : "bg-[#408286] text-white hover:bg-[#5FA8AD]"
-                    }`}
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className="bg-[#408286] hover:bg-[#5FA8AD] text-white font-bold py-2 px-4 rounded-l-md shadow-md disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors duration-200"
                   >
-                    {page}
+                    Previous
                   </button>
-                ))}
-                {showNextEllipsis && (
-                  <span className="mx-1 py-2 px-4 text-gray-700">...</span>
-                )}
-                <button
-                  onClick={() => handlePageChange(currentPage + 1)}
-                  disabled={currentPage === totalPages}
-                  className="bg-[#408286] hover:bg-[#5FA8AD] text-white font-bold py-2 px-4 rounded-r-md shadow-md disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors duration-200"
-                >
-                  Next
-                </button>
+                  {showPrevEllipsis && (
+                    <span className="mx-1 py-2 px-4 text-gray-700">...</span>
+                  )}
+                  {visiblePages.map((page) => (
+                    <button
+                      key={page}
+                      onClick={() => handlePageChange(page)}
+                      className={`mx-[2px] py-2 px-4 rounded-md ${
+                        currentPage === page
+                          ? "bg-[#5FA8AD] text-white"
+                          : "bg-[#408286] text-white hover:bg-[#5FA8AD]"
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  ))}
+                  {showNextEllipsis && (
+                    <span className="mx-1 py-2 px-4 text-gray-700">...</span>
+                  )}
+                  <button
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className="bg-[#408286] hover:bg-[#5FA8AD] text-white font-bold py-2 px-4 rounded-r-md shadow-md disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors duration-200"
+                  >
+                    Next
+                  </button>
+                </div>
               </div>
             </div>
           </div>
+
+            <EditModal
+              isOpen={isEditModalOpen}
+              onClose={() => setIsEditModalOpen(false)}
+              rowData={selectedRow}
+              onSave={handleSave}
+              setRowData={setSelectedRow}
+            />
+            <ViewModal
+              isOpen={isViewModalOpen}
+              onClose={() => setIsViewModalOpen(false)}
+              rowData={selectedRow}
+            />
+            <StatusHistoryModal
+              isOpen={isStatusHistoryModalOpen}
+              onClose={() => setIsStatusHistoryModalOpen(false)}
+              statusHistory={selectedStatusHistory}
+            />
+            <div>
+              {isPreviewOpen && previewData && (
+                <TransmittalSheet
+                  documentData={previewData}
+                  onPrint={() => console.log("Printing...")}
+                  onClose={handleClosePreview}
+                />
+              )}
+            </div>
+          </div>
         </div>
-      </div>
+      );
+    }
 
-      <EditModal
-        isOpen={isEditModalOpen}
-        onClose={() => setIsEditModalOpen(false)}
-        rowData={selectedRow}
-        onSave={handleSave}
-        setRowData={setSelectedRow}
-      />
-      <ViewModal
-        isOpen={isViewModalOpen}
-        onClose={() => setIsViewModalOpen(false)}
-        rowData={selectedRow}
-      />
-      <div>
-        {isPreviewOpen && previewData && (
-          <TransmittalSheet
-            documentData={previewData}
-            onPrint={() => console.log("Printing...")}
-            onClose={handleClosePreview}
-          />
-        )}
-      </div>
-    </div>
-  );
-}
-
-export default Dashboard;
+    export default Dashboard;
