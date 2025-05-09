@@ -14,6 +14,22 @@ function CreateAccount() {
   const [totalPages, setTotalPages] = useState(1);
   const [isPending, startTransition] = useTransition();
 
+  // Get user role from localStorage
+  const userRole = (() => {
+    const userDataRaw = localStorage.getItem("userData");
+    if (!userDataRaw || userDataRaw === "undefined") {
+      console.warn("userData in localStorage is missing or invalid:", userDataRaw);
+      return "";
+    }
+    try {
+      const userData = JSON.parse(userDataRaw);
+      return userData?.role || "";
+    } catch (error) {
+      console.error("Failed to parse userData from localStorage:", error);
+      return "";
+    }
+  })();
+
   // Function to generate a random password
   const generatePassword = () => {
     const randomPass = Math.random().toString(36).slice(-8);
@@ -55,7 +71,11 @@ function CreateAccount() {
   // Fetch users with pagination (10 users per page)
   const fetchUsers = async (page = 1) => {
     try {
-      const response = await axios.get(`http://127.0.0.1:8000/api/users?page=${page}&per_page=10`);
+      const response = await axios.get(`http://127.0.0.1:8000/api/users?page=${page}&per_page=10`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
       setUsers(response.data.data);
       setCurrentPage(response.data.current_page);
       setTotalPages(response.data.total_pages);
@@ -80,12 +100,20 @@ function CreateAccount() {
       return;
     }
     try {
-      const response = await axios.post("http://127.0.0.1:8000/api/register", {
-        name,
-        user_name: username,
-        role,
-        password,
-      });
+      const response = await axios.post(
+        "http://127.0.0.1:8000/api/register",
+        {
+          name,
+          user_name: username,
+          role,
+          password,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
       if (response.status === 201) {
         showAlert("Account created successfully!");
         setName("");
@@ -117,9 +145,15 @@ function CreateAccount() {
     }).then(async (result) => {
       if (result.isConfirmed) {
         try {
-          const response = await axios.patch(`http://127.0.0.1:8000/api/users/${userId}/role`, {
-            role: newRole,
-          });
+          const response = await axios.patch(
+            `http://127.0.0.1:8000/api/users/${userId}/role`,
+            { role: newRole },
+            {
+              headers: {
+                Authorization: `Bearer ${localStorage.getItem("token")}`,
+              },
+            }
+          );
           if (response.status === 200) {
             showAlert("Role updated successfully!");
             startTransition(() => {
@@ -148,16 +182,18 @@ function CreateAccount() {
     }).then(async (result) => {
       if (result.isConfirmed) {
         try {
-          const response = await axios.delete(`http://127.0.0.1:8000/api/users/${userId}`);
+          const response = await axios.delete(`http://127.0.0.1:8000/api/users/${userId}`, {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          });
           if (response.status === 200) {
             showAlert("User deleted successfully!");
             startTransition(async () => {
-              // Check if the current page will be empty after deletion
               const updatedUsers = users.filter((user) => user.id !== userId);
               if (updatedUsers.length === 0 && currentPage > 1) {
-                setCurrentPage(currentPage - 1); // Go to previous page
+                setCurrentPage(currentPage - 1);
               } else {
-                // Fetch updated user list for the current page
                 await fetchUsers(currentPage);
               }
             });
@@ -333,7 +369,9 @@ function CreateAccount() {
                         <th className="p-3 text-left text-sm font-semibold uppercase tracking-wide">Username</th>
                         <th className="p-3 text-left text-sm font-semibold uppercase tracking-wide">Role</th>
                         <th className="p-3 text-left text-sm font-semibold uppercase tracking-wide">Created At</th>
-                        <th className="p-3 text-left text-sm font-semibold uppercase tracking-wide">Actions</th>
+                        {userRole === "admin" && (
+                          <th className="p-3 text-left text-sm font-semibold uppercase tracking-wide">Actions</th>
+                        )}
                       </tr>
                     </thead>
                     <tbody className={`transition-opacity duration-300 ${isPending ? 'opacity-50' : 'opacity-100'}`}>
@@ -353,25 +391,27 @@ function CreateAccount() {
                           <td className="p-3 text-gray-600 text-sm border-b border-gray-200">
                             {new Date(user.created_at).toLocaleDateString()}
                           </td>
-                          <td className="p-3 border-b border-gray-200 flex space-x-2">
-                            <select
-                              value={user.role}
-                              onChange={(e) => handleRoleUpdate(user.id, e.target.value, user.role)}
-                              className="px-2 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#408286] focus:border-[#408286]"
-                              aria-label={`Change role for ${user.user_name}`}
-                            >
-                              <option value="admin">Admin</option>
-                              <option value="sub-admin">Sub-Admin</option>
-                              <option value="user">User</option>
-                            </select>
-                            <button
-                              onClick={() => handleDeleteUser(user.id)}
-                              className="bg-[#FF6767] hover:bg-[#e65b5b] px-4 py-1.5 rounded-md text-white text-sm font-medium shadow-md transition duration-150"
-                              aria-label={`Delete user ${user.user_name}`}
-                            >
-                              Delete
-                            </button>
-                          </td>
+                          {userRole === "admin" && (
+                            <td className="p-3 border-b border-gray-200 flex space-x-2">
+                              <select
+                                value={user.role}
+                                onChange={(e) => handleRoleUpdate(user.id, e.target.value, user.role)}
+                                className="px-2 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#408286] focus:border-[#408286]"
+                                aria-label={`Change role for ${user.user_name}`}
+                              >
+                                <option value="admin">Admin</option>
+                                <option value="sub-admin">Sub-Admin</option>
+                                <option value="user">User</option>
+                              </select>
+                              <button
+                                onClick={() => handleDeleteUser(user.id)}
+                                className="bg-[#FF6767] hover:bg-[#e65b5b] px-4 py-1.5 rounded-md text-white text-sm font-medium shadow-md transition duration-150"
+                                aria-label={`Delete user ${user.user_name}`}
+                              >
+                                Delete
+                              </button>
+                            </td>
+                          )}
                         </tr>
                       ))}
                     </tbody>

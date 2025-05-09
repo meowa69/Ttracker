@@ -25,12 +25,14 @@ function Dashboard() {
   const [selectedStatusHistory, setSelectedStatusHistory] = useState([]);
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [yearRange, setYearRange] = useState("");
+  const [singleYear, setSingleYear] = useState("");
+  const [yearRangeStart, setYearRangeStart] = useState("");
+  const [yearRangeEnd, setYearRangeEnd] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
-  const [completedStatus, setCompletedStatus] = useState("");
-  const [colorFilter, setColorFilter] = useState(""); // New state for color filter
+  const [colorFilter, setColorFilter] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [sortField, setSortField] = useState("");
+  const [sortField, setSortField] = useState("no-asc"); // Default to ascending by document number
+  const [sortOrder, setSortOrder] = useState("asc"); // Sort order state
   const recordsPerPage = 10;
   const maxVisiblePages = 5;
   const [alert, setAlert] = useState({ show: false, message: "", progress: 100 });
@@ -91,8 +93,10 @@ function Dashboard() {
         status: row.completed ? "Completed" : row.status,
         status_history: row.status_history || [],
       }));
-      console.log("fetchRecords - Records with status_history:", formattedRows.map(row => ({
+      console.log("fetchRecords - Records:", formattedRows.map(row => ({
         id: row.id,
+        no: row.no,
+        date_approved: row.date_approved,
         status: row.status,
         status_history: row.status_history
       })));
@@ -168,7 +172,12 @@ function Dashboard() {
       setRows((prevRows) =>
         prevRows.map((row) => (row.id === updatedRow.id ? { ...row, ...updatedRow } : row))
       );
-      console.log("Dashboard handleSave - Updated row status_history:", updatedRow.status_history);
+      console.log("Dashboard handleSave - Updated row:", {
+        id: updatedRow.id,
+        no: updatedRow.no,
+        date_approved: updatedRow.date_approved,
+        status_history: updatedRow.status_history
+      });
       setSelectedRow(updatedRow);
       setIsEditModalOpen(false);
       await fetchRecords();
@@ -237,6 +246,7 @@ function Dashboard() {
           if (response.status === 200) {
             setRows((prevRows) => prevRows.filter((row) => row.id !== id));
             Swal.fire("Deleted!", "The document has been deleted.", "success");
+            await fetchRecords(); // Refresh records after deletion
           }
         } catch (error) {
           console.error("Error deleting record:", error.response?.data || error);
@@ -317,13 +327,13 @@ function Dashboard() {
     return (isInProgress || isOverdue || isCompleted) && !isNotStarted;
   };
 
- // Count records by bookmark color
+  // Count records by bookmark color
   const colorCounts = rows.reduce(
     (acc, row) => {
       if (!shouldShowBookmark(row)) return acc;
       const vmTime = calculateTimeRemaining(row.vmForwarded, row.vmReceived);
       const cmTime =
-        row.document_type?.toLowerCase() === "ordinance" // Fixed typo here
+        row.document_type?.toLowerCase() === "ordinance"
           ? calculateTimeRemaining(row.cmForwarded, row.cmReceived)
           : "Not Started";
       const relevantTime =
@@ -342,19 +352,30 @@ function Dashboard() {
   );
 
   const filteredRows = rows.filter((row) => {
-    const matchesYearRange = !yearRange || row.date_approved?.includes(yearRange);
+    const rowYear = row.date_approved ? new Date(row.date_approved).getFullYear().toString() : "";
+    const docNumberYear = row.no?.split("-")[1] || ""; // Extract year from document number
+    let matchesYear = true;
+    if (singleYear) {
+      matchesYear = rowYear === singleYear || docNumberYear === singleYear;
+    } else if (yearRangeStart && yearRangeEnd) {
+      const startYear = parseInt(yearRangeStart);
+      const endYear = parseInt(yearRangeEnd);
+      const rowYearNum = parseInt(rowYear) || 0;
+      const docNumberYearNum = parseInt(docNumberYear) || 0;
+      matchesYear = 
+        (rowYearNum >= startYear && rowYearNum <= endYear) ||
+        (docNumberYearNum >= startYear && docNumberYearNum <= endYear);
+    }
     const matchesStatus = !statusFilter || 
       row.status === statusFilter || 
       (row.status_history && row.status_history.some((entry) => entry.status === statusFilter));
-    const matchesCompletedStatus =
-      completedStatus === "" ||
-      (completedStatus === "True" ? row.status === "Completed" : row.status !== "Completed");
     const matchesDocumentType = selectedType === "Document" || row.document_type === selectedType;
     const matchesSearchTerm =
       !searchTerm ||
       row.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       row.no?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      row.document_type?.toLowerCase().includes(searchTerm.toLowerCase());
+      row.document_type?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (searchTerm.match(/^\d{4}$/) && row.no?.split("-")[1]?.includes(searchTerm));
     const matchesColorFilter = !colorFilter || (() => {
       if (!shouldShowBookmark(row)) return false;
       const vmTime = calculateTimeRemaining(row.vmForwarded, row.vmReceived);
@@ -374,19 +395,27 @@ function Dashboard() {
       return color === colorFilter;
     })();
     return (
-      matchesYearRange &&
+      matchesYear &&
       matchesStatus &&
-      matchesCompletedStatus &&
       matchesDocumentType &&
       matchesSearchTerm &&
       matchesColorFilter
     );
   });
 
+  // Sort rows based on document number
+  const sortedRows = [...filteredRows].sort((a, b) => {
+    const [aNumber, aYear] = a.no.split("-");
+    const [bNumber, bYear] = b.no.split("-");
+    const aValue = parseInt(aNumber + aYear);
+    const bValue = parseInt(bNumber + bYear);
+    return sortOrder === "asc" ? aValue - bValue : bValue - aValue;
+  });
+
   const indexOfLastRecord = currentPage * recordsPerPage;
   const indexOfFirstRecord = indexOfLastRecord - recordsPerPage;
-  const paginatedRows = filteredRows.slice(indexOfFirstRecord, indexOfLastRecord);
-  const totalPages = Math.ceil(filteredRows.length / recordsPerPage);
+  const paginatedRows = sortedRows.slice(indexOfFirstRecord, indexOfLastRecord);
+  const totalPages = Math.ceil(sortedRows.length / recordsPerPage);
 
   const handlePageChange = (pageNumber) => {
     setCurrentPage(pageNumber);
@@ -592,6 +621,27 @@ function Dashboard() {
   const handleColorFilterClick = (color) => {
     setColorFilter((prev) => (prev === color ? "" : color));
     setCurrentPage(1); // Reset to first page when filter changes
+  };
+
+  // Handle sort order change
+  const handleSortOrderChange = (e) => {
+    const newOrder = e.target.value;
+    setSortOrder(newOrder);
+    setSortField(`no-${newOrder}`);
+    setCurrentPage(1); // Reset to first page when sort order changes
+  };
+
+  // Clear single year when range is selected
+  const handleYearRangeChange = () => {
+    setSingleYear("");
+    setCurrentPage(1);
+  };
+
+  // Clear range when single year is selected
+  const handleSingleYearChange = () => {
+    setYearRangeStart("");
+    setYearRangeEnd("");
+    setCurrentPage(1);
   };
 
   return (
@@ -823,13 +873,12 @@ function Dashboard() {
 
             <div className="relative">
               <select
-                value={completedStatus}
-                onChange={(e) => setCompletedStatus(e.target.value)}
+                value={sortOrder}
+                onChange={handleSortOrderChange}
                 className="cursor-pointer inline-flex justify-center w-full appearance-none rounded-md border border-gray-300 shadow-sm px-4 py-2 pr-10 bg-white text-sm font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-[#5FA8AD]"
               >
-                <option value="">Completion</option>
-                <option value="True">True</option>
-                <option value="False">False</option>
+                <option value="asc">Sort Ascending</option>
+                <option value="desc">Sort Descending</option>
               </select>
               <img
                 src="src/assets/Images/down2.png"
@@ -840,10 +889,41 @@ function Dashboard() {
 
             <div className="flex space-x-2 items-center">
               <input
-                type="date"
-                onChange={(e) => setYearRange(e.target.value)}
-                onFocus={(e) => e.target.showPicker()}
-                className="border cursor-pointer border-gray-300 shadow-sm px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-[#5FA8AD] rounded-md"
+                type="number"
+                placeholder="Single Year"
+                value={singleYear}
+                onChange={(e) => {
+                  setSingleYear(e.target.value);
+                  handleSingleYearChange();
+                }}
+                className="border cursor-pointer border-gray-300 shadow-sm px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-[#5FA8AD] rounded-md w-32"
+                min="1900"
+                max="9999"
+              />
+              <input
+                type="number"
+                placeholder="From Year"
+                value={yearRangeStart}
+                onChange={(e) => {
+                  setYearRangeStart(e.target.value);
+                  handleYearRangeChange();
+                }}
+                className="border cursor-pointer border-gray-300 shadow-sm px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-[#5FA8AD] rounded-md w-28"
+                min="1900"
+                max="9999"
+              />
+              <span className="text-gray-700">-</span>
+              <input
+                type="number"
+                placeholder="To Year"
+                value={yearRangeEnd}
+                onChange={(e) => {
+                  setYearRangeEnd(e.target.value);
+                  handleYearRangeChange();
+                }}
+                className="border cursor-pointer border-gray-300 shadow-sm px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-[#5FA8AD] rounded-md w-28"
+                min="1900"
+                max="9999"
               />
             </div>
           </div>
@@ -853,7 +933,10 @@ function Dashboard() {
               type="text"
               placeholder="Search..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setCurrentPage(1); // Reset to first page on search
+              }}
               className="w-[300px] font-poppins pl-10 pr-10 rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-[#5FA8AD]"
             />
             {searchTerm && (

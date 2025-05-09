@@ -54,12 +54,15 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
           if (!fetchedData) {
             throw new Error("Record not found");
           }
+          // Normalize completed field
+          const completedValue = fetchedData.completed === true ? "true" : fetchedData.completed === false ? "false" : initialRowData.completed === true ? "true" : initialRowData.completed === false ? "false" : "false";
           const updatedRowData = {
             ...initialRowData,
             ...fetchedData,
-            completed: fetchedData.completed ? "true" : fetchedData.completed === false ? "false" : "disabled",
+            completed: completedValue,
             transmitted_recipients: fetchedData.transmitted_recipients || [],
           };
+          console.log("EditModal fetchRecordData - Fetched completed:", fetchedData.completed, "Initial completed:", initialRowData.completed, "Set completed:", updatedRowData.completed);
           setLocalRowData(updatedRowData);
           setSavedRowData(updatedRowData);
           setRecipientList(fetchedData.transmitted_recipients || []);
@@ -67,10 +70,12 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
           setIsDataCommitted(true);
         } catch (error) {
           console.error("Error fetching record data:", error);
+          const completedValue = initialRowData.completed === true ? "true" : initialRowData.completed === false ? "false" : "false";
           const fallbackData = {
             ...initialRowData,
-            completed: initialRowData.completed ? "true" : initialRowData.completed === false ? "false" : "disabled",
+            completed: completedValue,
           };
+          console.log("EditModal fetchRecordData - Fallback completed:", initialRowData.completed, "Set completed:", fallbackData.completed);
           setLocalRowData(fallbackData);
           setSavedRowData(fallbackData);
           setRecipientList(initialRowData.transmitted_recipients || []);
@@ -228,10 +233,9 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
   const handleChange = (e) => {
     const { name, value } = e.target;
     if (name === "sponsor") {
-      // Open term modal for any committee selection, even if reselecting the same
       setSelectedCommittee(value);
       setIsTermModalOpen(!!value);
-      setLocalRowData((prev) => ({ ...prev, sponsor: "" })); // Reset sponsor until term is selected
+      setLocalRowData((prev) => ({ ...prev, sponsor: "" }));
     } else {
       const newValue = name === "completed" ? value : value;
       setLocalRowData((prev) => {
@@ -244,11 +248,10 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
   };
 
   const handleChangeTerm = () => {
-    // Open term modal for the current preselected committee
     if (preselectedCommittee) {
       setSelectedCommittee(preselectedCommittee);
       setIsTermModalOpen(true);
-      setLocalRowData((prev) => ({ ...prev, sponsor: "" })); // Reset sponsor until new term is selected
+      setLocalRowData((prev) => ({ ...prev, sponsor: "" }));
     }
   };
 
@@ -268,7 +271,7 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
   const handleTermCancel = () => {
     setIsTermModalOpen(false);
     setSelectedCommittee("");
-    setLocalRowData((prev) => ({ ...prev, sponsor: savedRowData.sponsor || "" })); // Restore previous sponsor
+    setLocalRowData((prev) => ({ ...prev, sponsor: savedRowData.sponsor || "" }));
   };
 
   const handleVmSetReceivedClick = () => {
@@ -340,7 +343,7 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
         cm_received: localRowData.cm_received || null,
         date_transmitted: localRowData.date_transmitted || null,
         remarks: localRowData.remarks || "",
-        completed: localRowData.completed === "true",
+        completed: localRowData.completed === "true" ? true : localRowData.completed === "false" ? false : false,
         completion_date: localRowData.completed === "true" ? localRowData.completion_date || null : null,
         new_recipients: newRecipients.map((recipient) => ({
           salutation: recipient.salutation,
@@ -351,7 +354,9 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
         })),
         recipients_to_remove: recipientsToRemove,
       };
-  
+
+      console.log("EditModal handleSave - Sending payload:", payload);
+
       const response = await axios.put(
         `http://localhost:8000/api/update-record/${localRowData.id}`,
         payload,
@@ -361,7 +366,7 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
           },
         }
       );
-  
+
       const updatedRecipients = response.data.data.transmitted_recipients.map((rec) => ({
         id: rec.id,
         salutation: rec.salutation || "",
@@ -370,7 +375,7 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
         office: rec.office || "",
         address: rec.address,
       }));
-  
+
       const updatedData = {
         ...localRowData,
         sponsor: response.data.data.committee_sponsor,
@@ -381,14 +386,15 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
         cm_received: response.data.data.city_mayor_received,
         date_transmitted: response.data.data.date_transmitted,
         remarks: response.data.data.remarks,
-        completed: response.data.data.completed ? "true" : "false",
+        completed: response.data.data.completed === true ? "true" : response.data.data.completed === false ? "false" : localRowData.completed,
         completion_date: response.data.data.completion_date,
         transmitted_recipients: updatedRecipients,
-        status_history: response.data.data.status_history || [], // Ensure status_history is included
+        status_history: response.data.data.status_history || [],
       };
-  
-      console.log("EditModal handleSave - Updated status_history:", updatedData.status_history);
-  
+
+      console.log("EditModal handleSave - Response data:", response.data.data);
+      console.log("EditModal handleSave - Updated completed:", updatedData.completed);
+
       setLocalRowData(updatedData);
       setSavedRowData(updatedData);
       setRecipientList(updatedRecipients);
@@ -825,11 +831,10 @@ const EditModal = ({ isOpen, onClose, rowData: initialRowData, onSave, setRowDat
                   <label className="block text-gray-700 text-sm font-medium mb-1">Completed</label>
                   <select
                     name="completed"
-                    value={localRowData.completed}
+                    value={localRowData.completed || "false"}
                     onChange={handleChange}
                     className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#408286] focus:border-[#408286] cursor-pointer"
                   >
-                    <option value="disabled" disabled>Select</option>
                     <option value="false">False</option>
                     <option value="true">True</option>
                   </select>
